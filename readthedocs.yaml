@@ -21,7 +21,7 @@ python:
     - method: pip
       path: .
       extra_requirements:
-        - docs  # Install the 'docs' extra requirements from pyproject.toml
+        - doc  # Install the 'docs' extra requirements from pyproject.toml
 # Optionally, but recommended,
 # declare the Python requirements required to build your documentation
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
