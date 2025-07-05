@@ -19,7 +19,6 @@ sphinx:
 python:
   install:
     - method: pip
-      path: .
       extra_requirements:
         - doc  # Install the 'docs' extra requirements from pyproject.toml
 # Optionally, but recommended,
