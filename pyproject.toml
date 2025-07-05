@@ -1,0 +1,41 @@
+[build-system]
+requires = ["uv_build>=0.7.8,<0.8.0"]
+build-backend = "uv_build"
+
+[project]
+name = "StereoMolGraph"
+version = "0.0.1"
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+  "numpy>=1.20,<3",
+  "rdkit>=2022.9.1,<=2025",
+]
+
+[dependency-groups]
+doc = ["sphinx<7.0",
+       "sphinx-rtd-theme",
+       "myst-parser",
+       "sphinx-autodoc-typehints"]
+
+dev = ["stereomolgraph[doc]",
+       "scipy>=1.8,<2",
+       "pytest>=7.1.2,<8",
+       "pytest-cov>=6,<7",
+       "ruff>=0.6.0",
+       "ipykernel",
+       "typing-extensions>=4.12;python_version<'3.13'"
+        # official module to add type hinting features used in future Python versions
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = --cov
+
+[tool.ruff.lint]
+select = ["E", "F", "UP035", "W291","F541"]
+
+[tool.ruff.format]
+docstring-code-format = true

@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+type: software
+title: StereoMolGraph
+abstract: Graph Library for Molecules and Transition States with Stereochemistry.
+version: 0.0.0b0
+keywords:
+- reaction mechanism
+- chemistry
+- reaction network
+- stereochemistry
+- graphtheory
+- condensed reaction graph
+authors:
+- family-names: Papusha
+  given-names: Maxim
+  orcid: https://orcid.org/0009-0000-8580-4777
+- given-names: Florian
+  family-names: Solbach
+  orcid: https://orcid.org/0000-0003-1923-3747
+identifiers:
+- type: doi
+  value: 10.5281/zenodo.10954962  # general DOI for all version
+license: MIT
+repository-code: https://git-ce.rwth-aachen.de/ltt/stereomolgraph/
+contact:
+- name: Maxim Papusha
+  email: maxim.papusha@ltt.rwth-aachen.de
