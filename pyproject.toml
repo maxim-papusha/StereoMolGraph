@@ -1,6 +1,6 @@
 [build-system]
-requires = ["uv_build>=0.7.8,<0.8.0"]
-build-backend = "uv_build"
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
@@ -15,12 +15,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-doc = ["sphinx<7.0",
+docs = ["sphinx<7.0",
        "sphinx-rtd-theme",
        "myst-parser",
        "sphinx-autodoc-typehints"]
 
-dev = ["stereomolgraph[doc]",
+dev = [{include-group = "docs"},
        "scipy>=1.8,<2",
        "pytest>=7.1.2,<8",
        "pytest-cov>=6,<7",
@@ -32,7 +32,7 @@ dev = ["stereomolgraph[doc]",
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-addopts = --cov
+addopts = "--cov"
 
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]
