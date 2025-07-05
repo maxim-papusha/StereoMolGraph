@@ -1,2 +1,0 @@
-Visualisation IPython Notebooks
-============================
