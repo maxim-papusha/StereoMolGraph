@@ -1,4 +1,5 @@
 # StereoMolGraph
+[![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?logo=github)](https://github.com/maxim-papusha/StereoMolGraph)
 
 A Python graph library for molecules and transition states with stereochemistry.
 
