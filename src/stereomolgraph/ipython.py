@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from rdkit import Chem
-from rdkit.Chem import Draw 
+from rdkit import Chem # type: ignore
+from rdkit.Chem import Draw # type: ignore
 from typing import NamedTuple
 
 from stereomolgraph.graph import (
