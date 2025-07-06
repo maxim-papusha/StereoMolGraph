@@ -214,9 +214,12 @@ class AtomStereo(Stereo):
     def central_atom(self) -> AtomId:
         return self.atoms[0]
 
-class BondStereo(Stereo): ...
-# TODO: Implement BondStereo
-
+class BondStereo(Stereo):
+    
+    @property
+    def bond(self) -> tuple[int, int]:
+        return tuple(sorted(self.atoms[2:4]))
+    
     
 class Tetrahedral(_BaseChiralStereo, AtomStereo):
     r"""Represents all possible configurations of atoms for a Tetrahedral
@@ -239,12 +242,12 @@ class Tetrahedral(_BaseChiralStereo, AtomStereo):
     """
     
     __slots__ = ()
-    atoms: tuple[int, int, int, int]
+    atoms: tuple[int, int, int, int, int]
     parity: None | Literal[1, -1]
 
     def __init__(
         self,
-        atoms: tuple[int, int, int, int],
+        atoms: tuple[int, int, int, int, int],
         parity: None | Literal[1, -1] = None,
     ):
         if len(atoms) != 5:
@@ -516,7 +519,7 @@ class Octahedral(_BaseChiralStereo, AtomStereo):
         return tuple([atoms[i] for i in (0, 2, 1, 3, 4, 5, 6)])
 
 
-class PlanarBond(_BaseAchiralStereo):
+class PlanarBond(_BaseAchiralStereo, BondStereo):
     r""" Represents all possible configurations of atoms for a 
     Planar Structure and should be used for aromatic and double bonds::
 
@@ -587,7 +590,7 @@ class PlanarBond(_BaseAchiralStereo):
             raise ValueError("something went wrong")
 
 
-class AtropBond(_BaseChiralStereo):
+class AtropBond(_BaseChiralStereo, BondStereo):
     r"""
     Stereochemistry:::
         parity = 1          parity = -1

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import rdkit.Chem as Chem
+import rdkit.Chem as Chem # type: ignore
 import warnings
 
 from typing import TYPE_CHECKING

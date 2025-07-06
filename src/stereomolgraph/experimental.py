@@ -4,7 +4,7 @@ import itertools
 from collections import deque
 from typing import TYPE_CHECKING
 
-from  stereomolgraph import StereoMolGraph, StereoCondensedReactionGraph
+from stereomolgraph import StereoMolGraph, StereoCondensedReactionGraph
 from stereomolgraph.graph import StereoChange
 
 if TYPE_CHECKING:

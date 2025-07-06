@@ -1,6 +1,16 @@
 """Simple access of key classes MolGraph, StereoMolGraph,
 CondensedReactionGraph and StereoCondensedReactionGraph"""
 
+__all__ = [
+    "MolGraph",
+    "StereoMolGraph",
+    "CondensedReactionGraph",
+    "StereoCondensedReactionGraph",
+    "Element",
+    "PERIODIC_TABLE",
+    "COVALENT_RADII",
+]
+
 def __getattr__(name):
     match name:
         case "MolGraph":

@@ -22,7 +22,7 @@ identifiers:
 - type: doi
   value: 10.5281/zenodo.10954962  # general DOI for all version
 license: MIT
-repository-code: https://git-ce.rwth-aachen.de/ltt/stereomolgraph/
+repository-code: https://github.com/maxim-papusha/StereoMolGraph
 contact:
 - name: Maxim Papusha
   email: maxim.papusha@ltt.rwth-aachen.de
