@@ -27,7 +27,7 @@ build:
     # Invoke the build using `uv`.
     build:
       html:
-        - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
+        - uv run sphinx-build -b html docs $READTHEDOCS_OUTPUT/html
 
 sphinx:
   builder: html
