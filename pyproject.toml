@@ -27,6 +27,7 @@ dev = [{include-group = "docs"},
        "pytest-cov>=6,<7",
        "ruff>=0.6.0",
        "ipykernel",
+       "testbook",
        "typing-extensions>=4.12;python_version<'3.13'"
         # official module to add type hinting features used in future Python versions
 ]
