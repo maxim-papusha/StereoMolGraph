@@ -17,7 +17,6 @@ dependencies = [
 [dependency-groups]
 docs = ["sphinx<7.0",
        "sphinx-rtd-theme",
-       "myst-parser",
        "myst-nb",
        "ipykernel",
        "sphinx-autodoc-typehints",
