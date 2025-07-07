@@ -44,6 +44,10 @@ class View2D(NamedTuple):
             generate_bond_orders=self.generate_bond_orders
         )
         map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
+        
+        if not self.generate_bond_orders:
+            for bond in mol.GetBonds():
+                bond.SetBondType(Chem.BondType.SINGLE)
 
         if self.show_atom_numbers:
             for atom in mol.GetAtoms():
