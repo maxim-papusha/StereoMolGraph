@@ -593,7 +593,8 @@ class PlanarBond(_BaseAchiralStereo, BondStereo):
 
 class AtropBond(_BaseChiralStereo, BondStereo):
     r"""
-    Stereochemistry:::
+    Represents all possible configurations of atoms for a
+    Atropostereoisomer bond::
         parity = 1          parity = -1
         1       5           1        5
          \     /            ◀      /
