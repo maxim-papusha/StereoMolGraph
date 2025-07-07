@@ -771,7 +771,6 @@ class MolGraph:
 
         :param other: Other Graph to compare with
         :return: Mappings from the atoms of self onto the atoms of other
-        :raises
         """
         return vf2pp_all_isomorphisms(
             self,
