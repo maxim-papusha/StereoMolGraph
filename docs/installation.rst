@@ -4,7 +4,7 @@ Installation
 StereoMolGraph can be installed on Linux, MacOS, or Windows environment with **Python 3.10 or later**.
 
 Install from PyPI
-----------------
+------------------
 
 .. code-block:: bash
 

@@ -1,5 +1,5 @@
 Visualisation IPython Notebooks Potato
-============================
+========================================
 
 
 .. toctree::
