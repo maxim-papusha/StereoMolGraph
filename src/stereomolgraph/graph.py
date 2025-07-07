@@ -51,14 +51,15 @@ if TYPE_CHECKING:
     import scipy.sparse  # type: ignore
 
     from stereomolgraph.cartesian import Geometry
-    
-    AtomId: TypeAlias = int
+       
     # Self is included in typing from 3.11
     if sys.version_info >= (3, 11):
         from typing import Self
     else:
         from typing_extensions import Self
 
+
+AtomId: TypeAlias = int
     
 class Bond(tuple[int, int]):
 
