@@ -17,7 +17,10 @@ author = 'Maxim Papusha'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+jupyter_execute_notebooks = "force"
+
 extensions = [
+    'myst_nb',
     'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
