@@ -934,7 +934,7 @@ class TestStereoMolGraph(TestMolGraph):
         rdmol = rdkit.Chem.MolFromInchi(inchi, sanitize=False)
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         molgraph = self._TestClass.from_rdmol(rdmol)
-        rdmol2, _ = molgraph._to_rdmol()
+        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
         assert inchi == rdkit.Chem.MolToInchi(rdmol2, treatWarningAsError=True) # type: ignore
 
     @pytest.mark.parametrize("smiles", [
@@ -949,7 +949,7 @@ class TestStereoMolGraph(TestMolGraph):
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         molgraph = self._TestClass.from_rdmol(rdmol)
         #raise Exception (molgraph.stereo)
-        rdmol2, _ = molgraph._to_rdmol()
+        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
         for atom in rdmol2.GetAtoms():
             atom.SetAtomMapNum(0)
         assert rdkit.Chem.MolToSmiles(rdmol) == rdkit.Chem.MolToSmiles(rdmol2)

@@ -85,12 +85,16 @@ class View2D(NamedTuple):
                 atoms_idx = [map_num_idx_dict[a] for a in bond]
                 bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
                 bonds_to_highlight.append(bond_idx)
+                mol.GetBondWithIdx(bond_idx).SetBondType(
+                    Chem.rdchem.BondType.HYDROGEN)
                 highlight_bond_colors[bond_idx] = (0, 0, 1)  # blue
 
             for bond in graph.get_broken_bonds():
                 atoms_idx = [map_num_idx_dict[a] for a in bond]
                 bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
                 bonds_to_highlight.append(bond_idx)
+                mol.GetBondWithIdx(bond_idx).SetBondType(
+                    Chem.rdchem.BondType.HYDROGEN)
                 highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
 
             # make dummy atoms and their bonds grey

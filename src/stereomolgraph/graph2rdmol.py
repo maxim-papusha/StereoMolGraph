@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import rdkit.Chem as Chem # type: ignore
+import math
 import warnings
-
 from typing import TYPE_CHECKING
+
+import rdkit.Chem as Chem # type: ignore
 
 from stereomolgraph._bond_order import connectivity2bond_orders
 from stereomolgraph.stereodescriptors import (
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
         StereoMolGraph,
         )
     
+
 
 bond_type_dict = {
                 0.5: Chem.BondType.HYDROGEN,  
@@ -51,10 +53,41 @@ bond_type_dict = {
                 "ZERO": Chem.BondType.ZERO,
             }
 
+def _set_bond_orders(graph: MolGraph,
+                     mol:Chem.rdchem.RWMol,
+                     idx_map_num_dict: dict[int, int],
+                     charge = 0,
+                     ) -> Chem.rdchem.RWMol:   
+             
+            bond_order_mat = connectivity2bond_orders(
+                atom_types=graph.atom_types,
+                connectivity_matrix=graph.connectivity_matrix(),
+                charge=charge,
+            )
+
+            index_map_num_dict = {
+                i: map_num for i, map_num in enumerate(graph.atoms)
+            }
+
+            map_num_idx_dict = {
+                map_num: idx for idx, map_num in idx_map_num_dict.items()
+            }
+
+            for bond in graph.bonds:
+                atom1, atom2 = bond
+                bond_order = bond_order_mat[
+                    index_map_num_dict[atom1], index_map_num_dict[atom2]
+                ]
+
+                mol.GetBondBetweenAtoms(
+                    map_num_idx_dict[atom1], map_num_idx_dict[atom2]
+                ).SetBondType(bond_type_dict[bond_order])   
+            return mol
+
 def _mol_graph_to_rdmol(
         graph: MolGraph, generate_bond_orders=False, charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        #print("MolGraph")
+
         mol = Chem.RWMol()
 
         atom_types_strings = []
@@ -78,34 +111,13 @@ def _mol_graph_to_rdmol(
             for j in range(i + 1, graph.n_atoms):
                 if graph.has_bond(idx_map_num_dict[i], idx_map_num_dict[j]):
                     mol.AddBond(i, j)
-                    mol.GetBondBetweenAtoms(i, j).SetBondType(
-                        Chem.rdchem.BondType.SINGLE)
-
-        if generate_bond_orders is True:
-
-            bond_order_mat = connectivity2bond_orders(
-                atom_types=graph.atom_types,
-                connectivity_matrix=graph.connectivity_matrix(),
-                charge=0,
-            )
-
-            index_map_num_dict = {
-                i: map_num for i, map_num in enumerate(graph.atoms)
-            }
-
-            map_num_idx_dict = {
-                map_num: idx for idx, map_num in idx_map_num_dict.items()
-            }
-
-            for bond in graph.bonds:
-                atom1, atom2 = bond
-                bond_order = bond_order_mat[
-                    index_map_num_dict[atom1], index_map_num_dict[atom2]
-                ]
-
-                mol.GetBondBetweenAtoms(
-                    map_num_idx_dict[atom1], map_num_idx_dict[atom2]
-                ).SetBondType(bond_type_dict[bond_order])
+                    # TODO: check if this is still needed
+                    # mol.GetBondBetweenAtoms(i, j).SetBondType(
+                    #    Chem.rdchem.BondType.SINGLE)
+        if generate_bond_orders:
+            mol = _set_bond_orders(graph=graph,
+                                   mol=mol,
+                                   idx_map_num_dict=idx_map_num_dict,)
 
         return mol, idx_map_num_dict
 
@@ -319,16 +331,19 @@ def _stereo_mol_graph_to_rdmol(
                 else:
                     raise Exception(f"something wrong with {b_stereo}")
 
-                # if no planar bond neigboring set the bond to aromatic
-                if all(
-                    graph.get_bond_stereo(
-                        (b_stereo.atoms[i], b_stereo.atoms[j])
-                    )
-                    is None
-                    for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
-                    if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) in graph.bonds):
-                    
-                        rd_bond.SetBondType(Chem.BondType.DOUBLE)
+                # if no planar bond neigboring set the bond to double
+                if False: 
+                    ...
+                    # TODO: check if this is still needed 
+                    #all(
+                    #graph.get_bond_stereo(
+                    #    (b_stereo.atoms[i], b_stereo.atoms[j])
+                    #)
+                    #is None
+                    #for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
+                    #if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) in graph.bonds):
+                   # 
+                   #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
             elif isinstance(b_stereo, AtropBond):
                 if (a1, a2) == (new_a1, new_a2):
@@ -353,37 +368,37 @@ def _stereo_mol_graph_to_rdmol(
                         rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOATROPCW)
                 else:
                     raise Exception(f"something wrong with {b_stereo}")
+        
+        if generate_bond_orders:
+            mol = _set_bond_orders(graph=graph,
+                                   mol=mol,
+                                   idx_map_num_dict=idx_map_num_dict,)
+
         return mol, idx_map_num_dict
 
-def _condensed_reaction_graph_to_rdmol(
+def _set_crg_bond_orders(
         graph: CondensedReactionGraph,
-        generate_bond_orders=False,
-        charge=0
+        mol: Chem.rdchem.RWMol,
+        idx_map_num_dict: dict[int, int],
+        charge=0,
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        #print("CondensedReactionGraph")
-        mol, idx_map_num_dict = _mol_graph_to_rdmol(graph,
-            generate_bond_orders=generate_bond_orders, charge=charge
-        )
-        map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
 
-        # formed and broken bonds are represented as hydrogen bonds in rdkit.
-        # This is only meant to look nice for visualization.
+        r, r_idx_map_num_dict = _mol_graph_to_rdmol(graph.reactant(),
+                                                    generate_bond_orders=True,
+                                                    charge=charge)
+        p, p_idx_map_num_dict = _mol_graph_to_rdmol( graph.product(),
+                                                    generate_bond_orders=True,
+                                                    charge=charge)
+        assert r_idx_map_num_dict == p_idx_map_num_dict == idx_map_num_dict
 
-        if generate_bond_orders is False:
-            for fbond in graph.get_formed_bonds():
-                atoms_idx = [map_num_idx_dict[a] for a in fbond]
-                bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
-                mol.GetBondWithIdx(bond_idx).SetBondType(
-                    Chem.rdchem.BondType.HYDROGEN
+        for bond in mol.GetBonds():
+            a1, a2 = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+            r_bond_order = r.GetBondBetweenAtoms(a1, a2).GetBondTypeAsDouble()
+            p_bond_order = p.GetBondBetweenAtoms(a1, a2).GetBondTypeAsDouble()
+            average = (r_bond_order + p_bond_order) / 2
+            bond_order = round(average * 2) / 2 
+            mol.GetBondBetweenAtoms(a1, a2).SetBondType(
+                bond_type_dict[bond_order]
                 )
 
-
-
-            for bbond in graph.get_broken_bonds():
-                atoms_idx = [map_num_idx_dict[a] for a in bbond]
-                bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
-                mol.GetBondWithIdx(bond_idx).SetBondType(
-                    Chem.rdchem.BondType.HYDROGEN
-                )
-
-        return mol, idx_map_num_dict
+        return mol

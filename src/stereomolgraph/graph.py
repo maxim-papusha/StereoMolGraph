@@ -34,7 +34,7 @@ from stereomolgraph.stereodescriptors import (
 from stereomolgraph.graph2rdmol import (
     _mol_graph_to_rdmol,
     _stereo_mol_graph_to_rdmol,
-    _condensed_reaction_graph_to_rdmol,
+    _set_crg_bond_orders
 )
 from stereomolgraph.rdmol2graph import (
     mol_graph_from_rdmol, 
@@ -388,8 +388,9 @@ class MolGraph:
     def _to_rdmol(
         self, generate_bond_orders=False, charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        mol, idx_map_num_dict = _mol_graph_to_rdmol(self, generate_bond_orders=generate_bond_orders, charge=charge)
-        return mol, idx_map_num_dict
+        return _mol_graph_to_rdmol(self,
+                                   generate_bond_orders=generate_bond_orders,
+                                   charge=charge)
 
     def to_rdmol(
         self, generate_bond_orders=False, charge=0
@@ -963,7 +964,8 @@ class CondensedReactionGraph(MolGraph):
     def _to_rdmol(
         self, generate_bond_orders=False, charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        mol, idx_map_num_dict = _condensed_reaction_graph_to_rdmol(self, generate_bond_orders=generate_bond_orders, charge=charge)
+        mol, idx_map_num_dict = _mol_graph_to_rdmol(graph=self, generate_bond_orders=False, charge=0)
+        _set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
         return mol, idx_map_num_dict
 
     def to_rdmol(self) -> Chem.rdchem.RWMol:
@@ -1414,8 +1416,10 @@ class StereoMolGraph(MolGraph):
 
         :return: RDKit molecule
         """
-        mol, idx_map_num_dict = _stereo_mol_graph_to_rdmol(self, generate_bond_orders=generate_bond_orders, charge=charge)
-        return mol, idx_map_num_dict
+        return _stereo_mol_graph_to_rdmol(self,
+                                          generate_bond_orders=generate_bond_orders,
+                                          charge=charge)
+        
 
     @classmethod
     def from_rdmol(cls, rdmol, use_atom_map_number=False) -> Self:
@@ -1964,8 +1968,14 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             if bond_stereo:
                 ts_smg.set_bond_stereo(bond, bond_stereo)
 
-        return ts_smg._to_rdmol(
-            generate_bond_orders=generate_bond_orders, charge=charge)
+        mol, idx_map_num_dict = ts_smg._to_rdmol(
+            generate_bond_orders=False, charge=charge)
+        if generate_bond_orders:
+            mol = _set_crg_bond_orders(graph=self,
+                                 mol=mol,
+                                 charge=charge,
+                                 idx_map_num_dict=idx_map_num_dict)
+        return mol, idx_map_num_dict
 
     @classmethod
     def from_composed_molgraphs(cls, mol_graphs: Iterable[Self]) -> Self:
