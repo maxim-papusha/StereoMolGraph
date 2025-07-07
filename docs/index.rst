@@ -10,6 +10,7 @@ StereoMolGraph documentation
    theory.md
    interoperability_rdkit.rst
    visualization.ipynb
+   glucose.ipynb
 
 .. toctree::
    :maxdepth: 1
