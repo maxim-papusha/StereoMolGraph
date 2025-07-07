@@ -17,7 +17,7 @@ author = 'Maxim Papusha'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-jupyter_execute_notebooks = "force"
+nb_execution_mode = "force"
 
 extensions = [
     # Core Sphinx extensions first
