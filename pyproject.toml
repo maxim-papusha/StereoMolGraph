@@ -18,7 +18,8 @@ dependencies = [
 docs = ["sphinx<7.0",
        "sphinx-rtd-theme",
        "myst-parser",
-       "sphinx-autodoc-typehints"]
+       "sphinx-autodoc-typehints",
+       "sphinx-copybutton"]
 
 dev = [{include-group = "docs"},
        "scipy>=1.8,<2",
