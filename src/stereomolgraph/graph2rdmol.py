@@ -83,7 +83,6 @@ def _mol_graph_to_rdmol(
 
         if generate_bond_orders is True:
 
-
             bond_order_mat = connectivity2bond_orders(
                 atom_types=graph.atom_types,
                 connectivity_matrix=graph.connectivity_matrix(),

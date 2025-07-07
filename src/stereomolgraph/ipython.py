@@ -15,7 +15,6 @@ from stereomolgraph.graph import (
 def default_repr_svg(graph):
     return View2D().svg(graph)
 
-
 def default_view_molgraph(graph):
     View2D()(graph)
 
@@ -76,11 +75,10 @@ class View2D(NamedTuple):
         if isinstance(graph, StereoMolGraph):
             for db in graph.bond_stereo.values():
                 if not isinstance(db, PlanarBond):
-                    continue
-                a1 = map_num_idx_dict[db.atoms[2]]
-                a2 = map_num_idx_dict[db.atoms[3]]
-                rd_bond = mol.GetBondBetweenAtoms(a1, a2)
-                rd_bond.SetBondType(Chem.BondType.AROMATIC)
+                    a1 = map_num_idx_dict[db.atoms[2]]
+                    a2 = map_num_idx_dict[db.atoms[3]]
+                    rd_bond = mol.GetBondBetweenAtoms(a1, a2)
+                    rd_bond.SetBondType(Chem.BondType.AROMATIC)
 
         if isinstance(graph, CondensedReactionGraph):
             for bond in graph.get_formed_bonds():
