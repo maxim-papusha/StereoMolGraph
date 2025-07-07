@@ -9,7 +9,7 @@ StereoMolGraph documentation
    installation.rst
    theory.md
    interoperability_rdkit.rst
-   ipython.rst
+   visualization.ipynb
 
 .. toctree::
    :maxdepth: 1
