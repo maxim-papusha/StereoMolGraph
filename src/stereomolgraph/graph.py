@@ -15,7 +15,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import numpy as np
-from rdkit import Chem  # type: ignore
 
 from stereomolgraph import PERIODIC_TABLE, Element
 from stereomolgraph.cartesian import are_planar, BondsFromDistance
@@ -30,6 +29,8 @@ from stereomolgraph.stereodescriptors import (
     PlanarBond,
     Stereo,
     SquarePlanar)
+
+
 from stereomolgraph.graph2rdmol import (
     _mol_graph_to_rdmol,
     _stereo_mol_graph_to_rdmol,
@@ -41,10 +42,12 @@ from stereomolgraph.rdmol2graph import (
     )
 
 if TYPE_CHECKING:
+
     import sys
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
     from typing import Any, Optional, TypeAlias
-
+    
+    from rdkit import Chem
     import scipy.sparse  # type: ignore
 
     from stereomolgraph.cartesian import Geometry
