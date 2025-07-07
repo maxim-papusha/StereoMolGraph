@@ -24,7 +24,6 @@ build:
     install:
       - uv pip install -r pyproject.toml --group docs
 
-    # Invoke the build using `uv`.
     build:
       html:
         - uv run sphinx-build -b html docs $READTHEDOCS_OUTPUT/html

@@ -8,7 +8,7 @@ StereoMolGraph documentation
 
    installation.rst
    theory.md
-   rdkit_interoperability.rst
+   interoperability_rdkit.rst
    ipython.rst
 
 .. toctree::
