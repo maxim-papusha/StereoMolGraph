@@ -20,15 +20,22 @@ author = 'Maxim Papusha'
 jupyter_execute_notebooks = "force"
 
 extensions = [
-    'myst_nb',
-    'myst_parser',
+    # Core Sphinx extensions first
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
-    'sphinx_rtd_theme',
+    
+    # Type hints should come after autodoc
     'sphinx_autodoc_typehints',
+    
+    # MyST extensions (parser before nb)
+    'myst_parser',
+    'myst_nb',
+    
+    # Theme and UI extensions
+    'sphinx_rtd_theme',
     'sphinx_copybutton',
 ]
 
