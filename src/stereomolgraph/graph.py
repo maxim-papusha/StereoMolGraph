@@ -165,8 +165,9 @@ class MolGraph:
 
     def remove_atom(self, atom: AtomId):
         """Removes atom from graph.
-        Raises KeyError if atom is not in graph.
+        
         :param atom: Atom ID
+        :raises: KeyError if atom is not in graph.
         """
         del self._atom_attrs[atom]
         if nbr := self._neighbors.pop(atom, None):
@@ -180,6 +181,7 @@ class MolGraph:
         Returns the value of the attribute of the atom or None if the atom does
         not have this attribute.
         Raises KeyError if atom is not in graph.
+
         :param atom: Atom
         :param attr: Attribute
         :raises KeyError: Atom not in graph
@@ -187,10 +189,22 @@ class MolGraph:
         """
         return self._atom_attrs[atom].get(attr, None)
 
+    def get_atom_type(self, atom: AtomId) -> Element:
+        """
+        Returns the atom type of the atom.
+        Raises KeyError if atom is not in graph.
+
+        :param atom: Atom
+        :raises KeyError: Atom not in graph
+        :return: Returns the atom type of the atom
+        """
+        return self._atom_attrs[atom]["atom_type"]
+
     def set_atom_attribute(self, atom: AtomId, attr: str, value: Any):
         """
         sets the Value of the Attribute on Atom.
         Raises KeyError if atom is not in graph.
+
         :param atom: Atom
         :param attr: Attribute
         :param value: Value
@@ -213,6 +227,7 @@ class MolGraph:
         Deletes the Attribute of the Atom
         Raises KeyError if attribute is not present.
         Raises KeyError if atom is not in graph.
+
         :param atom: Atom ID
         :param attr: Attribute
         :raises ValueError: The attribute "atom_type" can not be deleted
@@ -229,6 +244,7 @@ class MolGraph:
         Returns the attributes of the atom. If no attributes are given, all
         attributes are returned.
         Raises KeyError if atom is not in graph.
+
         :param atom: Atom
         :param attributes: Specific attributes to return
         :return: Returns all or just the chosen attributes of the atom
@@ -263,6 +279,7 @@ class MolGraph:
     def remove_bond(self, atom1: AtomId, atom2: AtomId):
         """
         Removes bond between Atom1 and Atom2.
+
         :param atom1: Atom1
         :param atom2: Atom2
         """
@@ -277,6 +294,7 @@ class MolGraph:
         """
         Returns the value of the attribute of the bond between Atom1 and Atom2.
         Raises KeyError if bond is not in graph.
+
         :param atom1: Atom1
         :param atom2: Atom2
         :param attr: Attribute
@@ -296,6 +314,7 @@ class MolGraph:
         sets the Attribute of the bond between Atom1 and Atom2.
         The Attribute "bond_order" can only have numerical values.
         Raises KeyError if bond is not in graph.
+
         :param atom1: Atom1
         :param atom2: Atom2
         :param attr: Attribute
@@ -339,6 +358,7 @@ class MolGraph:
     def bonded_to(self, atom: int) -> frozenset[int]:
         """
         Returns the atoms connected to the atom.
+
         :param atom: Id of the atom.
         :return: tuple of atoms connected to the atom.
         """
@@ -349,6 +369,7 @@ class MolGraph:
         Returns a connectivity matrix of the graph as a list of lists. Order is the same as
         in self.atoms()
         1 if nodes are connected, 0 if not.
+
         :return: Connectivity matrix as list of lists
         """
         matrix = [[0] * self.n_atoms for _ in range(self.n_atoms)]
@@ -422,6 +443,7 @@ class MolGraph:
         self, mapping: dict[int, int], copy: bool = True
     ) -> Self:
         """Changes the atom labels according to mapping.
+
         :param mapping: dict used for map old atom labels to new atom labels
         :param copy: defines if the relabeling is done inplace or a new object
                      should be created
@@ -480,6 +502,7 @@ class MolGraph:
     def subgraph(self, atoms: Iterable[AtomId]) -> Self:
         """
         Returns a subgraph copy only containing the given atoms
+
         :param atoms: Iterable of atom ids to be
         :return: Subgraph
         """
@@ -1210,6 +1233,7 @@ class StereoMolGraph(MolGraph):
     ) -> Optional[AtomStereo]:
         """Returns the stereo information of the atom if it exists else None.
         Raises a ValueError if the atom is not in the graph.
+
         :param atom: atom
         :param default: Default value if no stereo information is found,
                         defaults to None
@@ -1249,6 +1273,7 @@ class StereoMolGraph(MolGraph):
         """Gets the stereo information of the bond or None
         if it does not exist.
         Raises a ValueError if the bond is not in the graph.
+
         :param bond: Bond
         :return: stereo information of bond
         """
@@ -1388,6 +1413,7 @@ class StereoMolGraph(MolGraph):
         Creates the enantiomer of the StereoMolGraph by inversion of all atom
         stereocenters. The result can be identical to the molecule itself if
         no enantiomer exists.
+
         :return: Enantiomer
         """
         enantiomer = self.copy()
@@ -2335,6 +2361,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         Creates the enantiomer of the StereoCondensedReactionGraph by inversion
         of all chiral stereochemistries. The result can be identical to the
         molecule itself if the molecule is not chiral.
+        
         :return: Enantiomer
         """
         enantiomer = super().enantiomer()
