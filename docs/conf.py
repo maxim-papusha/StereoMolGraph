@@ -33,8 +33,7 @@ extensions = [
     # Type hints should come after autodoc
     'sphinx_autodoc_typehints',
     
-    # MyST extensions (parser before nb)
-    #'myst_parser',
+    # MyST extensions
     'myst_nb',
     
     # Theme and UI extensions
