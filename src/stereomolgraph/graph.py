@@ -1238,6 +1238,7 @@ class StereoMolGraph(MolGraph):
         :param atom: Atoms to be used for chiral information
         :param stereo: Chiral information
         """
+        atom = atom_stereo.central_atom
         if atom in self._atom_attrs:
             assert atom in atom_stereo.atoms
             self._atom_stereo[atom] = atom_stereo
