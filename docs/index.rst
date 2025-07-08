@@ -1,11 +1,6 @@
 StereoMolGraph documentation
 ============================
 
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
-
    installation.rst
    theory.md
    interoperability_rdkit.rst
