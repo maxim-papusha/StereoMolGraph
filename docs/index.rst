@@ -1,15 +1,16 @@
 StereoMolGraph documentation
 ============================
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
    installation.rst
    theory.md
-   rdkit_interoperability.rst
-   ipython.rst
+   interoperability_rdkit.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples:
+   
+   visualization.ipynb
+   phosgenation.ipynb
 
 .. toctree::
    :maxdepth: 1

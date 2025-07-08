@@ -1,5 +1,5 @@
 Stereodescriptors
-=================
+==================
 
 Stereodescriptors are standardized notations that precisely define the 3D spatial arrangement of atoms around a molecular center. These descriptors combine three key aspects of molecular geometry:
 
@@ -10,40 +10,16 @@ Stereodescriptors are standardized notations that precisely define the 3D spatia
 They serve as fundamental building blocks for representing molecular stereochemical perception in algorithms.
 
 Core Principles
----------------
+----------------
 
 **Order Sensitivity**  
 Stereodescriptor assignments depend critically on the input order of ligand atoms.
 
 **Permutation Invariance**  
-Within their defined symmetry group, stereodescriptors are invariant to permitted atom permutations. For example:  
-
-
-Parity System Explained
------------------------
-
-The parity value encodes the spatial configuration relative to the input atom order:
-
-+----------+-----------------+------------------------------------------------------------+
-| Parity   | Type            | Meaning & Examples                                         |
-+==========+=================+============================================================+
-| ``1``    | Chiral          | One enantiomer configuration|
-|          |                 |                    |
-+----------+-----------------+------------------------------------------------------------+
-| ``-1``   | Chiral          | |
-+----------+-----------------+------------------------------------------------------------+
-| ``0``    | Achiral         | Non-chiral center:                                        |
-|          |                 |               |
-|          |                 |                                    |
-+----------+-----------------+------------------------------------------------------------+
-| ``None`` | Undefined/Any   | Stereochemical wildcard:                                  |
-|          |                 | - Placeholder for unknown stereochemistry                 |
-|          |                 | - Permits arbitrary configurations                       |
-|          |                 | - Disables stereochemical validation                      |
-+----------+-----------------+------------------------------------------------------------+
+Within their defined symmetry group, stereodescriptors are invariant to permitted atom permutations.
 
 Practical Implementation
-------------------------
+--------------------------
 
 **Chiral Centers**  
 Tetrahedral atoms and other chiral elements use ``1``/``-1`` parity to distinguish enantiomers.   

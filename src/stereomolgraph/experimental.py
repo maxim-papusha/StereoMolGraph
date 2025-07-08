@@ -55,9 +55,9 @@ def generate_stereoisomers(graph: StereoMolGraph,
                                                       itertools.product(*bond_stereos)):
             stereoisomer = graph.copy()
             for a_stereo in a_stereos:
-                stereoisomer.set_atom_stereo(a_stereo.atoms[0], a_stereo)
+                stereoisomer.set_atom_stereo(a_stereo)
             for b_stereo in b_stereos:
-                stereoisomer.set_bond_stereo(b_stereo.atoms[2:4], b_stereo)
+                stereoisomer.set_bond_stereo(b_stereo)
             
             if stereoisomer not in enantiomers_set:
                 isomers.add(stereoisomer)
@@ -158,9 +158,9 @@ def old_generate_stereoisomers(graph: G, enantiomers=True, ) -> Collection[G]:
             isomer = graph.copy()
             for atom_bond, stereo in comb:
                 if isinstance(atom_bond, int):
-                    isomer.set_atom_stereo(atom_bond, stereo)
+                    isomer.set_atom_stereo(stereo)
                 elif isinstance(atom_bond, frozenset):
-                    isomer.set_bond_stereo(atom_bond, stereo)
+                    isomer.set_bond_stereo(stereo)
             if isomer not in isomers:
                 if enantiomers is True:
                     isomers.append(isomer)

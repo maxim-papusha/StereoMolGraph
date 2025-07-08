@@ -4,10 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b0"
-description = ""
+version = "0.0.0b1"
 readme = "README.md"
 requires-python = ">=3.10"
+
+description = ""
+keywords = []
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+
+  "Intended Audience :: Science/Research", 
+
+  "License :: OSI Approved :: MIT License",
+
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
 
 dependencies = [
   "numpy>=1.20,<3",
@@ -17,25 +38,31 @@ dependencies = [
 [dependency-groups]
 docs = ["sphinx<7.0",
        "sphinx-rtd-theme",
-       "myst-parser",
-       "sphinx-autodoc-typehints"]
+       "myst-nb",
+       "ipykernel",
+       "sphinx-autodoc-typehints",
+       "sphinx-copybutton"]
 
 dev = [{include-group = "docs"},
        "scipy>=1.8,<2",
        "pytest>=7.1.2,<8",
        "pytest-cov>=6,<7",
        "ruff>=0.6.0",
-       "ipykernel",
+       "testbook",
        "typing-extensions>=4.12;python_version<'3.13'"
         # official module to add type hinting features used in future Python versions
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-addopts = "--cov"
+# addopts = "--cov"
 
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]
 
 [tool.ruff.format]
 docstring-code-format = true
+
+[project.urls]
+Documentation = "https://stereomolgraph.readthedocs.io/"
+Repository = "https://github.com/maxim-papusha/StereoMolGraph.git"

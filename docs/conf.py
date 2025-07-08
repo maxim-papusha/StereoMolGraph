@@ -17,15 +17,28 @@ author = 'Maxim Papusha'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+nb_execution_mode = "force"
+#nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
+#nb_execution_allow_errors = False  # Don't allow errors in the output
+nb_execution_timeout = 300  # Timeout in seconds
+
 extensions = [
-    'myst_parser',
+    # Core Sphinx extensions first
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
+    
+    # Type hints should come after autodoc
+    'sphinx_autodoc_typehints',
+    
+    # MyST extensions
+    'myst_nb',
+    
+    # Theme and UI extensions
     'sphinx_rtd_theme',
-    'sphinx_autodoc_typehints'
+    'sphinx_copybutton',
 ]
 
 templates_path = ['_templates']

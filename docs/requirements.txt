@@ -1,8 +1,0 @@
-numpy>=1.20,<3
-rdkit>=2022.9.1
-sphinx<7.0
-sphinx-rtd-theme
-myst-parser
-sphinx-autodoc-typehints
-pytest>=7.1.2,<8
-pytest-cov>=6,<7
