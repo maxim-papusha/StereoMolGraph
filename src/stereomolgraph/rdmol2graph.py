@@ -130,11 +130,11 @@ def stereo_mol_graph_from_rdmol(
                     rd_tetrahedral[chiral_tag],
                 )
 
-                graph.set_atom_stereo(id_atom_map[atom_idx], atom_stereo)
+                graph.set_atom_stereo(atom_stereo)
 
             elif hybridization == Chem.HybridizationType.SP3:
                 atom_stereo = Tetrahedral((id_atom_map[atom_idx], *neighbors), None)
-                graph.set_atom_stereo(id_atom_map[atom_idx], atom_stereo)
+                graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_SQUAREPLANAR:
             atom_stereo = SquarePlanar(neighbors)
@@ -151,7 +151,7 @@ def stereo_mol_graph_from_rdmol(
             atom_stereo = SquarePlanar(
                 atoms=(id_atom_map[atom_idx], *ordered_neighbors), parity=0
             )
-            graph.set_atom_stereo(id_atom_map[atom_idx], atom_stereo)
+            graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_TRIGONALBIPYRAMIDAL:
             perm = atom.GetUnsignedProp("_chiralPermutation")
@@ -187,7 +187,7 @@ def stereo_mol_graph_from_rdmol(
             tbp_order = permutation_atom_order_dict[perm]
             neigh_atoms = tuple([neighbors[i] for i in tbp_order])
             atom_stereo = TrigonalBipyramidal((id_atom_map[atom_idx], *neigh_atoms), 1)
-            graph.set_atom_stereo(id_atom_map[atom_idx], atom_stereo)
+            graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_OCTAHEDRAL:
             perm = atom.GetUnsignedProp("_chiralPermutation")
@@ -228,7 +228,7 @@ def stereo_mol_graph_from_rdmol(
             order = permutation_atom_order_dict[perm]
             neigh_atoms = tuple([neighbors[i] for i in order])
             atom_stereo = Octahedral((id_atom_map[atom_idx], *neigh_atoms), 1)
-            graph.set_atom_stereo(id_atom_map[atom_idx], atom_stereo)
+            graph.set_atom_stereo(atom_stereo)
 
     for bond in (
         b
@@ -434,6 +434,6 @@ def stereo_mol_graph_from_rdmol(
 
         # raise Exception(begin_end_idx, )
         bond_atoms = [id_atom_map[i] for i in begin_end_idx]
-        graph.set_bond_stereo(bond_atoms, stereo)
+        graph.set_bond_stereo(stereo)
 
     return graph

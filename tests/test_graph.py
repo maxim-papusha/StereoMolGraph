@@ -875,11 +875,11 @@ class TestStereoMolGraph(TestMolGraph):
 
         g2 = g1.copy()
         g3 = g1.copy()
-        g1.set_bond_stereo((2, 3), PlanarBond((0, 1, 2, 3, 4, 5),
+        g1.set_bond_stereo(PlanarBond((0, 1, 2, 3, 4, 5),
                                                  0))
-        g2.set_bond_stereo((2, 3), PlanarBond((1, 0, 2, 3, 4, 5),
+        g2.set_bond_stereo(PlanarBond((1, 0, 2, 3, 4, 5),
                                                     0))
-        g3.set_bond_stereo((2, 3), PlanarBond((0, 1, 2, 3, 4, 5),
+        g3.set_bond_stereo(PlanarBond((0, 1, 2, 3, 4, 5),
                                                     None))
         rdmol_g1, idx_atom_map_dict_g1 = g1._to_rdmol()
         rdmol_g2, idx_atom_map_dict_g2 = g2._to_rdmol()
@@ -910,13 +910,13 @@ class TestStereoMolGraph(TestMolGraph):
         g.add_bond(0, 2)
         g.add_bond(0, 3)
         g.add_bond(0, 4)
-        g.set_atom_stereo(0, Tetrahedral((0, 1, 2, 3, 4), 1))
+        g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), 1))
 
         mol, _ = g._to_rdmol()
         chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
 
-        g.set_atom_stereo(0, Tetrahedral((0, 1, 2, 3, 4), -1))
+        g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), -1))
         mol, _ = g._to_rdmol()
         chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
@@ -1085,7 +1085,7 @@ class TestStereoMolGraph(TestMolGraph):
         smg.add_bond(3,4)
         smg.add_bond(3,5)
 
-        smg.set_bond_stereo((2, 3), AtropBond(atoms=(0, 1, 2, 3, 4, 5), parity=1))
+        smg.set_bond_stereo(AtropBond(atoms=(0, 1, 2, 3, 4, 5), parity=1))
 
     def test_from_composed_chiral_molgraphs(
         self, chiral_product_graph1, chiral_product_graph2
