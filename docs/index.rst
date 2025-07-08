@@ -1,16 +1,14 @@
 StereoMolGraph documentation
 ============================
 
-   installation.rst
-   theory.md
-   interoperability_rdkit.rst
 
 .. toctree::
    :maxdepth: 1
-   :caption: Examples:
-   
-   visualization.ipynb
-   phosgenation.ipynb
+   :caption: Quickstart:
+
+   installation.rst
+   theory.md
+   interoperability_rdkit.rst
 
 .. toctree::
    :maxdepth: 1
@@ -19,3 +17,9 @@ StereoMolGraph documentation
    reference/graph
    reference/stereodescriptors
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples:
+   
+   visualization.ipynb
+   phosgenation.ipynb
