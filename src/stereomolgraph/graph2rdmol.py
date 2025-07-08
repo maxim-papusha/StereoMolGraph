@@ -393,12 +393,14 @@ def _set_crg_bond_orders(
 
         for bond in mol.GetBonds():
             a1, a2 = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-            r_bond_order = r.GetBondBetweenAtoms(a1, a2).GetBondTypeAsDouble()
-            p_bond_order = p.GetBondBetweenAtoms(a1, a2).GetBondTypeAsDouble()
-            average = (r_bond_order + p_bond_order) / 2
-            bond_order = round(average * 2) / 2 
-            mol.GetBondBetweenAtoms(a1, a2).SetBondType(
-                bond_type_dict[bond_order]
-                )
+            if ((r_bond :=  r.GetBondBetweenAtoms(a1, a2))
+                and (p_bond := p.GetBondBetweenAtoms(a1, a2))):
+                r_bond_order = r_bond.GetBondTypeAsDouble()
+                p_bond_order = p_bond.GetBondTypeAsDouble()
+                average = (r_bond_order + p_bond_order) / 2
+                bond_order = round(average * 2) / 2
+                mol.GetBondBetweenAtoms(a1, a2).SetBondType(
+                    bond_type_dict[bond_order]
+                    )
 
         return mol
