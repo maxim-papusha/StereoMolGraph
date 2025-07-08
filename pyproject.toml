@@ -5,10 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "StereoMolGraph"
 version = "0.0.0b1"
-description = ""
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
+
+description = ""
+keywords = []
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -20,13 +22,14 @@ classifiers = [
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Chemistry",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
-  
+
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
+
 
 dependencies = [
   "numpy>=1.20,<3",
@@ -50,8 +53,6 @@ dev = [{include-group = "docs"},
        "typing-extensions>=4.12;python_version<'3.13'"
         # official module to add type hinting features used in future Python versions
 ]
-
-
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
