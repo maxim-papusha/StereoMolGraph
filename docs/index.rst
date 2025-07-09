@@ -22,4 +22,4 @@ StereoMolGraph documentation
    :caption: Example Notebooks:
    
    ../examples/visualization.ipynb
-   ../examples/phosgenation.ipynb
+   ../../examples/phosgenation.ipynb
