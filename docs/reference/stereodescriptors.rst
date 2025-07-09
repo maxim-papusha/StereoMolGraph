@@ -9,8 +9,6 @@ Stereodescriptors are standardized notations that precisely define the 3D spatia
 
 They serve as fundamental building blocks for representing molecular stereochemical perception in algorithms.
 
-Core Principles
-----------------
 
 **Order Sensitivity**  
 Stereodescriptor assignments depend critically on the input order of ligand atoms.
@@ -18,8 +16,6 @@ Stereodescriptor assignments depend critically on the input order of ligand atom
 **Permutation Invariance**  
 Within their defined symmetry group, stereodescriptors are invariant to permitted atom permutations.
 
-Practical Implementation
---------------------------
 
 **Chiral Centers**  
 Tetrahedral atoms and other chiral elements use ``1``/``-1`` parity to distinguish enantiomers.   
@@ -38,25 +34,19 @@ When using stereodescriptors, remember they encode *local* configuration. Global
 
 
 .. autoclass:: stereomolgraph.stereodescriptors.Tetrahedral
-    :noindex:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.SquarePlanar
-    :noindex:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.TrigonalBipyramidal
-   :noindex:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.Octahedral
-   :noindex:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.PlanarBond
-   :noindex:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtropBond
-   :noindex:
     :members:
