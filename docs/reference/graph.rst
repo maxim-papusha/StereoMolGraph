@@ -7,7 +7,7 @@ This section provides an overview of graph concepts and the specific graph class
    :maxdepth: 1
    :caption: Graph Classes:
    
-   molgraph
-   stereomolgraph
-   condensedreactiongraph
-   stereocondensedreactiongraph
+   reference/graphs/molgraph
+   reference/graphs/stereomolgraph
+   reference/graphs/condensedreactiongraph
+   reference/graphs/stereocondensedreactiongraph
