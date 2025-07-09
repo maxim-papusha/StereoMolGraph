@@ -11,9 +11,9 @@ StereoCondensedReactionGraph: Connectivity, Stereochemistry, ConnectivityChange,
 
 
 
-| Graph Type                  | Connectivity <br>  | Connectivity <br> Change | Stereo <br> |Stereo <br> Change  |
-|-----------------------------|--------------|-------------|-----------------|-------------|
-| `Molgraph`                  | ✓            |             |                 |             |
-| `CondensedReactionGraph`    | ✓            | ✓          |                 |             |
-| `StereoMolGraph`            | ✓            |             | ✓               |             |
-| `StereoCondensedReactionGraph` | ✓         | ✓          | ✓               | ✓           |
+| Graph Type     <br>         | Connectivity <br>| Connectivity <br> Change | Stereo <br> |Stereo <br> Change  |
+|-----------------------------|------------------|--------------------------|-----------------|-------------|
+| `Molgraph`                  | ✓                |                          |                 |             |
+| `CondensedReactionGraph`    | ✓                | ✓                        |                 |             |
+| `StereoMolGraph`            | ✓                |                          | ✓               |             |
+| `StereoCondensedReactionGraph` | ✓             | ✓                       | ✓               | ✓           |
