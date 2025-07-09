@@ -3,7 +3,7 @@ StereoCondensedReactionGraph
 
 
 .. autoclass:: stereomolgraph.StereoCondensedReactionGraph
-   :noindex:
+   :no-index-entry:
    :members:
    :inherited-members:
    :show-inheritance:

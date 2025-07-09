@@ -2,7 +2,7 @@ CondensedReactionGraph
 =======================
 
 .. autoclass:: stereomolgraph.CondensedReactionGraph
-   :noindex:
+   :no-index-entry:
    :members:
    :inherited-members:
    :show-inheritance:

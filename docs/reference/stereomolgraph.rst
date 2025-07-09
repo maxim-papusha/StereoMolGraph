@@ -3,7 +3,7 @@ StereoMolGraph
 
 
 .. autoclass:: stereomolgraph.StereoMolGraph
-   :noindex:
+   :no-index-entry:
    :members:
    :inherited-members:
    :show-inheritance:

@@ -2,6 +2,6 @@ MolGraph
 ========
 
 .. autoclass:: stereomolgraph.MolGraph
-   :noindex:
+   :no-index-entry:
    :members:
    :member-order: groupwise
