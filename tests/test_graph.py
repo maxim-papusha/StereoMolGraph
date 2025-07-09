@@ -1619,17 +1619,17 @@ class TestStereoCondensedReactionGraph(
             10: {"atom_type": PTOE["H"]},
         }
         bonds = {
-            (0, 1): {},
-            (1, 2): {"reaction": BondChange.BROKEN},
-            (1, 7): {},
-            (1, 3): {},
-            (2, 6): {"reaction": BondChange.FORMED},
-            (3, 4): {},
-            (3, 6): {"reaction": BondChange.BROKEN},
-            (3, 5): {},
-            (7, 10): {},
-            (7, 9): {},
-            (7, 8): {},
+            Bond((0, 1)): {},
+            Bond((1, 2)): {"reaction": BondChange.BROKEN},
+            Bond((1, 7)): {},
+            Bond((1, 3)): {},
+            Bond((2, 6)): {"reaction": BondChange.FORMED},
+            Bond((3, 4)): {},
+            Bond((3, 6)): {"reaction": BondChange.BROKEN},
+            Bond((3, 5)): {},
+            Bond((7, 10)): {},
+            Bond((7, 9)): {},
+            Bond((7, 8)): {},
         }
         stereo = {7: Tetrahedral((7, 1, 8, 9, 10), -1)}
         atom_stereo_change = defaultdict(StereoChangeDict,{

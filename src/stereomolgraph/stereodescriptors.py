@@ -24,15 +24,16 @@ if TYPE_CHECKING:
 
 
 class Stereo(Protocol):
-    """Base Class to represent the orientation of a group of atoms in space and
-    their allowed permutations PERMUTATION_GROUP refers to the all allowed
-    permutations of the atoms which are usually only rotations. Inversions are
-    not chemically relevant and therefore not included in the permutations.
+    """
+        Base Class to represent the orientation of a group of atoms in space and
+        their allowed permutations PERMUTATION_GROUP refers to the all allowed
+        permutations of the atoms which are usually only rotations. Inversions are
+        not chemically relevant and therefore not included in the permutations.
 
-    :ivar atoms: Atoms
-    :vartype atoms: tuple[int, ...]
-    :ivar stereo: Stereochemistry
-    :vartype stereo: Stereo
+        :ivar atoms: Atoms
+        :vartype atoms: tuple[int, ...]
+        :ivar stereo: Stereochemistry
+        :vartype stereo: Stereo
     """
 
     atoms: tuple[int, ...]
@@ -44,6 +45,17 @@ class Stereo(Protocol):
     def get_isomers(self) -> tuple[Self]:
         """Returns all possible isomers of the stereochemistry"""
 
+
+class AtomStereo:
+    @property
+    def central_atom(self) -> AtomId:
+        return self.atoms[0]
+
+
+class BondStereo:
+    @property
+    def bond(self) -> tuple[int, int]:
+        return tuple(sorted(self.atoms[2:4]))
 
 class _BaseStereo(ABC):
     __slots__ = ("atoms", "parity")
@@ -205,16 +217,7 @@ class _BaseAchiralStereo(_BaseStereo):
         raise RuntimeError("Something is wrong with parity")
 
 
-class AtomStereo(Stereo):
-    @property
-    def central_atom(self) -> AtomId:
-        return self.atoms[0]
 
-
-class BondStereo(Stereo):
-    @property
-    def bond(self) -> tuple[int, int]:
-        return tuple(sorted(self.atoms[2:4]))
 
 
 class Tetrahedral(_BaseChiralStereo, AtomStereo):

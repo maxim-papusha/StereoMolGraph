@@ -60,14 +60,8 @@ if TYPE_CHECKING:
 
 
 AtomId: TypeAlias = int
-    
-class Bond(tuple[int, int]):
 
-    def __new__(cls, atoms: Iterable[int]):
-        ret = super().__new__(cls, sorted(atoms))
-        if len(ret) != 2 or ret[0] == ret[1]:
-            raise ValueError("A bond has to connect two distinct atoms")
-        return ret
+Bond: TypeAlias = frozenset
 
 
 class MolGraph:
@@ -268,7 +262,7 @@ class MolGraph:
         :param atom2: Atom2
         :return: If the bond is in MolGraph
         """
-        return Bond((atom1, atom2)) in self._bond_attrs
+        return Bond({atom1, atom2}) in self._bond_attrs
 
     def add_bond(self, atom1: AtomId, atom2: AtomId, **attr):
         """Adds bond between Atom1 and Atom2.
@@ -889,7 +883,7 @@ class CondensedReactionGraph(MolGraph):
             raise ValueError("Atoms have to be in the graph")
             
 
-    def get_formed_bonds(self) -> set[Bond[int, int]]:
+    def get_formed_bonds(self) -> set[Bond]:
         """
         Returns all bonds that are formed during the reaction
 
@@ -901,7 +895,7 @@ class CondensedReactionGraph(MolGraph):
             if self.get_bond_attribute(*bond, "reaction") == BondChange.FORMED
         }
 
-    def get_broken_bonds(self) -> set[Bond[int, int]]:
+    def get_broken_bonds(self) -> set[Bond]:
         """
         Returns all bonds that are broken during the reaction
 
