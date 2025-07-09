@@ -15,6 +15,11 @@ Graphs
 | ``StereoCondensedReactionGraph`` | ✓             | ✓                       | ✓               | ✓           |
 +-----------------------------+------------------+--------------------------+-----------------+-------------+
 
+
+.. autoclass:: stereomolgraph.AtomId
+.. autoclass:: stereomolgraph.Bond
+
+
 .. toctree::
    :maxdepth: 1
    :caption: Graph Types:

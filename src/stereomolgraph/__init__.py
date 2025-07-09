@@ -13,6 +13,12 @@ __all__ = [
 
 def __getattr__(name):
     match name:
+        case "AtomId":
+            from stereomolgraph.graph import AtomId
+            return AtomId
+        case "Bond":
+            from stereomolgraph.graph import Bond
+            return Bond
         case "MolGraph":
             from stereomolgraph.graph import MolGraph
             return MolGraph
