@@ -57,5 +57,5 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = "groupwise"
-autodoc_type_aliases = {'AtomId': 'AtomId',
-                        'Bond': 'Bond[AtomId, AtomId]'}
+autodoc_type_aliases = {'AtomId': 'stereomolgraph.AtomId',
+                        'Bond': 'stereomolgraph.Bond'}
