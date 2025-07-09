@@ -63,5 +63,6 @@ autodoc_type_aliases = {'AtomId': 'stereomolgraph.AtomId',
 typehints_defaults = 'link'
 
 # (Optional) Make the links more readable
+typehints_document_rtype_none = False
 typehints_use_signature = True
 typehints_use_signature_return = True
