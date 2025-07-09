@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         from typing_extensions import Self
 
 
-class Stereo(Protocol):
+class StereoProtocol(Protocol):
     """
         Base Class to represent the orientation of a group of atoms in space and
         their allowed permutations PERMUTATION_GROUP refers to the all allowed
@@ -57,7 +57,7 @@ class BondStereo:
     def bond(self) -> tuple[int, int]:
         return tuple(sorted(self.atoms[2:4]))
 
-class _BaseStereo(ABC):
+class _StereoMixin(ABC):
     __slots__ = ("atoms", "parity")
 
     atoms: tuple[int, ...]
@@ -89,7 +89,7 @@ class _BaseStereo(ABC):
         return set(self,)
 
 
-class NoStereo(_BaseStereo):
+class NoStereo(_StereoMixin):
     __slots__ = ()
     atoms: tuple[int, ...]
     parity: None
@@ -104,7 +104,7 @@ class NoStereo(_BaseStereo):
         return tuple(itertools.permutations(range(len(self.atoms))))
 
 
-class _BaseChiralStereo(_BaseStereo, ABC):
+class _ChiralStereoMixin(_StereoMixin, ABC):
     __slots__ = ()
     parity: Optional[Literal[1, -1]]
 
@@ -176,7 +176,7 @@ class _BaseChiralStereo(_BaseStereo, ABC):
             raise RuntimeError("Something is wrong with parity")
 
 
-class _BaseAchiralStereo(_BaseStereo):
+class _AchiralStereoMixin(_StereoMixin):
     __slots__ = ()
     parity: Optional[Literal[0]]
 
@@ -218,9 +218,7 @@ class _BaseAchiralStereo(_BaseStereo):
 
 
 
-
-
-class Tetrahedral(_BaseChiralStereo, AtomStereo):
+class Tetrahedral(_ChiralStereoMixin, AtomStereo):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
 
@@ -311,7 +309,7 @@ class Tetrahedral(_BaseChiralStereo, AtomStereo):
         return cls(atoms, orientation)
 
 
-class SquarePlanar(_BaseAchiralStereo, AtomStereo):
+class SquarePlanar(_AchiralStereoMixin, AtomStereo):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
 
@@ -356,7 +354,7 @@ class SquarePlanar(_BaseAchiralStereo, AtomStereo):
         )
 
 
-class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
+class TrigonalBipyramidal(_ChiralStereoMixin, AtomStereo):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
 
@@ -460,7 +458,7 @@ class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
             raise ValueError("something went wrong")
 
 
-class Octahedral(_BaseChiralStereo, AtomStereo):
+class Octahedral(_ChiralStereoMixin, AtomStereo):
     """Represents all possible configurations of atoms for a Octahedral
     Stereochemistry::
 
@@ -519,7 +517,7 @@ class Octahedral(_BaseChiralStereo, AtomStereo):
         return tuple([atoms[i] for i in (0, 2, 1, 3, 4, 5, 6)])
 
 
-class PlanarBond(_BaseAchiralStereo, BondStereo):
+class PlanarBond(_AchiralStereoMixin, BondStereo):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
 
@@ -594,7 +592,7 @@ class PlanarBond(_BaseAchiralStereo, BondStereo):
             raise ValueError("something went wrong")
 
 
-class AtropBond(_BaseChiralStereo, BondStereo):
+class AtropBond(_ChiralStereoMixin, BondStereo):
     r"""
     Represents all possible configurations of atoms for a
     Atropostereoisomer bond::

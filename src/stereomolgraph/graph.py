@@ -27,7 +27,7 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
     Octahedral,
     PlanarBond,
-    Stereo,
+    StereoProtocol,
     SquarePlanar)
 
 
@@ -1638,7 +1638,7 @@ class StereoChange(Enum):
         return self.name
 
 
-class StereoChangeDict(dict[StereoChange, Stereo]):
+class StereoChangeDict(dict[StereoChange, StereoProtocol]):
     def __missing__(self, key: StereoChange):
         if key in StereoChange:
             return None
