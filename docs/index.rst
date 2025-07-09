@@ -11,7 +11,7 @@ StereoMolGraph documentation
    interoperability_rdkit.rst
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Code Reference:
    
    reference/graph
