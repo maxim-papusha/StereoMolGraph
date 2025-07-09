@@ -1,7 +1,7 @@
 # Theory
 
 
-| Graph Type     <br>         | Connectivity <br>| Connectivity <br> Change | Stereo <br> |Stereo <br> Change  |
+| Graph Class                 | Connectivity     | Connectivity <br> Change | Stereo          |Stereo <br> Change  |
 |-----------------------------|------------------|--------------------------|-----------------|-------------|
 | `Molgraph`                  | ✓                |                          |                 |             |
 | `CondensedReactionGraph`    | ✓                | ✓                        |                 |             |
