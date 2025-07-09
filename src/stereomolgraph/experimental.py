@@ -105,9 +105,9 @@ def generate_fleeting_stereoisomers(graph: StereoCondensedReactionGraph,
                                                       itertools.product(*bond_stereos)):
             stereoisomer = graph.copy()
             for a_stereo in a_stereos:
-                stereoisomer.set_atom_stereo_change(a_stereo.atoms[0], fleeting=a_stereo)
+                stereoisomer.set_atom_stereo_change(fleeting=a_stereo)
             for b_stereo in b_stereos:
-                stereoisomer.set_bond_stereo_change(b_stereo.atoms[2:4], fleeting=b_stereo)
+                stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
             
             if stereoisomer not in enantiomers_set:
                 isomers.append(stereoisomer)
@@ -115,58 +115,6 @@ def generate_fleeting_stereoisomers(graph: StereoCondensedReactionGraph,
                 if not enantiomers:
                     enantiomers_set.add(stereoisomer.enantiomer())
 
-        return isomers
-                
-
-def old_generate_stereoisomers(graph: G, enantiomers=True, ) -> Collection[G]:
-
-        isomers = []
-
-        stereo_nones: list[
-            tuple[int | frozenset[int], AtomStereo | BondStereo]
-        ] = []
-
-        for atom_bond, atom_bund_stereo in graph.stereo.items():
-            if atom_bund_stereo.parity is None:
-                stereo_nones.append((atom_bond, atom_bund_stereo))
-
-        combs: list[
-            list[tuple[int | frozenset[int], AtomStereo | BondStereo]]
-        ] = [[]]
-
-        for atom_bond, stereo in stereo_nones:
-            old_combs, combs = combs, []
-
-            if isinstance(stereo, _BaseAchiralStereo):
-                parities = (0,)
-            elif isinstance(stereo, _BaseChiralStereo):
-                parities = (-1, 1)
-            for comb, parity in itertools.product(
-                old_combs, parities
-            ):
-                combs.append(
-                    [
-                        (
-                            atom_bond,
-                            stereo.__class__(stereo.atoms, parity),
-                        ),
-                        *comb,
-                    ]
-                )
-
-        for comb in combs:
-            isomer = graph.copy()
-            for atom_bond, stereo in comb:
-                if isinstance(atom_bond, int):
-                    isomer.set_atom_stereo(stereo)
-                elif isinstance(atom_bond, frozenset):
-                    isomer.set_bond_stereo(stereo)
-            if isomer not in isomers:
-                if enantiomers is True:
-                    isomers.append(isomer)
-                elif enantiomers is False:
-                    if isomer.enantiomer() not in isomers:
-                        isomers.append(isomer)
         return isomers
 
 
