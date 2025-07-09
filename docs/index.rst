@@ -21,5 +21,5 @@ StereoMolGraph documentation
    :maxdepth: 2
    :caption: Example Notebooks:
    
-   ../examples/visualization.ipynb
-   ../examples/phosgenation.ipynb
+   examples/visualization.ipynb
+   examples/phosgenation.ipynb
