@@ -67,7 +67,6 @@ When using stereodescriptors, remember they encode *local* configuration. Global
 .. autoclass:: stereomolgraph.stereodescriptors.AtomStereo
     :members:
     :inherited-members:
-    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.BondStereo
     :members:
