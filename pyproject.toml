@@ -36,7 +36,8 @@ dependencies = [
 ]
 
 [dependency-groups]
-docs = ["sphinx>8.2,<9",
+docs = ["python-requires>=3.11"
+       "sphinx>8.2,<9",
        "sphinx-rtd-theme",
        "myst-nb",
        "ipykernel",
