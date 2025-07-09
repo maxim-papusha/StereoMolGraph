@@ -34,55 +34,55 @@ When using stereodescriptors, remember they encode *local* configuration. Global
 
 
 .. autoclass:: stereomolgraph.stereodescriptors.Tetrahedral
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.SquarePlanar
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.TrigonalBipyramidal
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.Octahedral
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.PlanarBond
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtropBond
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
     :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtomStereo
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.BondStereo
+    :no-index-entry:
     :members:
     :member-order: alphabetical
-    :special-members:
     :inherited-members:
