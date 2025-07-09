@@ -6,7 +6,9 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import sys
+
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
@@ -17,7 +19,7 @@ author = 'Maxim Papusha'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-nb_execution_mode = "force"
+nb_execution_mode: Literal['off', 'force', 'auto', 'cache', 'inline'] = "auto"
 #nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
 #nb_execution_allow_errors = False  # Don't allow errors in the output
 nb_execution_timeout = 300  # Timeout in seconds
