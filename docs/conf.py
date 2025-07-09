@@ -19,7 +19,7 @@ author = 'Maxim Papusha'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-nb_execution_mode: Literal['off', 'force', 'auto', 'cache', 'inline'] = "auto"
+nb_execution_mode: Literal['off', 'force', 'auto', 'cache', 'inline'] = "off"
 nb_execution_show_tb = True  # Show traceback in the output
 nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
 nb_execution_allow_errors = False  # Don't allow errors in the output
