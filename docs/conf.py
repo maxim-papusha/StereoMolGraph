@@ -12,6 +12,8 @@ from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
+print("i am in this folder !!!")
+print(str(Path(__file__).resolve()))
 
 project = 'StereoMolGraph'
 copyright = '2025, Maxim Papusha'
