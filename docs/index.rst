@@ -3,7 +3,7 @@ StereoMolGraph documentation
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Quickstart:
 
    installation.rst
@@ -18,7 +18,7 @@ StereoMolGraph documentation
    reference/stereodescriptors
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Examples:
    
    visualization.ipynb
