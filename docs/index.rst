@@ -20,6 +20,7 @@ StereoMolGraph documentation
 .. toctree::
    :maxdepth: 2
    :caption: Example Notebooks:
-   :glob:
    
-   *.ipynb
+   notebooks/visualization.ipynb
+   notebooks/phosgenation.ipynb
+   notebooks/werner.ipynb

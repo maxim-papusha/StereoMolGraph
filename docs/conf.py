@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "examples"))
 
 
 project = 'StereoMolGraph'
