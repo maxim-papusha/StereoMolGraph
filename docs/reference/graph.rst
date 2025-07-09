@@ -1,4 +1,4 @@
-Graphs are awsome!
+Graphs
 ==================
 
 This section provides an overview of graph concepts and the specific graph classes implemented in this package.
