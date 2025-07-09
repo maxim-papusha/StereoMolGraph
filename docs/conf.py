@@ -20,9 +20,10 @@ author = 'Maxim Papusha'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 nb_execution_mode: Literal['off', 'force', 'auto', 'cache', 'inline'] = "auto"
-#nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
-#nb_execution_allow_errors = False  # Don't allow errors in the output
-nb_execution_timeout = 300  # Timeout in seconds
+nb_execution_show_tb = True  # Show traceback in the output
+nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
+nb_execution_allow_errors = False  # Don't allow errors in the output
+nb_execution_timeout = 30  # Timeout in seconds
 
 extensions = [
     # Core Sphinx extensions first
