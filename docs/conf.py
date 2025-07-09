@@ -13,7 +13,7 @@ from typing import Literal
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 link_from = str(Path(__file__).resolve().parent.parent / "examples")
-link_to = str(Path(__file__).resolve() / "examples")
+link_to = str(Path(__file__).resolve().parent / "examples")
 
 import os
 os.symlink(link_from, link_to, target_is_directory=True)
