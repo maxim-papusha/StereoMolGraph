@@ -35,24 +35,18 @@ When using stereodescriptors, remember they encode *local* configuration. Global
 
 .. autoclass:: stereomolgraph.stereodescriptors.Tetrahedral
     :members:
-   :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.SquarePlanar
     :members:
-   :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.TrigonalBipyramidal
     :members:
-   :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.Octahedral
     :members:
-   :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.PlanarBond
     :members:
-   :inherited-members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtropBond
     :members:
-   :inherited-members:
