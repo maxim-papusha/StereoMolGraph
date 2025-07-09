@@ -21,6 +21,5 @@ StereoMolGraph documentation
    :maxdepth: 2
    :caption: Example Notebooks:
    :glob:
-   :caption: Notebooks
    
    *.ipynb
