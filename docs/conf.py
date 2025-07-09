@@ -12,8 +12,11 @@ from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
-print("i am in this folder !!!")
-print(str(Path(__file__).resolve().parent.parent / "examples"))
+link_from = str(Path(__file__).resolve().parent.parent / "examples")
+link_to = str(Path(__file__).resolve() / "examples")
+
+import os
+os.symlink(link_from, link_to, target_is_directory=True)
 
 project = 'StereoMolGraph'
 copyright = '2025, Maxim Papusha'
