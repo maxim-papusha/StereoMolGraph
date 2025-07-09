@@ -32,7 +32,9 @@ The ``None`` parity is used for:
 
 When using stereodescriptors, remember they encode *local* configuration. Global molecular chirality emerges from combinations of local descriptors and molecular topology.
 
-..autoclass:: stereomolgraph.stereodescriptors.StereoProtocol
+
+.. autoclass:: stereomolgraph.stereodescriptors.StereoProtocol
+    :no-index-entry:
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtomStereo
@@ -90,14 +92,14 @@ When using stereodescriptors, remember they encode *local* configuration. Global
     :show-inheritance: 
 
 
-..autoclass:: stereomolgraph.stereodescriptors._StereoMixin
+.. autoclass:: stereomolgraph.stereodescriptors._StereoMixin
     :members:
     :member-order: alphabetical
 
-..autoclass:: stereomolgraph.stereodescriptors._AchiralStereoMixin
+.. autoclass:: stereomolgraph.stereodescriptors._AchiralStereoMixin
     :members:
     :member-order: alphabetical
 
-..autoclass:: stereomolgraph.stereodescriptors._ChiralStereoMixin
+.. autoclass:: stereomolgraph.stereodescriptors._ChiralStereoMixin
     :members:
     :member-order: alphabetical
