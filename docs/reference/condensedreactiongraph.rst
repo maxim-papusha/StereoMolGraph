@@ -1,4 +1,3 @@
-
 .. autoclass:: stereomolgraph.CondensedReactionGraph
    :members:
    :inherited-members:

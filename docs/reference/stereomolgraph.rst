@@ -1,6 +1,3 @@
-StereoMolGraph
-==============
-
 .. autoclass:: stereomolgraph.StereoMolGraph
    :members:
    :inherited-members:
