@@ -59,7 +59,7 @@ html_static_path = ['_static']
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = "groupwise"
 
 # Force type hints to be links when possible
-typehints_defaults = 'link'
+typehints_defaults = 'comma'
 
 # (Optional) Make the links more readable
 typehints_document_rtype_none = False
