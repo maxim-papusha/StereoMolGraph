@@ -107,6 +107,13 @@ class Geometry:
     atom_types: tuple[Element, ...]
     coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]]
 
+    @property
+    def n_atoms(self) -> int:
+        return len(self.atom_types)
+
+    def __len__(self) -> int:
+        return self.n_atoms
+
     def __init__(
         self,
         atom_types: Iterable[int | str | Element] = tuple(),
@@ -146,12 +153,26 @@ class Geometry:
 
         return cls(atom_types=atom_types, coords=coords)
 
-    @property
-    def n_atoms(self) -> int:
-        return len(self.atom_types)
+    def xyz_str(self, comment: Optional[str] = None) -> str:
+        """
+        returns the xyz representation of this geometry as a string
 
-    def __len__(self) -> int:
-        return self.n_atoms
+        :param comment: comment for 2nd line of xyz file
+        :return: xyz representation of this geometry
+        """
+        xyz = str(self.n_atoms) + "\n"
+        if comment is not None:
+            xyz += comment + "\n"
+        else:
+            xyz += "\n"
+
+        for type, coords in zip(self.atom_types, self.coords):
+            xyz += (
+                f"{type.symbol:s} {coords[0]:.8f} {coords[1]:.8f} "
+                f"{coords[2]:.8f}\n"
+            )
+
+        return xyz
 
 
 def default_connectivity_cutoff(atom_types: tuple[Element, Element]) -> float:
