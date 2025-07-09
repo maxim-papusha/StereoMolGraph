@@ -1,13 +1,20 @@
 Graphs
 ==================
 
-This section provides an overview of graph concepts and the specific graph classes implemented in this package.
+
+| Graph Class                 | Connectivity     | Connectivity <br> Change | Stereo          |Stereo <br> Change  |
+|-----------------------------|------------------|--------------------------|-----------------|-------------|
+| `Molgraph`                  | ✓                |                          |                 |             |
+| `CondensedReactionGraph`    | ✓                | ✓                        |                 |             |
+| `StereoMolGraph`            | ✓                |                          | ✓               |             |
+| `StereoCondensedReactionGraph` | ✓             | ✓                       | ✓               | ✓           |
+
 
 .. toctree::
    :maxdepth: 1
    :caption: Graph Types:
    
-   molgraph
-   stereomolgraph
-   condensedreactiongraph
-   stereocondensedreactiongraph
+   graphs/molgraph
+   graphs/stereomolgraph
+   graphs/condensedreactiongraph
+   graphs/stereocondensedreactiongraph
