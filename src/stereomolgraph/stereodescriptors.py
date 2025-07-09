@@ -42,7 +42,7 @@ class Stereo(Protocol):
 
     def __eq__(self, other: Any) -> bool: ...
     def __hash__(self) -> int: ...
-    def get_isomers(self) -> tuple[Self]:
+    def get_isomers(self) -> set[Self]:
         """Returns all possible isomers of the stereochemistry"""
 
 
@@ -86,7 +86,7 @@ class _BaseStereo(ABC):
 
     def get_isomers(self) -> tuple[Self]:
         """Returns all possible isomers of the stereochemistry"""
-        return (self,)
+        return set(self,)
 
 
 class NoStereo(_BaseStereo):
@@ -253,7 +253,7 @@ class Tetrahedral(_BaseChiralStereo, AtomStereo):
             raise ValueError("Tetrahedral stereochemistry has 5 atoms")
         super().__init__(atoms=atoms, parity=parity)
 
-    def get_isomers(self) -> tuple[Self, Self]:
+    def get_isomers(self) -> set[Tetrahedral]:
         return {
             Tetrahedral(atoms=self.atoms, parity=1),
             Tetrahedral(atoms=self.atoms, parity=-1),
@@ -336,7 +336,7 @@ class SquarePlanar(_BaseAchiralStereo, AtomStereo):
     def central_atom(self) -> AtomId:
         return self.atoms[0]
 
-    def get_isomers(self) -> tuple[Self, ...]:
+    def get_isomers(self) -> set[SquarePlanar]:
         return {
             SquarePlanar(atoms=(self.atoms[0], *perm), parity=0)
             for perm in itertools.permutations(self.atoms[1:])
@@ -381,7 +381,7 @@ class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
     atoms: tuple[int, int, int, int, int, int]
     parity: None | Literal[1, -1]
 
-    def get_isomers(self) -> tuple[Self, ...]:
+    def get_isomers(self) -> set[TrigonalBipyramidal]:
         return {
             TrigonalBipyramidal(atoms=(self.atoms[0], *perm), parity=p)
             for perm in itertools.permutations(self.atoms[1:])
@@ -476,7 +476,7 @@ class Octahedral(_BaseChiralStereo, AtomStereo):
     atoms: tuple[int, int, int, int, int, int]
     parity: None | Literal[1, -1]
 
-    def get_isomers(self) -> tuple[Self, ...]:
+    def get_isomers(self) -> set[Octahedral]:
         return {
             Octahedral(atoms=(self.atoms[0], *perm), parity=p)
             for perm in itertools.permutations(self.atoms[1:])
@@ -543,7 +543,7 @@ class PlanarBond(_BaseAchiralStereo, BondStereo):
     atoms: tuple[int, int, int, int, int, int]
     parity: None | Literal[0]
 
-    def get_isomers(self) -> tuple[Self, ...]:
+    def get_isomers(self) -> set[PlanarBond]:
         return (
             PlanarBond(self.atoms, 0),
             PlanarBond(tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4)), 0),
@@ -608,7 +608,7 @@ class AtropBond(_BaseChiralStereo, BondStereo):
 
     """
 
-    def get_isomers(self) -> tuple[Self, ...]:
+    def get_isomers(self) -> set[AtropBond]:
         return (
             AtropBond(self.atoms, 0),
             AtropBond(tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4)), 0),
