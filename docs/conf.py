@@ -59,3 +59,9 @@ html_static_path = ['_static']
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = "groupwise"
 autodoc_type_aliases = {'AtomId': 'stereomolgraph.AtomId',
                         'Bond': 'stereomolgraph.Bond'}
+# Force type hints to be links when possible
+typehints_defaults = 'link'
+
+# (Optional) Make the links more readable
+typehints_use_signature = True
+typehints_use_signature_return = True
