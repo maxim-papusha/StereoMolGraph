@@ -13,7 +13,7 @@ from stereomolgraph import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence
+    from collections.abc import Callable, Iterable, Sequence, Optional
     from os import PathLike
     from typing import Any, Literal
 
