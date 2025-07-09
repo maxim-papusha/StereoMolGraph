@@ -31,7 +31,7 @@ Graphs
      - ✓
      - ✓
 
-     
+
 +-----------------------------+------------------+--------------------------+-----------------+-------------+
 | Graph Class                 | Connectivity     | Connectivity             | Stereo          | Stereo      |
 |                             |                  | Change                   |                 | Change      |
@@ -47,7 +47,10 @@ Graphs
 
 
 .. autoclass:: stereomolgraph.AtomId
+   :no-index-entry:
+
 .. autoclass:: stereomolgraph.Bond
+   :no-index-entry:
 
 
 .. toctree::
