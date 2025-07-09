@@ -32,13 +32,6 @@ Graphs
      - ✓
 
 
-.. autoclass:: stereomolgraph.AtomId
-   :no-index:
-
-.. autoclass:: stereomolgraph.Bond
-   :no-index:
-
-
 .. toctree::
    :maxdepth: 1
    :caption: Graph Types:
