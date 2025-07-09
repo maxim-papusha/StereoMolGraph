@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-docs = ["sphinx<7.0",
+docs = ["sphinx>8.2,<9",
        "sphinx-rtd-theme",
        "myst-nb",
        "ipykernel",
