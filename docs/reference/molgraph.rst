@@ -2,5 +2,5 @@ MolGraph
 ========
 
 .. autoclass:: stereomolgraph.MolGraph
-   :noindex:
+   :class: hide-title
    :members:

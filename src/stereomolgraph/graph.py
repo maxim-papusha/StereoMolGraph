@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 
 AtomId: TypeAlias = int
 
-Bond: TypeAlias = frozenset
+Bond: frozenset[AtomId] = frozenset
 
 
 class MolGraph:
