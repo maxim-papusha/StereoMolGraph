@@ -8,17 +8,16 @@ import pytest
 import rdkit.Chem  # type: ignore
 
 from stereomolgraph import PERIODIC_TABLE as PTOE
+from stereomolgraph import (AtomId,
+                            Bond,
+                            MolGraph,
+                            StereoMolGraph,
+                            CondensedReactionGraph,
+                            StereoCondensedReactionGraph)
 from stereomolgraph.cartesian import Geometry, are_planar
-from stereomolgraph.graph import (
-    Bond,
-    BondChange,
-    CondensedReactionGraph,
-    MolGraph,
-    StereoChange,
-    StereoChangeDict,
-    StereoCondensedReactionGraph,
-    StereoMolGraph,
-)
+from stereomolgraph.graphs.crg import BondChange
+from stereomolgraph.graphs.scrg import StereoChange, StereoChangeDict
+
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,

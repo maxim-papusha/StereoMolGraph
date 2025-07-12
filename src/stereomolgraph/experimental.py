@@ -5,7 +5,7 @@ from collections import deque
 from typing import TYPE_CHECKING
 
 from stereomolgraph import StereoMolGraph, StereoCondensedReactionGraph
-from stereomolgraph.graph import StereoChange
+from stereomolgraph.graphs.scrg import StereoChange
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable

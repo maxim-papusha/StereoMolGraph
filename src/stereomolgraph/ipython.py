@@ -4,13 +4,12 @@ from rdkit import Chem # type: ignore
 from rdkit.Chem import Draw # type: ignore
 from typing import NamedTuple
 
-from stereomolgraph.graph import (
+from stereomolgraph import (
         MolGraph,
         CondensedReactionGraph,
         StereoMolGraph,
-        StereoCondensedReactionGraph,
-        PlanarBond)
-
+        StereoCondensedReactionGraph)
+from stereomolgraph.stereodescriptors import PlanarBond
 
 def default_repr_svg(graph):
     return View2D().svg(graph)

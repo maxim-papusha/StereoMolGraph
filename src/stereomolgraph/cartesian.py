@@ -13,12 +13,16 @@ from stereomolgraph import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence, Optional
+    from collections.abc import Callable, Iterable, Sequence
     from os import PathLike
-    from typing import Any, Literal
+    from typing import Literal, Optional
+    from np.typing import NDArray
+    
+    THREE = Literal[3]
 
+    type coordsNx3[N] = NDArray[tuple[N, THREE], float]
 
-def are_planar(*points: np.ndarray, threshold: float = 0.5) -> bool:
+def are_planar(*points: coordsNx3, threshold: float = 0.5) -> bool:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -76,14 +80,14 @@ def handedness(
     vec3 = p4 - p2
     normal = np.cross(vec1, vec2)
     norm_normal = normal / np.linalg.norm(normal)
-    result: Literal[-1, 0, 1] = int(np.sign(np.dot(norm_normal, vec3)))
+    result = int(np.sign(np.dot(norm_normal, vec3))) # type: ignore
     if result == 0:
         raise ValueError("atoms are planar")
     return result
 
 def pairwise_distances(
-    coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
-) -> np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]]:
+    coords: coordsNx3 [ N ],
+) -> np.ndarray[tuple[N, N], np.dtype[np.float64]]:
     diff = coords[:, None] - coords[None, :]
     diff **= 2
     summed = np.sum(diff, axis=-1)
@@ -93,7 +97,7 @@ def pairwise_distances(
 
 class BaseGeometry(Protocol):
     atom_types: tuple[Element, ...]
-    coords: np.ndarray[tuple[int, Literal[3]], Any]
+    coords: coordsNx3
 
 
 class Geometry:
@@ -105,7 +109,7 @@ class Geometry:
     """
 
     atom_types: tuple[Element, ...]
-    coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]]
+    coords: coordsNx3 [N]
 
     @property
     def n_atoms(self) -> int:
@@ -117,24 +121,22 @@ class Geometry:
     def __init__(
         self,
         atom_types: Iterable[int | str | Element] = tuple(),
-        coords: np.ndarray = np.empty((0, 3), dtype=np.float64),
+        coords: coordsNx3 = np.empty((0, 3), dtype=np.float64),
     ):
-        coords = np.array(coords, dtype=np.float64)
-        atom_types = [PERIODIC_TABLE[atom] for atom in atom_types]
+        self.coords = np.array(coords, dtype=np.float64)
+        self.atom_types = tuple([PERIODIC_TABLE[atom] for atom in atom_types])
 
         assert (
-            len(coords.shape) == 2
-            and coords.shape[1] == 3
-            and len(atom_types) == coords.shape[0]
+            len(self.coords.shape) == 2
+            and self.coords.shape[1] == 3
+            and len(self.atom_types) == self.coords.shape[0]
         )
 
-        self.coords = coords
-        self.atom_types = tuple(atom_types)
 
     @classmethod
     def from_xyz_file(
         cls, path: PathLike
-    ) -> BaseGeometry | tuple[BaseGeometry, str]:
+    ) -> Geometry:
         """Create a Geometry from an XYZ file."""
 
         dt = np.dtype(
@@ -148,7 +150,7 @@ class Geometry:
 
         data = np.loadtxt(path, skiprows=2, dtype=dt, comments=None)
 
-        atom_types = tuple([PERIODIC_TABLE[atom] for atom in data["atom"]])
+        atom_types = [PERIODIC_TABLE[atom] for atom in data["atom"]]
         coords = np.column_stack((data["x"], data["y"], data["z"]))
 
         return cls(atom_types=atom_types, coords=coords)

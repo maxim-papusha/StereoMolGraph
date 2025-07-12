@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import rdkit.Chem as Chem  # type: ignore
 
-from stereomolgraph.bond_orders import connectivity2bond_orders
+from stereomolgraph.algorithms.bond_orders import connectivity2bond_orders
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,

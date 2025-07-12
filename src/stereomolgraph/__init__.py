@@ -2,6 +2,8 @@
 CondensedReactionGraph and StereoCondensedReactionGraph"""
 
 __all__ = [
+    "AtomId",
+    "Bond",
     "MolGraph",
     "StereoMolGraph",
     "CondensedReactionGraph",
@@ -9,27 +11,28 @@ __all__ = [
     "Element",
     "PERIODIC_TABLE",
     "COVALENT_RADII",
+    "__version__",
 ]
 
-def __getattr__(name):
+def __getattr__(name: str):
     match name:
         case "AtomId":
-            from stereomolgraph.graph import AtomId
+            from stereomolgraph.graphs.mg import AtomId
             return AtomId
         case "Bond":
-            from stereomolgraph.graph import Bond
+            from stereomolgraph.graphs.mg import Bond
             return Bond
         case "MolGraph":
-            from stereomolgraph.graph import MolGraph
+            from stereomolgraph.graphs.mg import MolGraph
             return MolGraph
         case "StereoMolGraph":
-            from stereomolgraph.graph import StereoMolGraph
+            from stereomolgraph.graphs.smg import StereoMolGraph
             return StereoMolGraph
         case "CondensedReactionGraph":
-            from stereomolgraph.graph import CondensedReactionGraph
+            from stereomolgraph.graphs.crg import CondensedReactionGraph
             return CondensedReactionGraph
         case "StereoCondensedReactionGraph":
-            from stereomolgraph.graph import StereoCondensedReactionGraph
+            from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
             return StereoCondensedReactionGraph
         
         case "Element":
