@@ -17,8 +17,8 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-    from stereomolgraph.graphs.mg import MolGraph
     from stereomolgraph.graphs.crg import CondensedReactionGraph
+    from stereomolgraph.graphs.mg import MolGraph
     from stereomolgraph.graphs.smg import StereoMolGraph
 
 
@@ -58,11 +58,13 @@ def _set_bond_orders(
     allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
-    bond_order_mat, atomic_charges, unpaired_electrons = connectivity2bond_orders(
-        atom_types=graph.atom_types,
-        connectivity_matrix=graph.connectivity_matrix(),
-        allow_charged_fragments=allow_charged_fragments,
-        charge=charge,
+    bond_order_mat, atomic_charges, unpaired_electrons = (
+        connectivity2bond_orders(
+            atom_types=graph.atom_types,
+            connectivity_matrix=graph.connectivity_matrix(),
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
     )
 
     index_map_num_dict = {i: map_num for i, map_num in enumerate(graph.atoms)}
@@ -73,7 +75,9 @@ def _set_bond_orders(
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[index_map_num_dict[atom1]][index_map_num_dict[atom2]]
+        bond_order = bond_order_mat[index_map_num_dict[atom1]][
+            index_map_num_dict[atom2]
+        ]
 
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
@@ -92,8 +96,8 @@ def _set_bond_orders(
 def _mol_graph_to_rdmol(
     graph: MolGraph,
     generate_bond_orders=False,
-    allow_charged_fragments = False,
-    charge=0
+    allow_charged_fragments=False,
+    charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     mol = Chem.RWMol()
 
@@ -126,7 +130,7 @@ def _mol_graph_to_rdmol(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
-            allow_charged_fragments = allow_charged_fragments,
+            allow_charged_fragments=allow_charged_fragments,
             charge=charge,
         )
 
@@ -136,8 +140,8 @@ def _mol_graph_to_rdmol(
 def _stereo_mol_graph_to_rdmol(
     graph: StereoMolGraph,
     generate_bond_orders=False,
-    allow_charged_fragments = False,
-    charge=0
+    allow_charged_fragments=False,
+    charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     """
     Creates a RDKit mol object using the connectivity of the mol graph.
@@ -156,7 +160,7 @@ def _stereo_mol_graph_to_rdmol(
         graph,
         generate_bond_orders=generate_bond_orders,
         allow_charged_fragments=allow_charged_fragments,
-        charge=charge
+        charge=charge,
     )
 
     map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
@@ -359,7 +363,7 @@ def _stereo_mol_graph_to_rdmol(
                 # )
                 # is None
                 # for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
-                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) 
+                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j])))
                 #         in graph.bonds):
         #
         #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
@@ -402,21 +406,20 @@ def _set_crg_bond_orders(
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
     generate_bond_orders=False,
-    allow_charged_fragments = False,
-
+    allow_charged_fragments=False,
     charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     r, r_idx_map_num_dict = _mol_graph_to_rdmol(
         graph.reactant(),
         generate_bond_orders=True,
-        allow_charged_fragments = allow_charged_fragments,
+        allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )
     p, p_idx_map_num_dict = _mol_graph_to_rdmol(
         graph.product(),
         generate_bond_orders=True,
-        allow_charged_fragments = allow_charged_fragments,
-        charge=charge
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
     )
     assert r_idx_map_num_dict == p_idx_map_num_dict == idx_map_num_dict
 
