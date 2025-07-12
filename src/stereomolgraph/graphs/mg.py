@@ -7,31 +7,21 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph import PERIODIC_TABLE, Element
+from stereomolgraph.periodictable import PERIODIC_TABLE, Element
 from stereomolgraph.cartesian import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.algorithms.color_refine import color_refine_mg
-
-from stereomolgraph.graph2rdmol import (
-    _mol_graph_to_rdmol,
-)
+from stereomolgraph.graph2rdmol import _mol_graph_to_rdmol
 from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 
 if TYPE_CHECKING:
 
-    import sys
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias
+    from typing import Any, Optional, TypeAlias, Self
     
-    from rdkit import Chem # type: ignore[import]
+    from rdkit import Chem # type: ignore
 
     from stereomolgraph.cartesian import Geometry
-       
-    # Self is included in typing from 3.11
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
 
 
 AtomId: TypeAlias = int
@@ -126,7 +116,8 @@ class MolGraph:
         return atom in self._atom_attrs
 
     def add_atom(
-        self, atom: AtomId, atom_type: int | str | Element, **attr
+        self, atom: AtomId, atom_type: int | str | Element,
+        **attr: Mapping[str, Any]
     ):
         """Adds atom to the MolGraph
 
@@ -237,7 +228,8 @@ class MolGraph:
         """
         return Bond({atom1, atom2}) in self._bond_attrs
 
-    def add_bond(self, atom1: AtomId, atom2: AtomId, **attr):
+    def add_bond(self, atom1: AtomId, atom2: AtomId,
+                 **attr: Mapping[str, Any]):
         """Adds bond between Atom1 and Atom2.
 
         :param atom1: Atom1
@@ -356,9 +348,9 @@ class MolGraph:
 
     def _to_rdmol(
         self,
-        generate_bond_orders=False,
-        allow_charged_fragments = False,
-        charge=0
+        generate_bond_orders: bool=False,
+        allow_charged_fragments: bool = False,
+        charge: int = 0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         return _mol_graph_to_rdmol(self,
                                    generate_bond_orders=generate_bond_orders,
@@ -367,9 +359,9 @@ class MolGraph:
 
     def to_rdmol(
         self,
-        generate_bond_orders=False,
-        allow_charged_fragments = False,
-        charge=0
+        generate_bond_orders:bool=False,
+        allow_charged_fragments:bool = False,
+        charge:int=0
     ) -> Chem.rdchem.Mol:
 
         mol, _ = self._to_rdmol(
@@ -377,12 +369,12 @@ class MolGraph:
             allow_charged_fragments = allow_charged_fragments,
             charge=charge
         )
-        for atom in mol.GetAtoms():
-            atom.SetAtomMapNum(0, strict=True)
+        for atom in mol.GetAtoms(): # type: ignore
+            atom.SetAtomMapNum(0, strict=True) # type: ignore
         return mol
 
     @classmethod
-    def from_rdmol(cls, rdmol, use_atom_map_number=False) -> Self:
+    def from_rdmol(cls, rdmol: Chem.Mol, use_atom_map_number:bool=False) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         Implicit Hydrogens are added to the graph.
@@ -434,12 +426,12 @@ class MolGraph:
         new_graph._bond_attrs = bond_attrs
         return new_graph
 
-    def node_connected_component(self, atom: int) -> set[int]:
+    def node_connected_component(self, atom: int) -> set[AtomId]:
         """
         :param atom: atom id
         :return: Returns the connected component that includes atom_id
         """
-        visited = set()
+        visited: set[AtomId] = set()
         for layer in self.bfs_layers(atom):
             for node in layer:
                 if node not in visited:
@@ -450,8 +442,8 @@ class MolGraph:
         """
         :return: Returns the connected components of the graph
         """
-        visited = set()
-        components = []
+        visited: set[AtomId] = set()
+        components: list[set[int]] = []
 
         for atom in self.atoms:
             if atom not in visited:
@@ -485,7 +477,7 @@ class MolGraph:
         new_graph._bond_attrs = bond_attrs
         return new_graph
 
-    def copy(self) -> Self:
+    def copy(self) ->Self:
         """
         :return: returns a copy of self
         """
@@ -523,7 +515,7 @@ class MolGraph:
                 self.add_bond(int(i), int(j))
 
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[Self]) -> Self:
+    def from_composed_molgraphs(cls, mol_graphs: Iterable[Self]) ->Self:
         """
         Combines all graphs in the iterable into one. Duplicate nodes or edges
         are overwritten, such that the resulting graph only contains one node
@@ -548,8 +540,8 @@ class MolGraph:
         cls,
         atom_types: Sequence[int | Element | str],
         matrix: np.ndarray,
-        threshold=0.5,
-        include_bond_order=False,
+        threshold:float=0.5,
+        include_bond_order:bool=False,
     ):
         """
 
@@ -587,7 +579,7 @@ class MolGraph:
 
     @classmethod
     def from_geometry_and_bond_order_matrix(
-        cls: type[Self],
+        cls,
         geo: Geometry,
         matrix: np.ndarray,
         threshold: float = 0.5,
@@ -614,9 +606,9 @@ class MolGraph:
 
     @classmethod
     def from_geometry(
-        cls: type[Self],
+        cls,
         geo: Geometry,
-        switching_function: Callable = BondsFromDistance(),
+        switching_function: Callable[tuple[Element, Element], float] = BondsFromDistance(),
     ) -> Self:
         """
         Creates a graph of a molecule from a Geometry and a switching Function.
@@ -681,7 +673,7 @@ class MolGraph:
             current_layer = next_layer
 
     def get_subgraph_isomorphic_mappings(
-        self, other: Self
+        self, other: Self,
     ) -> Iterator[dict[int, int]]:
         """Subgraph isomorphic mappings from "other" onto "self".
 

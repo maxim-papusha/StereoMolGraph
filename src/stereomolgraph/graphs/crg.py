@@ -18,19 +18,14 @@ from stereomolgraph.graph2rdmol import (
 
 if TYPE_CHECKING:
 
-    import sys
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias
+    from typing import Any, Optional, TypeAlias, TypeVar
     
     from rdkit import Chem
 
     from stereomolgraph.cartesian import Geometry
-       
-    # Self is included in typing from 3.11
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
+
+    G = TypeVar("G", bound="CondensedReactionGraph", covariant=True)
 
 
 
@@ -196,13 +191,13 @@ class CondensedReactionGraph(MolGraph):
         _set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
         return mol, idx_map_num_dict
 
-    def to_rdmol(self) -> Chem.rdchem.RWMol:
+    def to_rdmol(self, *args) -> Chem.rdchem.RWMol:
         raise NotImplementedError(
             "Rdkit is not able to represent "
             "reactions as condensed reaction graphs."
         )
 
-    def reactant(self, keep_attributes=True) -> MolGraph:
+    def reactant(self, keep_attributes:bool=True) -> MolGraph:
         """Reactant of the reaction
 
         Creates the reactant of the reaction.
@@ -234,7 +229,7 @@ class CondensedReactionGraph(MolGraph):
                 product.add_bond(*bond, **attrs)
         return product
 
-    def product(self, keep_attributes=True) -> MolGraph:
+    def product(self, keep_attributes:bool=True) -> MolGraph:
         """Product of the reaction
 
         Creates the product of the reaction.
@@ -266,7 +261,7 @@ class CondensedReactionGraph(MolGraph):
                 product.add_bond(*bond, **attrs)
         return product
 
-    def reverse_reaction(self) -> Self:
+    def reverse_reaction(self) -> G:
         """Creates the reaction in the opposite direction.
 
         Broken bonds are turned into formed bonds and the other way around.
@@ -285,8 +280,8 @@ class CondensedReactionGraph(MolGraph):
 
     @classmethod
     def from_reactant_and_product_graph(
-        cls: type[Self], reactant_graph: MolGraph, product_graph: MolGraph
-    ) -> Self:
+        cls: type[G], reactant_graph: MolGraph, product_graph: MolGraph
+    ) -> G:
         """Creates a CondensedReactionGraph from reactant and product MolGraphs
 
         CondensedReactionGraph  is constructed from bond changes from reactant
@@ -339,7 +334,7 @@ class CondensedReactionGraph(MolGraph):
         reactant_geo: Geometry,
         product_geo: Geometry,
         switching_function: Callable = BondsFromDistance(),
-    ) -> Self:
+    ) -> G:
         """Creates a CondensedReactionGraph from reactant
         and product Geometries.
 
@@ -361,7 +356,7 @@ class CondensedReactionGraph(MolGraph):
         product = MolGraph.from_geometry(product_geo, switching_function)
         return cls.from_reactant_and_product_graph(reactant, product)
 
-    def get_isomorphic_mappings(self, other: Self) -> Iterator[dict[int, int]]:
+    def get_isomorphic_mappings(self, other: G) -> Iterator[dict[int, int]]:
         """Isomorphic mappings between "self" and "other".
 
         Generates all isomorphic mappings between "other" and "self".
@@ -386,7 +381,7 @@ class CondensedReactionGraph(MolGraph):
         self,
         reactant: MolGraph,
         mapping: Mapping[AtomId, AtomId],
-    ) -> Self:
+    ) -> G:
         """
         Applies a reaction to the graph and returns the resulting graph.
         The reactants of the CRG have to be a subgraph of the reactant.

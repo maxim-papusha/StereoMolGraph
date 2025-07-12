@@ -8,14 +8,10 @@ from stereomolgraph import StereoMolGraph, StereoCondensedReactionGraph
 from stereomolgraph.graphs.scrg import StereoChange
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable
+    from collections.abc import Iterable
     from typing import Optional
     from stereomolgraph.graph import (
-         AtomId, 
-         AtomStereo, 
-         BondStereo,
-         _BaseAchiralStereo,
-         _BaseChiralStereo)
+         AtomId)
 
 
 def generate_stereoisomers(graph: StereoMolGraph,

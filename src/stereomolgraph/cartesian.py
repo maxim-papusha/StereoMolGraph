@@ -15,12 +15,12 @@ from stereomolgraph import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
     from os import PathLike
-    from typing import Literal, Optional
-    from np.typing import NDArray
+    from typing import Literal, Optional, TypeVar
+    from numpy.typing import NDArray
     
     THREE = Literal[3]
-
-    type coordsNx3[N] = NDArray[tuple[N, THREE], float]
+    N = TypeVar('N', bound=int)
+    coordsNx3 = TypeVar("coordsNx3", NDArray[tuple[int, THREE], float])
 
 def are_planar(*points: coordsNx3, threshold: float = 0.5) -> bool:
     """Checks if all atoms are in one plane

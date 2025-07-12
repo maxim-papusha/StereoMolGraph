@@ -1,3 +1,4 @@
+# pyright: standard
 from __future__ import annotations
 
 import warnings
@@ -16,11 +17,9 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-    from stereomolgraph.graph import (
-        CondensedReactionGraph,
-        MolGraph,
-        StereoMolGraph,
-    )
+    from stereomolgraph.graphs.mg import MolGraph
+    from stereomolgraph.graphs.crg import CondensedReactionGraph
+    from stereomolgraph.graphs.smg import StereoMolGraph
 
 
 bond_type_dict = {
@@ -74,9 +73,7 @@ def _set_bond_orders(
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[
-            index_map_num_dict[atom1], index_map_num_dict[atom2]
-        ]
+        bond_order = bond_order_mat[index_map_num_dict[atom1]][index_map_num_dict[atom2]]
 
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
@@ -362,7 +359,8 @@ def _stereo_mol_graph_to_rdmol(
                 # )
                 # is None
                 # for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
-                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) in graph.bonds):
+                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) 
+                #         in graph.bonds):
         #
         #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
@@ -402,9 +400,10 @@ def _stereo_mol_graph_to_rdmol(
 def _set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
+    idx_map_num_dict: dict[int, int],
     generate_bond_orders=False,
     allow_charged_fragments = False,
-    idx_map_num_dict: dict[int, int] = None,
+
     charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     r, r_idx_map_num_dict = _mol_graph_to_rdmol(

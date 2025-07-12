@@ -1,8 +1,9 @@
+# pyright: standard
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import rdkit.Chem as Chem
+import rdkit.Chem as Chem # type: ignore
 
 from stereomolgraph.stereodescriptors import (
     Tetrahedral,
@@ -14,11 +15,12 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-    from stereomolgraph.molgraph import MolGraph, StereoMolGraph
+    from stereomolgraph.graphs.mg import MolGraph
+    from stereomolgraph.graphs.smg import StereoMolGraph
 
 
 def mol_graph_from_rdmol(
-    cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number=False
+    cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number:bool=False
 ) -> MolGraph:
     """
     Creates a StereoMolGraph from an RDKit Mol object.
@@ -59,7 +61,7 @@ def mol_graph_from_rdmol(
 
 
 def stereo_mol_graph_from_rdmol(
-    cls: type[StereoMolGraph], rdmol: Chem.Mol, use_atom_map_number=False
+    cls: type[StereoMolGraph], rdmol: Chem.Mol, use_atom_map_number:bool=False
 ) -> StereoMolGraph:
     """
     Creates a StereoMolGraph from an RDKit Mol object.
@@ -137,7 +139,7 @@ def stereo_mol_graph_from_rdmol(
                 graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_SQUAREPLANAR:
-            atom_stereo = SquarePlanar(neighbors)
+            
             sp_order: tuple[int, int, int, int]
             if atom.GetUnsignedProp("_chiralPermutation") == 1:
                 sp_order = (0, 1, 2, 3)
@@ -148,9 +150,9 @@ def stereo_mol_graph_from_rdmol(
             else:
                 raise RuntimeError("Unknown permutation for SquarePlanar")
             ordered_neighbors = tuple([neighbors[i] for i in sp_order])
-            atom_stereo = SquarePlanar(
-                atoms=(id_atom_map[atom_idx], *ordered_neighbors), parity=0
-            )
+            sp_atoms = (id_atom_map[atom_idx], *ordered_neighbors)
+            assert len(sp_atoms) == 5
+            atom_stereo = SquarePlanar(atoms=sp_atoms, parity=0)
             graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_TRIGONALBIPYRAMIDAL:
@@ -186,7 +188,9 @@ def stereo_mol_graph_from_rdmol(
 
             tbp_order = permutation_atom_order_dict[perm]
             neigh_atoms = tuple([neighbors[i] for i in tbp_order])
-            atom_stereo = TrigonalBipyramidal((id_atom_map[atom_idx], *neigh_atoms), 1)
+            tbp_atoms = (id_atom_map[atom_idx], *neigh_atoms)
+            assert len(tbp_atoms) == 6
+            atom_stereo = TrigonalBipyramidal(tbp_atoms, 1)
             graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_OCTAHEDRAL:
@@ -227,7 +231,9 @@ def stereo_mol_graph_from_rdmol(
 
             order = permutation_atom_order_dict[perm]
             neigh_atoms = tuple([neighbors[i] for i in order])
-            atom_stereo = Octahedral((id_atom_map[atom_idx], *neigh_atoms), 1)
+            oct_atoms = (id_atom_map[atom_idx], *neigh_atoms)
+            assert len(oct_atoms) == 7
+            atom_stereo = Octahedral(oct_atoms, 1)
             graph.set_atom_stereo(atom_stereo)
 
     for bond in (
@@ -246,7 +252,7 @@ def stereo_mol_graph_from_rdmol(
             if atom.GetIdx() != begin_end_idx[1]
         ]
 
-        neighbors_end = [
+        neighbors_end: list[int] = [
             atom.GetIdx()
             for atom in rdmol.GetAtomWithIdx(begin_end_idx[1]).GetNeighbors()
             if atom.GetIdx() != begin_end_idx[0]
@@ -278,9 +284,11 @@ def stereo_mol_graph_from_rdmol(
                         begin_end_idx[0],
                         begin_end_idx[1],
                         *neighbors_end,
-                    ),
+                    )
                 )
-                bond_atoms = [id_atom_map[i] for i in bond_atoms_idx]
+                
+                bond_atoms = tuple([id_atom_map[i] for i in bond_atoms_idx])
+                assert len(bond_atoms) == 6
                 stereo = PlanarBond(bond_atoms, None)
                 invert = None
             else:
@@ -306,7 +314,7 @@ def stereo_mol_graph_from_rdmol(
                         *[n for n in neighbors_end if n != stereo_atoms[1]],
                     )
 
-                    bond_atoms = [id_atom_map[a] for a in bond_atoms_idx]
+                    bond_atoms = tuple([id_atom_map[a] for a in bond_atoms_idx])
 
                     # raise Exception(bond_atoms_idx)
 
@@ -323,15 +331,17 @@ def stereo_mol_graph_from_rdmol(
                         *[n for n in neighbors_begin if n != stereo_atoms[1]],
                     )
 
-                    bond_atoms = [id_atom_map[a] for a in bond_atoms_idx]
+                    bond_atoms = tuple([id_atom_map[a] for a in bond_atoms_idx])
                 else:
                     raise RuntimeError("Stereo Atoms not neighbors")
 
                 if invert is True:
                     inverted_atoms = tuple([bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)])
+                    assert len(inverted_atoms) == 6
                     stereo = PlanarBond(inverted_atoms, 0)
                 elif invert is False:
-                    stereo = PlanarBond(tuple(bond_atoms), 0)
+                    assert len(bond_atoms) == 6
+                    stereo = PlanarBond(bond_atoms, 0)
 
         elif bond.GetBondType() == Chem.rdchem.BondType.AROMATIC:
             ri = rdmol.GetRingInfo()
@@ -345,7 +355,7 @@ def stereo_mol_graph_from_rdmol(
                 neighbors_end[1],
             ]
 
-            common_ring_size_db1 = None
+            common_ring_size_db1: None | int = None
             for ring in rings:
                 if all(
                     a in ring
@@ -370,7 +380,7 @@ def stereo_mol_graph_from_rdmol(
                     if common_ring_size_db1 is None or len(ring) < common_ring_size_db1:
                         common_ring_size_db1 = len(ring)
 
-            common_ring_size_db2 = None
+            common_ring_size_db2: None|int = None
 
             for ring in rings:
                 if all(
@@ -398,25 +408,30 @@ def stereo_mol_graph_from_rdmol(
                         common_ring_size_db2 = len(ring)
 
             if common_ring_size_db1 is None and common_ring_size_db2 is None:
-                stereo = PlanarBond([id_atom_map[a] for a in stereo_atoms], None)
+                pb_atoms = tuple([id_atom_map[a] for a in stereo_atoms])
+                assert len(pb_atoms) == 6
+                stereo = PlanarBond(pb_atoms, None)
             elif common_ring_size_db1:
-                stereo = PlanarBond(
-                    tuple([id_atom_map[a] for a in stereo_atoms]), parity=0
-                )
+                pb_atoms = tuple(tuple([id_atom_map[a] for a in stereo_atoms]))
+                assert len(pb_atoms) == 6
+                stereo = PlanarBond(pb_atoms, parity=0)
             elif common_ring_size_db2:
-                stereo = PlanarBond(
-                    tuple([id_atom_map[stereo_atoms[i]] for i in (0, 1, 2, 3, 4, 5)]),
-                    parity=0,
+                pb_atoms = tuple(tuple([id_atom_map[stereo_atoms[i]] for i in (0, 1, 2, 3, 4, 5)]))
+                assert len(pb_atoms) == 6
+                stereo = PlanarBond(pb_atoms, parity=0,)
+            elif common_ring_size_db1 is None or common_ring_size_db2 is None:
+                raise RuntimeError(
+                    "Aromatic Atoms not in ring, "
+                    "please check the input structure"
                 )
             elif common_ring_size_db2 < common_ring_size_db1:
-                stereo = PlanarBond(
-                    tuple([id_atom_map[a] for a in stereo_atoms]), parity=0
-                )
+                pb_atoms = tuple(tuple([id_atom_map[a] for a in stereo_atoms]))
+                assert len(pb_atoms) == 6
+                stereo = PlanarBond(pb_atoms, parity=0)
             elif common_ring_size_db1 < common_ring_size_db2:
-                stereo = PlanarBond(
-                    [id_atom_map[stereo_atoms[i]] for i in (0, 1, 2, 3, 4, 5)],
-                    parity=0,
-                )
+                pb_atoms = tuple([id_atom_map[stereo_atoms[i]] for i in (0, 1, 2, 3, 4, 5)])
+                assert len(pb_atoms) == 6
+                stereo = PlanarBond(pb_atoms, parity=0)
             else:
                 raise RuntimeError("Aromatic Atoms not in ring")
 
@@ -429,11 +444,13 @@ def stereo_mol_graph_from_rdmol(
                 neighbors_end[0],
                 neighbors_end[1],
             ]
-
-            stereo = PlanarBond(tuple([id_atom_map[a] for a in stereo_atoms]), None)
+            pb_atoms = tuple([id_atom_map[a] for a in stereo_atoms])
+            assert len(pb_atoms) == 6
+            stereo = PlanarBond(pb_atoms, None)
 
         # raise Exception(begin_end_idx, )
         bond_atoms = [id_atom_map[i] for i in begin_end_idx]
-        graph.set_bond_stereo(stereo)
+
+        graph.set_bond_stereo(stereo) # type: ignore
 
     return graph
