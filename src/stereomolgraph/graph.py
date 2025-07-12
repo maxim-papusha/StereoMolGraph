@@ -173,7 +173,7 @@ class MolGraph:
         del self._atom_attrs[atom]
         if nbr := self._neighbors.pop(atom, None):
             for n in nbr:
-                self._neighbors[n].remove(atom)
+                self.remove_bond(atom, n)
 
     def get_atom_attribute(
         self, atom: AtomId, attr: str
@@ -286,8 +286,8 @@ class MolGraph:
         """
         bond = Bond((atom1, atom2))
         del self._bond_attrs[bond]
-        self._neighbors[atom1].remove(atom2)
-        self._neighbors[atom2].remove(atom1)
+        self._neighbors[atom1].discard(atom2)
+        self._neighbors[atom2].discard(atom1)
 
     def get_bond_attribute(
         self, atom1: AtomId, atom2: AtomId, attr: str,
@@ -373,25 +373,36 @@ class MolGraph:
 
         :return: Connectivity matrix as list of lists
         """
-        matrix = [[0] * self.n_atoms for _ in range(self.n_atoms)]
-        for atom1, atom2 in self.bonds:
-            matrix[atom1][atom2] = 1
-            matrix[atom2][atom1] = 1
+        matrix = [[0] * self.n_atoms for _ in self.atoms]
+        atomid_index_dict = {id:index for index, id in enumerate(self.atoms)}
+
+        for a1, a2 in self.bonds:
+            matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
+            matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
         return matrix
 
     def _to_rdmol(
-        self, generate_bond_orders=False, charge=0
+        self,
+        generate_bond_orders=False,
+        allow_charged_fragments = False,
+        charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         return _mol_graph_to_rdmol(self,
                                    generate_bond_orders=generate_bond_orders,
+                                   allow_charged_fragments = allow_charged_fragments,
                                    charge=charge)
 
     def to_rdmol(
-        self, generate_bond_orders=False, charge=0
+        self,
+        generate_bond_orders=False,
+        allow_charged_fragments = False,
+        charge=0
     ) -> Chem.rdchem.Mol:
 
         mol, _ = self._to_rdmol(
-            generate_bond_orders=generate_bond_orders, charge=charge
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments = allow_charged_fragments,
+            charge=charge
         )
         for atom in mol.GetAtoms():
             atom.SetAtomMapNum(0, strict=True)
@@ -955,9 +966,15 @@ class CondensedReactionGraph(MolGraph):
         return matrix
 
     def _to_rdmol(
-        self, generate_bond_orders=False, charge=0
+        self,
+        generate_bond_orders=False,
+        allow_charged_fragments=False,
+        charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        mol, idx_map_num_dict = _mol_graph_to_rdmol(graph=self, generate_bond_orders=False, charge=0)
+        mol, idx_map_num_dict = _mol_graph_to_rdmol(graph=self,
+                                                    generate_bond_orders=False,
+                                                    allow_charged_fragments=allow_charged_fragments,
+                                                    charge=0)
         _set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
         return mol, idx_map_num_dict
 
@@ -1403,7 +1420,10 @@ class StereoMolGraph(MolGraph):
         return enantiomer
 
     def _to_rdmol(
-        self, generate_bond_orders=False, charge=0
+        self,
+        generate_bond_orders=False,
+        allow_charged_fragments=False,
+        charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         """
         Creates a RDKit mol object using the connectivity of the mol graph.
@@ -1413,6 +1433,7 @@ class StereoMolGraph(MolGraph):
         """
         return _stereo_mol_graph_to_rdmol(self,
                                           generate_bond_orders=generate_bond_orders,
+                                          allow_charged_fragments=allow_charged_fragments,
                                           charge=charge)
         
 
@@ -1950,7 +1971,10 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         return enantiomer
 
     def _to_rdmol(
-        self, generate_bond_orders=False, charge=0
+        self,
+        generate_bond_orders=False,
+        allow_charged_fragments=False,
+        charge=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         
         ts_smg = StereoMolGraph(self) # bond change is now just a bond
@@ -1972,7 +1996,9 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                 ts_smg.set_bond_stereo(bond_stereo)
 
         mol, idx_map_num_dict = ts_smg._to_rdmol(
-            generate_bond_orders=False, charge=charge)
+            generate_bond_orders=False,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge)
         if generate_bond_orders:
             mol = _set_crg_bond_orders(graph=self,
                                  mol=mol,

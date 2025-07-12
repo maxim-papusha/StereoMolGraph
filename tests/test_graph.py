@@ -945,11 +945,13 @@ class TestStereoMolGraph(TestMolGraph):
               "(SP-4-2)-diamminedichloroplatinum",
               "(SP-4-1)-diamminedichloroplatinum"],)
     def test_from_rdmol_to_rdmol_square_planar(self, smiles):
-        rdmol = rdkit.Chem.MolFromSmiles(smiles, sanitize=False)
+        rdmol = rdkit.Chem.MolFromSmiles(smiles, sanitize=True)
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         molgraph = self._TestClass.from_rdmol(rdmol)
         #raise Exception (molgraph.stereo)
-        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
+        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True,
+                                       allow_charged_fragments=True)
+        rdkit.Chem.SanitizeMol(rdmol2, sanitizeOps=rdkit.Chem.SanitizeFlags.SANITIZE_ALL)
         for atom in rdmol2.GetAtoms():
             atom.SetAtomMapNum(0)
         assert rdkit.Chem.MolToSmiles(rdmol) == rdkit.Chem.MolToSmiles(rdmol2)
@@ -1778,8 +1780,3 @@ class TestStereoCondensedReactionGraph(
     ):
         assert (enantiomer_graph1.color_refine_hahs()
                 != enantiomer_graph2.color_refine_hash())
-
-    @pytest.mark.skip(reason="Not implemented")
-    def test_2_fwl_hash_expressiveness(self):
-        super().test_2_fwl_hash_expressiveness()
-# END PRIVATE

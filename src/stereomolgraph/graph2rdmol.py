@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import rdkit.Chem as Chem  # type: ignore
 
-from stereomolgraph._bond_order import connectivity2bond_orders
+from stereomolgraph.bond_orders import connectivity2bond_orders
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
@@ -56,11 +56,13 @@ def _set_bond_orders(
     graph: MolGraph,
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
+    allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
-    bond_order_mat = connectivity2bond_orders(
+    bond_order_mat, atomic_charges, unpaired_electrons = connectivity2bond_orders(
         atom_types=graph.atom_types,
         connectivity_matrix=graph.connectivity_matrix(),
+        allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )
 
@@ -79,11 +81,22 @@ def _set_bond_orders(
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
         ).SetBondType(bond_type_dict[bond_order])
+
+    for i, atomic_charge in enumerate(atomic_charges):
+        if atomic_charge:
+            mol.GetAtomWithIdx(i).SetFormalCharge(int(atomic_charge))
+    for i, unpaired_e in enumerate(unpaired_electrons):
+        if unpaired_e:
+            mol.GetAtomWithIdx(i).SetNumRadicalElectrons(unpaired_e)
+
     return mol
 
 
 def _mol_graph_to_rdmol(
-    graph: MolGraph, generate_bond_orders=False, charge=0
+    graph: MolGraph,
+    generate_bond_orders=False,
+    allow_charged_fragments = False,
+    charge=0
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     mol = Chem.RWMol()
 
@@ -116,13 +129,18 @@ def _mol_graph_to_rdmol(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
+            allow_charged_fragments = allow_charged_fragments,
+            charge=charge,
         )
 
     return mol, idx_map_num_dict
 
 
 def _stereo_mol_graph_to_rdmol(
-    graph: StereoMolGraph, generate_bond_orders=False, charge=0
+    graph: StereoMolGraph,
+    generate_bond_orders=False,
+    allow_charged_fragments = False,
+    charge=0
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     """
     Creates a RDKit mol object using the connectivity of the mol graph.
@@ -138,7 +156,10 @@ def _stereo_mol_graph_to_rdmol(
         None: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL,
     }
     mol, idx_map_num_dict = _mol_graph_to_rdmol(
-        graph, generate_bond_orders=generate_bond_orders, charge=charge
+        graph,
+        generate_bond_orders=generate_bond_orders,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge
     )
 
     map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
@@ -381,14 +402,22 @@ def _stereo_mol_graph_to_rdmol(
 def _set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
-    idx_map_num_dict: dict[int, int],
+    generate_bond_orders=False,
+    allow_charged_fragments = False,
+    idx_map_num_dict: dict[int, int] = None,
     charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     r, r_idx_map_num_dict = _mol_graph_to_rdmol(
-        graph.reactant(), generate_bond_orders=True, charge=charge
+        graph.reactant(),
+        generate_bond_orders=True,
+        allow_charged_fragments = allow_charged_fragments,
+        charge=charge,
     )
     p, p_idx_map_num_dict = _mol_graph_to_rdmol(
-        graph.product(), generate_bond_orders=True, charge=charge
+        graph.product(),
+        generate_bond_orders=True,
+        allow_charged_fragments = allow_charged_fragments,
+        charge=charge
     )
     assert r_idx_map_num_dict == p_idx_map_num_dict == idx_map_num_dict
 
