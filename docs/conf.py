@@ -5,6 +5,7 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+import os
 import sys
 
 from pathlib import Path
@@ -17,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 link_from = str(Path(__file__).resolve().parent.parent / "examples")
 link_to = str(Path(__file__).resolve().parent / "examples")
 
-import os
+
 os.symlink(link_from, link_to, target_is_directory=True)
 
 
@@ -65,9 +66,9 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = "groupwise"
-
+autodoc_class_signature = "separated"
 # Force type hints to be links when possible
-typehints_defaults: Literal['comma', 'braces', 'braces-after'] = 'comma'
+typehints_defaults: Literal['comma', 'braces', 'braces-after'] = 'braces-after'
 
 # (Optional) Make the links more readable
 typehints_document_rtype_none = False

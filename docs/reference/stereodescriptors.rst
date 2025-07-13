@@ -41,11 +41,13 @@ When using stereodescriptors, remember they encode *local* configuration. Global
 .. autoclass:: stereomolgraph.stereodescriptors.Stereo
 
 .. autoclass:: stereomolgraph.stereodescriptors.ABCAtomStereo
+    :show-inheritance:
     :no-index-entry:
     :members:
     :member-order: alphabetical
 
 .. autoclass:: stereomolgraph.stereodescriptors.ABCBondStereo
+    :show-inheritance:
     :no-index-entry:
     :members:
     :member-order: alphabetical
