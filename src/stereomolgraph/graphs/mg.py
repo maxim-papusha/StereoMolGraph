@@ -17,12 +17,12 @@ from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 if TYPE_CHECKING:
 
     from collections.abc import Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias, Self
+    from typing import Any, Optional, TypeAlias, Self, TypeVar
     
     from rdkit import Chem # type: ignore
 
     from stereomolgraph.cartesian import Geometry
-
+    N = TypeVar("N", bound=int)
 AtomId: TypeAlias = int
 
 Bond: TypeAlias = frozenset[AtomId]
@@ -338,7 +338,7 @@ class MolGraph:
         """
         return frozenset(self._neighbors[atom])
 
-    def connectivity_matrix(self) -> list[list[int]]:
+    def connectivity_matrix(self) -> np.ndarray[tuple[N, N], np.dtype[np.int8]]:
         """
         Returns a connectivity matrix of the graph as a list of lists.
         Order is the same as in self.atoms()
@@ -352,7 +352,7 @@ class MolGraph:
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
-        return matrix
+        return np.array(matrix, dtype=np.int8)
 
     def _to_rdmol(
         self,

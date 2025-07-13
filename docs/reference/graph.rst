@@ -33,8 +33,9 @@ Graphs
 
 
 .. toctree::
+   
    :maxdepth: 1
-   :caption: Graph Types:
+   :hidden:
    
    graphs/molgraph
    graphs/stereomolgraph
