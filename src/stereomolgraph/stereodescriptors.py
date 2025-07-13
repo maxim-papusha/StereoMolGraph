@@ -30,8 +30,11 @@ class ABCStereo(ABC, Generic[A, P]):
     """
 
     atoms: A
+    """atoms docstring"""
     parity: P
+    """parity docstring"""
     PERMUTATION_GROUP: frozenset[A]
+    """PERMUTATION_GROUP docstring"""
 
     @abstractmethod
     def __init__(self, atoms: A, parity: P = None): ...
@@ -43,12 +46,18 @@ class ABCStereo(ABC, Generic[A, P]):
     def __hash__(self) -> int: ...
 
     @abstractmethod
-    def invert(self) -> Self: ...
+    def invert(self) -> Self:
+        """
+        Inverts the stereo. If the stereo is achiral, it returns itself.
+        """
+        
 
     @abstractmethod
     def get_isomers(self) -> Set[Self]:
-        ...
-        # """Returns all possible isomers of the stereochemistry"""
+        """Returns all isomers of the stereo."""
+
+
+Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
 
 
 class ABCAtomStereo(ABCStereo[A, P], ABC, Generic[A, P]):
@@ -63,9 +72,7 @@ class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
         bond = frozenset(self.atoms[2:4])
         assert len(bond) == 2
         return bond
-
-
-Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
+    
 
 AtomStereo: TypeAlias = ABCAtomStereo[
     tuple[int, ...], None | Literal[-1, 0, 1]

@@ -38,7 +38,6 @@ When using stereodescriptors, remember they encode *local* configuration. Global
     :members:
 
 .. autoclass:: stereomolgraph.stereodescriptors.Stereo
-    This class is meant to be used for type hinting.
 
 .. autoclass:: stereomolgraph.stereodescriptors.ABCAtomStereo
     :no-index-entry:
