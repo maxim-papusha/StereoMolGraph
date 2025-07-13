@@ -10,22 +10,22 @@ Graphs
      - Connectivity Change
      - Stereo
      - Stereo Change
-   * - :class:`stereomolgraph.MolGraph`
+   * - :class:`~stereomolgraph.MolGraph`
      - ✓
      -
      -
      -
-   * - :class:`stereomolgraph.CondensedReactionGraph`
+   * - :class:`~stereomolgraph.CondensedReactionGraph`
      - ✓
      - ✓
      -
      -
-   * - :class:`stereomolgraph.StereoMolGraph`
+   * - :class:`~stereomolgraph.StereoMolGraph`
      - ✓
      -
      - ✓
      -
-   * - :class:`stereomolgraph.StereoCondensedReactionGraph`
+   * - :class:`~stereomolgraph.StereoCondensedReactionGraph`
      - ✓
      - ✓
      - ✓
