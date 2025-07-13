@@ -22,19 +22,25 @@ P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
 class ABCStereo(ABC, Generic[A, P]):
     """
-    Base Class to represent the orientation of a group of atoms in space and
-    their allowed permutations PERMUTATION_GROUP refers to the all allowed
-    permutations of the atoms which are usually only rotations. Inversions are
-    not chemically relevant and therefore not included in the permutations.
+    Base Class to represent the orientation of a group of atoms in space.
+    This is used to represent local stereochemistry and simultanously the
+    hybridization of atoms. 
 
     """
 
     atoms: A
-    """atoms docstring"""
+    """Atoms are a order dependent tuple of integers."""
+
     parity: P
-    """parity docstring"""
+    """parity is a number that defines the orientation of the atoms. If None,
+    the relative orientation of the atoms is not defined. 
+    If 0 the orientation is defined and part of a achiral stereochemistry.
+    If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
+    """
+
     PERMUTATION_GROUP: frozenset[A]
-    """PERMUTATION_GROUP docstring"""
+    """Defines all allowed permutations defined by the symmetry group under
+    which the stereochemistry is invariant."""
 
     @abstractmethod
     def __init__(self, atoms: A, parity: P = None): ...
@@ -53,7 +59,8 @@ class ABCStereo(ABC, Generic[A, P]):
         
     @abstractmethod
     def get_isomers(self) -> Set[Self]:
-        """Returns all isomers of the stereo."""
+        """Returns all stereoisomers of the stereochemistry. Not just the
+        inverted ones, but all possible stereoisomers."""
 
 
 Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
@@ -288,19 +295,9 @@ class Tetrahedral(
         """
         Creates the representation of a Tetrahedral Stereochemistry
         from the coordinates of the atoms.
+        
         :param atoms: Atoms of the stereochemistry
-        :type atoms: tuple[int, int, int, int]
-        :param p1: coordinates of atom 1
-        :type p1: np.ndarray
-        :param p2: coordinates of atom 2
-        :type p2: np.ndarray
-        :param p3: coordinates of atom 3
-        :type p3: np.ndarray
-        :param p4: coordinates of atom 4
-        :type p4: np.ndarray
-        ...
-        :return: Tetrahedral
-        :rtype: Tetrahedral
+        :param coords: nAtomsx3 numpy array with cartesian coordinates
         """
         orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
         return cls(atoms, orientation)
