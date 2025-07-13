@@ -20,12 +20,12 @@ Graphs
      - ✓
      -
      -
-   * - :class:`~stereomolgraph.StereoMolGraph`
+   * - :class:``~stereomolgraph.StereoMolGraph``
      - ✓
      -
      - ✓
      -
-   * - :class:`~stereomolgraph.StereoCondensedReactionGraph`
+   * - :class:``~stereomolgraph.StereoCondensedReactionGraph``
      - ✓
      - ✓
      - ✓
