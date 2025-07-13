@@ -10,7 +10,7 @@ Graphs
      - Connectivity Change
      - Stereo
      - Stereo Change
-   * - :class: `Molgraph <stereomolgraph.graphs.MolGraph>`
+   * - :py:class: `Molgraph <stereomolgraph.graphs.MolGraph>`
      - ✓
      -
      -
