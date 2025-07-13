@@ -10,7 +10,7 @@ Graphs
      - Connectivity Change
      - Stereo
      - Stereo Change
-   * - :class:`stereomolgraph.graphs.MolGraph`
+   * - :class:`stereomolgraph.MolGraph`
      - ✓
      -
      -
