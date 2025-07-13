@@ -10,7 +10,7 @@ Graphs
      - Connectivity Change
      - Stereo
      - Stereo Change
-   * - ``Molgraph``
+   * - :class: `Molgraph <stereomolgraph.graphs.MolGraph>`
      - ✓
      -
      -
