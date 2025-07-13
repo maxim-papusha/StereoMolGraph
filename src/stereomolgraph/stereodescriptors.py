@@ -51,7 +51,6 @@ class ABCStereo(ABC, Generic[A, P]):
         Inverts the stereo. If the stereo is achiral, it returns itself.
         """
         
-
     @abstractmethod
     def get_isomers(self) -> Set[Self]:
         """Returns all isomers of the stereo."""
