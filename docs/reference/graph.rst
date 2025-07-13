@@ -1,6 +1,8 @@
 Graphs
 ==================
 
+.. rst-class:: colored-ref
+
 .. list-table:: Graph Classes Comparison
    :widths: 30 20 20 15 15
    :header-rows: 1
@@ -20,12 +22,12 @@ Graphs
      - ✓
      -
      -
-   * - :class:``~stereomolgraph.StereoMolGraph``
+   * - :class:`~stereomolgraph.StereoMolGraph`
      - ✓
      -
      - ✓
      -
-   * - :class:``~stereomolgraph.StereoCondensedReactionGraph``
+   * - :class:`~stereomolgraph.StereoCondensedReactionGraph`
      - ✓
      - ✓
      - ✓
