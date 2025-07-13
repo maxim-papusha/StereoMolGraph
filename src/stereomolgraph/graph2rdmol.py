@@ -51,7 +51,7 @@ bond_type_dict = {
 }
 
 
-def _set_bond_orders(
+def set_bond_orders(
     graph: MolGraph,
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
@@ -93,7 +93,7 @@ def _set_bond_orders(
     return mol
 
 
-def _mol_graph_to_rdmol(
+def mol_graph_to_rdmol(
     graph: MolGraph,
     generate_bond_orders=False,
     allow_charged_fragments=False,
@@ -126,7 +126,7 @@ def _mol_graph_to_rdmol(
                 # mol.GetBondBetweenAtoms(i, j).SetBondType(
                 #    Chem.rdchem.BondType.SINGLE)
     if generate_bond_orders:
-        mol = _set_bond_orders(
+        mol = set_bond_orders(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
@@ -137,7 +137,7 @@ def _mol_graph_to_rdmol(
     return mol, idx_map_num_dict
 
 
-def _stereo_mol_graph_to_rdmol(
+def stereo_mol_graph_to_rdmol(
     graph: StereoMolGraph,
     generate_bond_orders=False,
     allow_charged_fragments=False,
@@ -150,13 +150,12 @@ def _stereo_mol_graph_to_rdmol(
     :return: RDKit molecule
     :rtype: Chem.rdchem.RWMol
     """
-    # print("StereoMolGraph")
     rd_tetrahedral = {
         1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW,
         -1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
         None: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL,
     }
-    mol, idx_map_num_dict = _mol_graph_to_rdmol(
+    mol, idx_map_num_dict = mol_graph_to_rdmol(
         graph,
         generate_bond_orders=generate_bond_orders,
         allow_charged_fragments=allow_charged_fragments,
@@ -392,7 +391,7 @@ def _stereo_mol_graph_to_rdmol(
                 raise Exception(f"something wrong with {b_stereo}")
 
     if generate_bond_orders:
-        mol = _set_bond_orders(
+        mol = set_bond_orders(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
@@ -401,7 +400,7 @@ def _stereo_mol_graph_to_rdmol(
     return mol, idx_map_num_dict
 
 
-def _set_crg_bond_orders(
+def set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
@@ -409,13 +408,13 @@ def _set_crg_bond_orders(
     allow_charged_fragments=False,
     charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-    r, r_idx_map_num_dict = _mol_graph_to_rdmol(
+    r, r_idx_map_num_dict = mol_graph_to_rdmol(
         graph.reactant(),
         generate_bond_orders=True,
         allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )
-    p, p_idx_map_num_dict = _mol_graph_to_rdmol(
+    p, p_idx_map_num_dict = mol_graph_to_rdmol(
         graph.product(),
         generate_bond_orders=True,
         allow_charged_fragments=allow_charged_fragments,

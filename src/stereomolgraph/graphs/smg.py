@@ -1,59 +1,36 @@
 from __future__ import annotations
 
-import warnings
-from collections import Counter, defaultdict, deque
 from copy import deepcopy
-from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import numpy as np
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-from stereomolgraph import PERIODIC_TABLE, Element
-from stereomolgraph.cartesian import are_planar, BondsFromDistance
+from stereomolgraph.cartesian import are_planar
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
     Tetrahedral,
     TrigonalBipyramidal,
-    Octahedral,
     PlanarBond,
-    Stereo,
-    SquarePlanar)
-
-
-from stereomolgraph.graph2rdmol import (
-    _mol_graph_to_rdmol,
-    _stereo_mol_graph_to_rdmol,
-    _set_crg_bond_orders
-)
-from stereomolgraph.rdmol2graph import (
-    mol_graph_from_rdmol, 
-    stereo_mol_graph_from_rdmol,
     )
+
+
+from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
+
+from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
+    
 
 if TYPE_CHECKING:
 
-    import sys
-    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias
+    from collections.abc import Iterable, Iterator, Mapping
     
     from rdkit import Chem
-    import scipy.sparse  # type: ignore
 
     from stereomolgraph.cartesian import Geometry
        
-    # Self is included in typing from 3.11
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
-
-
-
-
+    from typing import Self
 
 class StereoMolGraph(MolGraph):
     """
@@ -67,7 +44,7 @@ class StereoMolGraph(MolGraph):
     _atom_stereo: dict[int, AtomStereo]
     _bond_stereo: dict[Bond, BondStereo]
 
-    def __init__(self, mol_graph: Optional[MolGraph] = None):
+    def __init__(self, mol_graph: None | MolGraph = None):
         super().__init__(mol_graph)
         if mol_graph and isinstance(mol_graph, StereoMolGraph):
             self._atom_stereo = deepcopy(mol_graph._atom_stereo)
@@ -90,7 +67,7 @@ class StereoMolGraph(MolGraph):
 
     def get_atom_stereo(
         self, atom: AtomId
-    ) -> Optional[AtomStereo]:
+    ) -> None | AtomStereo:
         """Returns the stereo information of the atom if it exists else None.
         Raises a ValueError if the atom is not in the graph.
 
@@ -130,10 +107,10 @@ class StereoMolGraph(MolGraph):
 
     def get_bond_stereo(
         self, bond: Iterable[int]
-    ) -> Optional[BondStereo]:
+    ) -> None | BondStereo:
         """Gets the stereo information of the bond or None
         if it does not exist.
-        Raises a ValueError if the bond is not in the graph.
+        Raises a ValueError if the bond s not in the graph.
 
         :param bond: Bond
         :return: stereo information of bond
@@ -168,18 +145,6 @@ class StereoMolGraph(MolGraph):
         :param bond: Bond
         """
         del self._bond_stereo[Bond(bond)]
-
-    def delete_stereo(self, atom_or_bond: AtomId | Iterable[AtomId]):
-        """Deletes the stereo information of the atom or bond
-
-        :param atom_or_bond: Atom or Bond
-        """
-        if isinstance(atom_or_bond, int):
-            self.delete_atom_stereo(atom_or_bond)
-        elif isinstance(atom_or_bond, Iterable):
-            self.delete_bond_stereo(atom_or_bond)
-        else:
-            raise TypeError("atom_or_bond and stereo have the wrong type")
 
     def remove_atom(self, atom: int):
         """Removes an atom from the graph and deletes all chiral information
@@ -265,7 +230,7 @@ class StereoMolGraph(MolGraph):
             if all(atom in atoms for atom in atoms_set):
                 new_graph.set_atom_stereo(atoms_atom_stereo)
 
-        for bond, bond_stereo in self._bond_stereo.items():
+        for _bond, bond_stereo in self._bond_stereo.items():
             if all(atom in atoms for atom in bond_stereo.atoms):
                 new_graph.set_bond_stereo(bond_stereo)
         return new_graph
@@ -286,9 +251,9 @@ class StereoMolGraph(MolGraph):
 
     def _to_rdmol(
         self,
-        generate_bond_orders=False,
-        allow_charged_fragments=False,
-        charge=0
+        generate_bond_orders:bool=False,
+        allow_charged_fragments:bool=False,
+        charge:int=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         """
         Creates a RDKit mol object using the connectivity of the mol graph.
@@ -296,14 +261,14 @@ class StereoMolGraph(MolGraph):
 
         :return: RDKit molecule
         """
-        return _stereo_mol_graph_to_rdmol(self,
+        return stereo_mol_graph_to_rdmol(self,
                                           generate_bond_orders=generate_bond_orders,
                                           allow_charged_fragments=allow_charged_fragments,
                                           charge=charge)
         
 
     @classmethod
-    def from_rdmol(cls, rdmol, use_atom_map_number=False) -> Self:
+    def from_rdmol(cls, rdmol:Chem.Mol, use_atom_map_number:bool=False) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         All hydrogens have to be explicit.
@@ -315,28 +280,21 @@ class StereoMolGraph(MolGraph):
                                     instead of the atom index, Default: False
         :return: StereoMolGraph
         """
-        return stereo_mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
+        smg = stereo_mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
+        assert isinstance(smg, cls), "StereoMolGraph.from_rdmol did not return a StereoMolGraph"
+        return smg
 
     def _set_atom_stereo_from_geometry(self, geo: Geometry):
         for atom in range(geo.n_atoms):
-            first_neighbors = self.bonded_to(atom)
+            first_neighbors = list(self.bonded_to(atom))
 
             # extends the first layer of neighbors to the second layer
             # (if planar)
             # needed to find double bonds
             if len(first_neighbors) < 3:
                 pass
-            elif len(first_neighbors) == 3 and are_planar(
-                *(
-                    geo.coords[i]
-                    for i in (
-                        list(first_neighbors)
-                        + [
-                            atom,
-                        ]
-                    )
-                )
-            ):
+            elif (len(first_neighbors) == 3
+                  and are_planar(geo.coords[[atom, *first_neighbors]])):
                 for neighbor in first_neighbors:
                     next_layer = set(self.bonded_to(neighbor))
 
@@ -347,7 +305,7 @@ class StereoMolGraph(MolGraph):
                     if len(next_layer) != 4:
                         continue
 
-                    elif are_planar(*(geo.coords[i] for i in next_layer)):
+                    elif are_planar(geo.coords.take(tuple(next_layer), axis=0)):
                         bonded_to_atom = (
                             outer_atom
                             for outer_atom in next_layer
@@ -364,34 +322,37 @@ class StereoMolGraph(MolGraph):
                             neighbor,
                             *bonded_to_neighbor,
                         )
+                        assert len(atom_ids) == 6
                         double_bond = PlanarBond.from_coords(
-                            atom_ids, *tuple(geo.coords[i] for i in atom_ids)
-                        )
+                            atom_ids, geo.coords.take(atom_ids, axis=0))
+                        
                         self.set_bond_stereo(double_bond)
 
             elif len(first_neighbors) == 3:
                 pass
             else:
-                first_neighbors_coords = tuple(
-                    geo.coords[i] for i in first_neighbors
-                )
-                if are_planar(*first_neighbors_coords):
+                first_neighbors_coords = geo.coords[first_neighbors]
+                if are_planar(first_neighbors_coords):
                     pass
 
                 elif len(first_neighbors) == 4:
-                    atoms_atom_stereo = Tetrahedral.from_coords(
-                        (atom, *first_neighbors), None, *first_neighbors_coords
-                    )
+                    stereo_atoms = (atom, *first_neighbors)
+                    assert len(stereo_atoms) == 5
+                    stereo_coords = geo.coords.take(stereo_atoms, axis=0)
+                    atoms_atom_stereo = Tetrahedral.from_coords(stereo_atoms, stereo_coords)
+
                     self.set_atom_stereo(atoms_atom_stereo)
 
                 elif len(first_neighbors) == 5:
-                    atoms_atom_stereo = TrigonalBipyramidal.from_coords(
-                        (atom, *first_neighbors), None, *first_neighbors_coords
-                    )
+                    stereo_atoms = (atom, *first_neighbors)
+                    assert len(stereo_atoms) == 6
+                    stereo_coords = geo.coords.take(stereo_atoms, axis=0)
+                    atoms_atom_stereo = TrigonalBipyramidal.from_coords(stereo_atoms, stereo_coords)
                     self.set_atom_stereo(atoms_atom_stereo)
 
+
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[Self]) -> Self:
+    def from_composed_molgraphs(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """Creates a MolGraph object from a list of MolGraph objects.
         
         Duplicate nodes or edges are overwritten, such that the resulting
@@ -405,8 +366,8 @@ class StereoMolGraph(MolGraph):
 
         graph = cls(super().from_composed_molgraphs(mol_graphs))
         for mol_graph in mol_graphs:
-            graph._atom_stereo.update(mol_graph._atom_stereo)
-            graph._bond_stereo.update(mol_graph._bond_stereo)
+            graph._atom_stereo.update(cls(mol_graph)._atom_stereo)
+            graph._bond_stereo.update(cls(mol_graph)._bond_stereo)
         return graph
 
     @classmethod
@@ -439,7 +400,7 @@ class StereoMolGraph(MolGraph):
         return graph
 
     def get_isomorphic_mappings(
-        self, other: Self, stereo=True
+        self, other: MolGraph, stereo:bool=True
     ) -> Iterator[dict[int, int]]:
         """Isomorphic mappings between "self" and "other".
 

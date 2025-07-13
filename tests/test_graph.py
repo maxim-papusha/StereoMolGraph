@@ -2,7 +2,6 @@ from collections import defaultdict
 from copy import deepcopy
 from itertools import permutations
 
-import scipy # type: ignore
 import numpy as np
 import pytest
 import rdkit.Chem  # type: ignore
@@ -648,51 +647,31 @@ class TestCondensedReactionGraph(TestMolGraph):
 
 class TestPlanar:
     def test_are_planar_true(self):
-        p1 = np.array([0.0, 0.0, 0.0])
-        p2 = np.array([1.0, 0.0, 0.0])
-        p3 = np.array([0.0, 1.0, 0.0])
-        p4 = np.array([1.0, 1.0, 0.1])
-        assert are_planar(p1, p2, p3, p4, threshold=0.5)
+        coords = np.array([[0.0, 0.0, 0.0],[1.0, 0.0, 0.0],[0.0, 1.0, 0.0],[1.0, 1.0, 0.1]], dtype=np.float64)
+        assert are_planar(coords, threshold=0.5)
 
     def test_are_planar_false(self):
-        p1 = np.array([0.0, 0.0, 0.0])
-        p2 = np.array([1.0, 0.0, 0.0])
-        p3 = np.array([0.0, 1.0, 0.0])
-        p4 = np.array([1.0, 1.0, 1.0])
-        assert are_planar(p1, p2, p3, p4, threshold=0.5) is False
+        coords = np.array([[0.0, 0.0, 0.0],[1.0, 0.0, 0.0],[0.0, 1.0, 0.0],[1.0, 1.0, 1.0]], dtype=np.float64)
+        assert are_planar(coords, threshold=0.5) is False
 
 
 class TestTetrahedral:
     def test_from_coords(self, enantiomer_geos):
         coords1 = enantiomer_geos[0].coords
         coords2 = enantiomer_geos[1].coords
-        stereo1 = Tetrahedral.from_coords(
-            (3, 0, 1, 2, 4),
-            coords1[3],
-            coords1[0],
-            coords1[1],
-            coords1[2],
-            coords1[4]
-        )
-        stereo2 = Tetrahedral.from_coords(
-            (3, 0, 1, 2, 4), *(coords2[i] for i in (3, 0, 1, 2, 4))
-        )
+        atoms = (3, 0, 1, 2, 4)
+
+        stereo1 = Tetrahedral.from_coords(atoms, coords1.take(atoms, axis=0))
+        stereo2 = Tetrahedral.from_coords(atoms, coords2.take(atoms, axis=0))
         assert stereo1.parity == 1
         assert stereo2.parity == -1
 
     def test_from_permuted_coords(self, enantiomer_geos):
         coords = enantiomer_geos[0].coords
-        assert (
-            len(
-                {
-                    Tetrahedral.from_coords(
-                        (3, *perm), coords[3], *(coords[i] for i in perm)
-                    )
-                    for perm in permutations((0, 1, 2, 4))
-                }
-            )
-            == 1
-        )
+        different_perms = {Tetrahedral.from_coords(atoms:=(3, *perm),
+                                                   coords.take(atoms, axis=0))
+                    for perm in permutations((0, 1, 2, 4))}
+        assert len(different_perms) == 1
 
     def test_equality(self):
         stereo1 = Tetrahedral((6 ,0, 1, 2, 3), 1)
@@ -717,7 +696,7 @@ class TestTrigonalBipyramidal:
     def test_from_coords(self, data_path):
         pcl5 = Geometry.from_xyz_file(data_path / "PCl5.xyz")
         result = TrigonalBipyramidal.from_coords(
-            (0, 1, 2, 3, 4, 5), *(pcl5.coords[i] for i in (0, 1, 2, 3, 4, 5))
+            (0, 1, 2, 3, 4, 5), pcl5.coords.take((0, 1, 2, 3, 4, 5), axis=0)
         )
         assert result.parity == 1
         assert set(result.atoms) == {3, 4, 0, 1, 2, 5}

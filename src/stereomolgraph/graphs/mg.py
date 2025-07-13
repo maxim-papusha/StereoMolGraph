@@ -11,18 +11,17 @@ from stereomolgraph.periodictable import PERIODIC_TABLE, Element
 from stereomolgraph.cartesian import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.algorithms.color_refine import color_refine_mg
-from stereomolgraph.graph2rdmol import _mol_graph_to_rdmol
+from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
 from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 
 if TYPE_CHECKING:
 
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias, Self
+    from typing import Any, Optional, TypeAlias, Self, Literal
     
     from rdkit import Chem # type: ignore
 
     from stereomolgraph.cartesian import Geometry
-
 
 AtomId: TypeAlias = int
 
@@ -117,7 +116,7 @@ class MolGraph:
 
     def add_atom(
         self, atom: AtomId, atom_type: int | str | Element,
-        **attr: Mapping[str, Any]
+        **attr: Any
     ):
         """Adds atom to the MolGraph
 
@@ -229,7 +228,7 @@ class MolGraph:
         return Bond({atom1, atom2}) in self._bond_attrs
 
     def add_bond(self, atom1: AtomId, atom2: AtomId,
-                 **attr: Mapping[str, Any]):
+                 **attr: Any):
         """Adds bond between Atom1 and Atom2.
 
         :param atom1: Atom1
@@ -352,7 +351,7 @@ class MolGraph:
         allow_charged_fragments: bool = False,
         charge: int = 0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        return _mol_graph_to_rdmol(self,
+        return mol_graph_to_rdmol(self,
                                    generate_bond_orders=generate_bond_orders,
                                    allow_charged_fragments = allow_charged_fragments,
                                    charge=charge)
@@ -493,7 +492,7 @@ class MolGraph:
         Adds bonds the the graph based on bond orders from a matrix
 
         :param matrix: Bond order Matrix
-        :param threshold: Threshold for bonds to be included as edges, 
+        :param threshold: Threshold for bonds to be included as edges,
                           defaults to 0.5
         :param include_bond_order: If bond orders should be included as edge
                                    attributes, defaults to False
@@ -515,7 +514,7 @@ class MolGraph:
                 self.add_bond(int(i), int(j))
 
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[Self]) ->Self:
+    def from_composed_molgraphs(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """
         Combines all graphs in the iterable into one. Duplicate nodes or edges
         are overwritten, such that the resulting graph only contains one node
@@ -608,7 +607,7 @@ class MolGraph:
     def from_geometry(
         cls,
         geo: Geometry,
-        switching_function: Callable[tuple[Element, Element], float] = BondsFromDistance(),
+        switching_function: Callable[[float, tuple[Element, Element]], Literal[0, 1]] = BondsFromDistance(),
     ) -> Self:
         """
         Creates a graph of a molecule from a Geometry and a switching Function.

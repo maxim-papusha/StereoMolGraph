@@ -1,48 +1,33 @@
 from __future__ import annotations
 
-import warnings
-from collections import Counter, defaultdict, deque
+from collections import defaultdict
 from copy import deepcopy
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, Generic
 
-import numpy as np
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.graphs.crg import CondensedReactionGraph
-from stereomolgraph import PERIODIC_TABLE, Element
-from stereomolgraph.cartesian import are_planar, BondsFromDistance
+
+from stereomolgraph.cartesian import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
     Tetrahedral,
-    TrigonalBipyramidal,
-    Octahedral,
-    PlanarBond,
     Stereo,
-    SquarePlanar)
-
-from stereomolgraph.graph2rdmol import (
-    _mol_graph_to_rdmol,
-    _stereo_mol_graph_to_rdmol,
-    _set_crg_bond_orders
-)
-from stereomolgraph.rdmol2graph import (
-    mol_graph_from_rdmol, 
-    stereo_mol_graph_from_rdmol,
     )
+
+from stereomolgraph.graph2rdmol import set_crg_bond_orders
 
 if TYPE_CHECKING:
 
     import sys
-    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias
+    from collections.abc import Callable, Iterable, Iterator, Mapping
+    from typing import Optional
     
     from rdkit import Chem
-    import scipy.sparse  # type: ignore
 
     from stereomolgraph.cartesian import Geometry
        
@@ -52,18 +37,19 @@ if TYPE_CHECKING:
     else:
         from typing_extensions import Self
 
+S = TypeVar("S", bound="Stereo", contravariant=True)
 
 class StereoChange(Enum):
     BROKEN = "broken"
     FLEETING = "fleeting"
     FORMED = "formed"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
-class StereoChangeDict(dict[StereoChange, Stereo]):
-    def __missing__(self, key: StereoChange):
+class StereoChangeDict(dict[StereoChange, None | S], Generic[S]):
+    def __missing__(self, key: StereoChange) -> None:
         if key in StereoChange:
             return None
         else:
@@ -77,34 +63,34 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     """
 
     __slots__ = ("_atom_stereo_change", "_bond_stereo_change")
-    _atom_stereo_change: Mapping[AtomId, Mapping[StereoChange, AtomStereo]]
-    _bond_stereo_change: Mapping[Bond, Mapping[StereoChange, BondStereo]]
+    _atom_stereo_change: Mapping[AtomId, StereoChangeDict[AtomStereo]]
+    _bond_stereo_change: Mapping[Bond, StereoChangeDict[BondStereo]]
 
     def __init__(self, mol_graph: Optional[MolGraph] = None):
         super().__init__(mol_graph)
+        self._atom_stereo_change = defaultdict(StereoChangeDict[AtomStereo])
+        self._bond_stereo_change = defaultdict(StereoChangeDict[BondStereo])
+        
         if mol_graph and isinstance(mol_graph, StereoCondensedReactionGraph):
-            self._atom_stereo_change = mol_graph._atom_stereo_change.copy()
-            self._bond_stereo_change = mol_graph._bond_stereo_change.copy()
-        else:
-            self._atom_stereo_change = defaultdict(StereoChangeDict)
-            self._bond_stereo_change = defaultdict(StereoChangeDict)
+            self._atom_stereo_change.update(mol_graph._atom_stereo_change)
+            self._bond_stereo_change.update(mol_graph._bond_stereo_change)
 
     @property
-    def atom_stereo_changes(self) -> Mapping[AtomId, StereoChangeDict]:
+    def atom_stereo_changes(self) -> Mapping[AtomId, StereoChangeDict[AtomStereo]]:
         return MappingProxyType(self._atom_stereo_change)
 
     @property
-    def bond_stereo_changes(self) -> Mapping[Bond, StereoChangeDict]:
+    def bond_stereo_changes(self) -> Mapping[Bond, StereoChangeDict[BondStereo]]:
         return MappingProxyType(self._bond_stereo_change)
 
     @property
-    def stereo_changes(self) -> Mapping[AtomId | Bond, StereoChangeDict]:
+    def stereo_changes(self) -> Mapping[AtomId | Bond, StereoChangeDict[AtomStereo |BondStereo]]:
         return MappingProxyType(self._atom_stereo_change
                                 | self._bond_stereo_change)
 
     def get_atom_stereo_change(
         self, atom: int
-    ) -> Mapping[StereoChange, AtomStereo]:
+    ) -> None | Mapping[StereoChange, AtomStereo | None]:
         
         if atom in self._atom_attrs:
             if atom in self._atom_stereo_change:
@@ -116,7 +102,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
     def get_bond_stereo_change(
         self, bond: Iterable[int]
-        ) -> Mapping[StereoChange, BondStereo]:
+        ) -> None | Mapping[StereoChange, BondStereo | None]:
         
         bond = Bond(bond)
         if bond in self._bond_attrs:
@@ -134,12 +120,14 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         fleeting: Optional[AtomStereo] = None,
         formed: Optional[AtomStereo] = None,
     ):
-        if 1 != len({(atom := stereo.central_atom) for stereo in
-                         (broken, fleeting, formed)
-                         if stereo is not None}):
+        atoms: set[int] = set()
+        for stereo in (broken, fleeting, formed):
+            if stereo is not None:
+                atoms.add(stereo.central_atom)
+        if len(atoms) != 1:
             raise ValueError("Provide stereo information for one atom only")
 
-        if atom not in self._atom_attrs:
+        if (atom := atoms.pop()) not in self._atom_attrs:
             raise ValueError(f"Atom {atom} not in graph")
         for stereo_change, atom_stereo in {
             StereoChange.BROKEN: broken,
@@ -403,7 +391,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             allow_charged_fragments=allow_charged_fragments,
             charge=charge)
         if generate_bond_orders:
-            mol = _set_crg_bond_orders(graph=self,
+            mol = set_crg_bond_orders(graph=self,
                                  mol=mol,
                                  charge=charge,
                                  idx_map_num_dict=idx_map_num_dict)

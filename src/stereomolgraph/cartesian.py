@@ -2,27 +2,27 @@ from __future__ import annotations
 
 from collections import deque
 from itertools import combinations
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph import (
+from stereomolgraph.periodictable import (
     COVALENT_RADII,
     PERIODIC_TABLE,
     Element
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence
-    from os import PathLike
-    from typing import Literal, Optional, TypeVar
-    from numpy.typing import NDArray
-    
-    THREE = Literal[3]
-    N = TypeVar('N', bound=int)
-    coordsNx3 = TypeVar("coordsNx3", NDArray[tuple[int, THREE], float])
 
-def are_planar(*points: coordsNx3, threshold: float = 0.5) -> bool:
+    from collections.abc import Callable, Iterable, Sequence, Mapping
+    from os import PathLike
+    from typing import Literal, TypeVar
+
+    N = TypeVar('N', bound=int)
+
+
+def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
+               threshold: float = 0.5) -> bool:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -36,7 +36,7 @@ def are_planar(*points: coordsNx3, threshold: float = 0.5) -> bool:
     :return: True if all atoms are planar
     :rtype: bool
     """
-    if threshold < 0:
+    if threshold <= 0:
         raise ValueError("threshold has to be bigger than 0")
     if len(points) < 4:
         return True
@@ -57,47 +57,33 @@ def are_planar(*points: coordsNx3, threshold: float = 0.5) -> bool:
 
 
 def handedness(
-    p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, p4: np.ndarray
+    coords: np.ndarray[tuple[Literal[4], Literal[3]], np.dtype[np.float64]],
 ) -> Literal[1, -1]:
     """
     Calculates the orientation of the atom 4 from the plane defined
     by the first three atoms from their coordinates.
 
-    :param p1: coordinates of atom 1
-    :type p1: np.ndarray
-    :param p2: coordinates of atom 2
-    :type p2: np.ndarray
-    :param p3: coordinates of atom 3
-    :type p3: np.ndarray
-    :param p4: coordinates of atom 4
-    :type p4: np.ndarray
-    :raises ValueError: if atoms are planar
-    :return: Tetrahedral stereo
-    :rtype: Tetrahedral
+
     """
-    vec1 = p1 - p2
-    vec2 = p3 - p2
-    vec3 = p4 - p2
+    vec1 = coords[0] - coords[1]
+    vec2 = coords[2] - coords[3]
+    vec3 = coords[3] - coords[1]
     normal = np.cross(vec1, vec2)
     norm_normal = normal / np.linalg.norm(normal)
     result = int(np.sign(np.dot(norm_normal, vec3))) # type: ignore
     if result == 0:
         raise ValueError("atoms are planar")
+    assert result in (-1, 1), "result must be -1 or 1"
     return result
 
 def pairwise_distances(
-    coords: coordsNx3 [ N ],
+    coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.float64]],
 ) -> np.ndarray[tuple[N, N], np.dtype[np.float64]]:
     diff = coords[:, None] - coords[None, :]
     diff **= 2
     summed = np.sum(diff, axis=-1)
     np.sqrt(summed, out=summed)
     return summed
-
-
-class BaseGeometry(Protocol):
-    atom_types: tuple[Element, ...]
-    coords: coordsNx3
 
 
 class Geometry:
@@ -109,7 +95,7 @@ class Geometry:
     """
 
     atom_types: tuple[Element, ...]
-    coords: coordsNx3 [N]
+    coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]]
 
     @property
     def n_atoms(self) -> int:
@@ -121,7 +107,7 @@ class Geometry:
     def __init__(
         self,
         atom_types: Iterable[int | str | Element] = tuple(),
-        coords: coordsNx3 = np.empty((0, 3), dtype=np.float64),
+        coords: np.ndarray[tuple[int, int], np.dtype[np.float64]] = np.empty((0, 3), dtype=np.float64),
     ):
         self.coords = np.array(coords, dtype=np.float64)
         self.atom_types = tuple([PERIODIC_TABLE[atom] for atom in atom_types])
@@ -135,7 +121,7 @@ class Geometry:
 
     @classmethod
     def from_xyz_file(
-        cls, path: PathLike
+        cls, path: PathLike[str] | str
     ) -> Geometry:
         """Create a Geometry from an XYZ file."""
 
@@ -155,7 +141,7 @@ class Geometry:
 
         return cls(atom_types=atom_types, coords=coords)
 
-    def xyz_str(self, comment: Optional[str] = None) -> str:
+    def xyz_str(self, comment: None | str = None) -> str:
         """
         returns the xyz representation of this geometry as a string
 
@@ -185,29 +171,30 @@ CONNECTIVITY_CUTOFF_FUNC: Callable[[tuple[Element, Element]], float] = (
 )
 
 
-class _DefaultFuncDict(dict):
-    default_func: Callable
+class _DefaultFuncDict(dict[tuple[Element, Element], float]):
     """
     A dictionary that calls a default function with keys as arguments,
     when a key is missing.
     """
+    default_func: Callable[[tuple[Element, Element]], float]
+
 
     def __init__(
         self,
-        *args,
-        default_func: Callable[
-            [tuple[Element, Element]], float
-        ] = CONNECTIVITY_CUTOFF_FUNC,
-        **kwargs,
+        *,
+        default_func: Callable[[tuple[Element, Element]], float] = CONNECTIVITY_CUTOFF_FUNC,
+        **kwargs: Mapping[tuple[Element, Element], float]
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self.default_func = default_func
 
     def __missing__(self, key: tuple[Element, Element]) -> float:
         if len(key) != 2:
             raise KeyError(f"Key {key} must be a tuple of two elements.")
-        
-        ret = self.default_func(key)
+        elif (ret := self.get((key[1], key[0]), None)) is not None:
+            pass
+        else:
+            ret = self.default_func(key)
         
         self[key] = ret
 
@@ -229,12 +216,12 @@ class BondsFromDistance:
     def __init__(self, connectivity_cutoff: Callable[[tuple[Element, Element]], float] = CONNECTIVITY_CUTOFF_FUNC):
         self.connectivity_cutoff = _DefaultFuncDict(default_func=connectivity_cutoff)
 
-    def __call__(self, distance:float, atom_types: tuple[Element, Element]):
+    def __call__(self, distance:float, atom_types: tuple[Element, Element]) -> Literal[0, 1]:
         if distance < 0:
             raise ValueError('distance can not be negative')
         else:
             return 1 if distance < self.connectivity_cutoff[atom_types] else 0
 
-    def array(self, coords, atom_types: Sequence[Element]) -> np.ndarray:
+    def array(self, coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]], atom_types: Sequence[Element]) -> np.ndarray:
         return np.where(pairwise_distances(coords) < self.connectivity_cutoff.array(atom_types), 1, 0)
 

@@ -12,21 +12,18 @@ from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 
 
 from stereomolgraph.graph2rdmol import (
-    _mol_graph_to_rdmol,
-    _set_crg_bond_orders
+    mol_graph_to_rdmol,
+    set_crg_bond_orders
 )
 
 if TYPE_CHECKING:
 
-    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias, TypeVar
+    from collections.abc import Callable, Iterator, Mapping
+    from typing import Any, Self, Literal
     
     from rdkit import Chem
-
+    from stereomolgraph.periodictable import Element
     from stereomolgraph.cartesian import Geometry
-
-    G = TypeVar("G", bound="CondensedReactionGraph", covariant=True)
-
 
 
 class BondChange(Enum):
@@ -34,8 +31,8 @@ class BondChange(Enum):
     FLEETING = 0
     BROKEN = -1
 
-    def __repr__(self):
-        return self.name
+    def __repr__(self) -> str:
+        return str(self.name)
 
 
 class CondensedReactionGraph(MolGraph):
@@ -47,12 +44,12 @@ class CondensedReactionGraph(MolGraph):
 
     Two graphs are equal, iff. they are isomporhic and of the same type.
     """
-    __slots__ = tuple()
+    __slots__: tuple[str, ...] = tuple()
     _atom_attrs: dict[AtomId, dict[str, Any]]
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
 
-    def add_bond(self, atom1: int, atom2: int, **attr):
+    def add_bond(self, atom1: int, atom2: int, **attr:Any):
         """
         Adds a bond between atom1 and atom2.
 
@@ -80,7 +77,7 @@ class CondensedReactionGraph(MolGraph):
             raise ValueError("reaction bond has to have reaction attribute")
         super().set_bond_attribute(atom1, atom2, attr, value)
 
-    def add_formed_bond(self, atom1: int, atom2: int, **attr):
+    def add_formed_bond(self, atom1: int, atom2: int, **attr: Any):
         """
         Adds a bond between atom1 and atom2 with reaction attribute
         set to FORMED.
@@ -88,12 +85,14 @@ class CondensedReactionGraph(MolGraph):
         :param atom1: Atom1
         :param atom2: Atom2
         """
+
+        attr["reaction"] = BondChange.FORMED
         if atom1 in self._atom_attrs and atom2 in self._atom_attrs:
-            self.add_bond(atom1, atom2, reaction=BondChange.FORMED, **attr)
+            self.add_bond(atom1, atom2, **attr)
         else:
             raise ValueError("Atoms have to be in the graph")
 
-    def add_broken_bond(self, atom1: int, atom2: int, **attr):
+    def add_broken_bond(self, atom1: int, atom2: int, **attr: Any):
         """
         Adds a bond between atom1 and atom2 with reaction attribute
         set to BROKEN.
@@ -113,11 +112,12 @@ class CondensedReactionGraph(MolGraph):
 
         :return: formed bonds
         """
-        return {
-            bond
-            for bond in self.bonds
-            if self.get_bond_attribute(*bond, "reaction") == BondChange.FORMED
-        }
+        f_bonds: set[Bond] = set()
+        for bond in self.bonds:
+            atom1, atom2 = bond
+            if self.get_bond_attribute(atom1, atom2, "reaction") == BondChange.FORMED:
+                f_bonds.add(bond)
+        return f_bonds
 
     def get_broken_bonds(self) -> set[Bond]:
         """
@@ -125,11 +125,13 @@ class CondensedReactionGraph(MolGraph):
 
         :return: broken bonds
         """
-        return {
-            bond
-            for bond in self.bonds
-            if self.get_bond_attribute(*bond, "reaction") == BondChange.BROKEN
-        }
+        b_bonds: set[Bond] = set()
+        for bond in self.bonds:
+            atom1, atom2 = bond
+            if self.get_bond_attribute(atom1, atom2, "reaction") == BondChange.BROKEN:
+                b_bonds.add(bond)
+        return b_bonds
+        
 
     def active_atoms(self, additional_layer: int = 0) -> set[int]:
         """
@@ -150,7 +152,7 @@ class CondensedReactionGraph(MolGraph):
 
     def connectivity_matrix(
         self,
-    ) -> np.ndarray:
+    ) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
         """
         Returns a connectivity matrix of the graph. Order is the same
         as in self.atoms
@@ -180,18 +182,23 @@ class CondensedReactionGraph(MolGraph):
 
     def _to_rdmol(
         self,
-        generate_bond_orders=False,
-        allow_charged_fragments=False,
-        charge=0
+        generate_bond_orders:bool=False,
+        allow_charged_fragments:bool=False,
+        charge:int=0
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        mol, idx_map_num_dict = _mol_graph_to_rdmol(graph=self,
+        mol, idx_map_num_dict = mol_graph_to_rdmol(graph=self,
                                                     generate_bond_orders=False,
                                                     allow_charged_fragments=allow_charged_fragments,
                                                     charge=0)
-        _set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
+        set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
         return mol, idx_map_num_dict
 
-    def to_rdmol(self, *args) -> Chem.rdchem.RWMol:
+    def to_rdmol(
+        self,
+        generate_bond_orders:bool=False,
+        allow_charged_fragments:bool = False,
+        charge:int=0
+    ) -> Chem.rdchem.Mol:
         raise NotImplementedError(
             "Rdkit is not able to represent "
             "reactions as condensed reaction graphs."
@@ -261,7 +268,7 @@ class CondensedReactionGraph(MolGraph):
                 product.add_bond(*bond, **attrs)
         return product
 
-    def reverse_reaction(self) -> G:
+    def reverse_reaction(self) -> Self:
         """Creates the reaction in the opposite direction.
 
         Broken bonds are turned into formed bonds and the other way around.
@@ -280,8 +287,8 @@ class CondensedReactionGraph(MolGraph):
 
     @classmethod
     def from_reactant_and_product_graph(
-        cls: type[G], reactant_graph: MolGraph, product_graph: MolGraph
-    ) -> G:
+        cls, reactant_graph: MolGraph, product_graph: MolGraph
+    ) -> Self:
         """Creates a CondensedReactionGraph from reactant and product MolGraphs
 
         CondensedReactionGraph  is constructed from bond changes from reactant
@@ -309,7 +316,7 @@ class CondensedReactionGraph(MolGraph):
         for atom in atoms:
             crg.add_atom(
                 atom,
-                atom_type=reactant_graph.get_atom_attribute(atom, "atom_type"),
+                atom_type=reactant_graph.get_atom_type(atom),
             )
 
         bonds = {
@@ -333,8 +340,8 @@ class CondensedReactionGraph(MolGraph):
         cls,
         reactant_geo: Geometry,
         product_geo: Geometry,
-        switching_function: Callable = BondsFromDistance(),
-    ) -> G:
+        switching_function: Callable[[float, tuple[Element, Element]], Literal[0, 1]] = BondsFromDistance(),
+    ) -> Self:
         """Creates a CondensedReactionGraph from reactant
         and product Geometries.
 
@@ -356,7 +363,7 @@ class CondensedReactionGraph(MolGraph):
         product = MolGraph.from_geometry(product_geo, switching_function)
         return cls.from_reactant_and_product_graph(reactant, product)
 
-    def get_isomorphic_mappings(self, other: G) -> Iterator[dict[int, int]]:
+    def get_isomorphic_mappings(self, other: MolGraph) -> Iterator[dict[int, int]]:
         """Isomorphic mappings between "self" and "other".
 
         Generates all isomorphic mappings between "other" and "self".
@@ -366,7 +373,6 @@ class CondensedReactionGraph(MolGraph):
         :return: Mappings from the atoms of self onto the atoms of other
         :raises TypeError: Not defined for objects different types
         """
-
         return vf2pp_all_isomorphisms(
             self,
             other,
@@ -381,7 +387,7 @@ class CondensedReactionGraph(MolGraph):
         self,
         reactant: MolGraph,
         mapping: Mapping[AtomId, AtomId],
-    ) -> G:
+    ) -> Self:
         """
         Applies a reaction to the graph and returns the resulting graph.
         The reactants of the CRG have to be a subgraph of the reactant.

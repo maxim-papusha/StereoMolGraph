@@ -10,14 +10,13 @@ from stereomolgraph.graphs.scrg import StereoChange
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Optional
-    from stereomolgraph.graph import (
-         AtomId)
+    from stereomolgraph.graphs.smg import AtomId, StereoMolGraph
 
 
 def generate_stereoisomers(graph: StereoMolGraph,
                            enantiomers:bool =  True,
                            atoms: Optional[AtomId] = None,
-                           bonds: Optional[Iterable[AtomId, AtomId]] = None) -> set[StereoMolGraph]:
+                           bonds: Optional[Iterable[AtomId]] = None) -> set[StereoMolGraph]:
         """Generates all stereoisomers of a StereoMolGraph by generation of
         all combinations of parities. Only includes stereocenter which have a
         parity of None. If a parity is set, it is not changed.
