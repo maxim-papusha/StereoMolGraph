@@ -33,8 +33,6 @@ Graphs
 
 
 .. toctree::
-   
-   :maxdepth: 0
    :hidden:
    
    graphs/molgraph
