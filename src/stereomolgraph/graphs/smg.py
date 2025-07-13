@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, Literal, cast
 
 import numpy as np
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
@@ -25,12 +25,15 @@ from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
 if TYPE_CHECKING:
 
     from collections.abc import Iterable, Iterator, Mapping
-    
+
     from rdkit import Chem
 
     from stereomolgraph.cartesian import Geometry
        
     from typing import Self
+    A = TypeVar("A", bound=tuple[int, ...], covariant=True)
+    P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
+
 
 class StereoMolGraph(MolGraph):
     """
@@ -41,6 +44,7 @@ class StereoMolGraph(MolGraph):
     stereochemistry.
     """
     __slots__ = ("_atom_stereo", "_bond_stereo")
+
     _atom_stereo: dict[int, AtomStereo]
     _bond_stereo: dict[Bond, BondStereo]
 

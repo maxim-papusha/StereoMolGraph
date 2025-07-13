@@ -16,8 +16,8 @@ from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 
 if TYPE_CHECKING:
 
-    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from typing import Any, Optional, TypeAlias, Self, Literal
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
+    from typing import Any, Optional, TypeAlias, Self
     
     from rdkit import Chem # type: ignore
 
@@ -93,6 +93,15 @@ class MolGraph:
         :return: Returns all bonds in the MolGraph with their attributes
         """
         return MappingProxyType(self._bond_attrs)
+
+    @property
+    def neighbors(
+        self,
+    ) -> Mapping[AtomId, set[AtomId]]:
+        """
+        :return: Returns all neighbors of the atoms in the MolGraph
+        """
+        return MappingProxyType(self._neighbors)
 
     @property
     def n_atoms(
@@ -389,8 +398,7 @@ class MolGraph:
                                     instead of the atom index
         :return: StereoMolGraph
         """
-        return mol_graph_from_rdmol(cls, rdmol,
-                                    use_atom_map_number=use_atom_map_number)
+        return mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number) # type: ignore
 
     def relabel_atoms(
         self, mapping: dict[int, int], copy: bool = True
@@ -431,10 +439,15 @@ class MolGraph:
         :return: Returns the connected component that includes atom_id
         """
         visited: set[AtomId] = set()
-        for layer in self.bfs_layers(atom):
-            for node in layer:
-                if node not in visited:
-                    visited.add(node)
+        stack = [atom]
+        while stack:
+            node = stack.pop()
+
+            if node not in visited:
+                visited.add(node)
+            for neighbor in self.bonded_to(node):
+                if neighbor not in visited:
+                    stack.append(neighbor)
         return visited
 
     def connected_components(self) -> list[set[int]]:
@@ -607,7 +620,7 @@ class MolGraph:
     def from_geometry(
         cls,
         geo: Geometry,
-        switching_function: Callable[[float, tuple[Element, Element]], Literal[0, 1]] = BondsFromDistance(),
+        switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """
         Creates a graph of a molecule from a Geometry and a switching Function.
@@ -628,7 +641,7 @@ class MolGraph:
         )
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, MolGraph):
+        if isinstance(other, self.__class__):
             return self.is_isomorphic(other)
         return NotImplemented
 
@@ -637,39 +650,8 @@ class MolGraph:
 
     def color_refine_hash(self) -> int:
         """TODO"""
-        color_dict = color_refine_mg(self, )
+        color_dict: dict[int, int] = color_refine_mg(self, )
         return hash(tuple(sorted(Counter(color_dict.values()).items())))
-
-    def bfs_layers(self, sources: Iterable[AtomId] | AtomId
-                   ) -> Iterator[list[AtomId]]:
-        """
-        Generates layers of the graph starting from the source atoms.
-        Each layer contains all nodes that are at the same distance from the
-        sources.
-        The first layer contains the sources.
-        
-        :param sources: Sources to start from
-        """
-        if sources in self.atoms:
-            sources = [sources]
-
-        current_layer = list(sources)
-        visited = set(sources)
-
-        if any(source not in self.atoms for source in current_layer):
-            raise ValueError("Source atom not in graph")
-
-        # this is basically BFS, except that the current layer only stores
-        # the nodes at same distance from sources at each iteration
-        while current_layer:
-            yield current_layer
-            next_layer = []
-            for node in current_layer:
-                for child in self.bonded_to(node):
-                    if child not in visited:
-                        visited.add(child)
-                        next_layer.append(child)
-            current_layer = next_layer
 
     def get_subgraph_isomorphic_mappings(
         self, other: Self,

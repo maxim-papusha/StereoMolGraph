@@ -4,63 +4,27 @@ Based of VF2++ from https://doi.org/10.1016/j.dam.2018.02.018"""
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from functools import partial
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 
-#from molgraph.color_refine import label_hash
-#    color_refine_mg,
+from stereomolgraph.algorithms.color_refine import color_refine_mg, label_hash
 #    color_refine_scrg,
 #    color_refine_smg,
-#    label_hash,
-#)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
-    from typing import Any, Optional
-
-    from stereomolgraph.graph import (
+    from collections.abc import Callable, Iterable, Iterator, Hashable, Mapping
+    from typing import Optional, TypeVar
+    from stereomolgraph.stereodescriptors import Stereo
+    from stereomolgraph.graphs.scrg import StereoChange
+    from stereomolgraph.graphs import (
         AtomId,
         CondensedReactionGraph,
         MolGraph,
-        Stereo,
-        StereoChangeDict,
         StereoCondensedReactionGraph,
         StereoMolGraph,
     )
 
-
-def label_hash(
-    mg: MolGraph,
-    atom_labels: Optional[Iterable[str]] = ("atom_type",),
-    bond_labels: Optional[Iterable[str]] = None,
-) -> dict[AtomId, int]:
-    if atom_labels == ("atom_type",) and bond_labels is None:
-        atom_hash = {
-            atom: mg.get_atom_attribute(atom, "atom_type").atomic_nr
-            for atom in mg.atoms
-        }
-        #print("WTF", atom_hash)
-
-    elif atom_labels is None and bond_labels is None:
-        atom_hash = {atom: None for atom in mg.atoms}
-
-    elif atom_labels:
-        atom_labels = sorted(atom_labels)
-        atom_labels.append("atom_type")
-        bond_labels = sorted(bond_labels) if bond_labels else []
-        bond_labels.append("reaction")
-        atom_hash = {atom:
-              hash((
-            tuple([(atom_label, label_dict.get(atom_label, None))
-                   for atom_label in atom_labels]),
-            tuple(sorted([(tuple(sorted(
-                mg.get_bond_attributes(atom, nbr, bond_labels).items()))
-                           for nbr in mg.bonded_to(atom))])),
-            ))
-              for atom, label_dict in mg.atoms_with_attributes.items()
-        }
-
-    return atom_hash
+    KT = TypeVar("KT", bound=Hashable, covariant=True)
+    VT = TypeVar("VT", bound=Hashable, covariant=True)
 
 class _Parameters(NamedTuple):
     """
@@ -80,23 +44,23 @@ class _Parameters(NamedTuple):
     """
 
     # Neighborhood
-    g1_nbrhd: dict[AtomId, set[AtomId]]
-    g2_nbrhd: dict[AtomId, set[AtomId]]
+    g1_nbrhd: Mapping[AtomId, set[AtomId]]
+    g2_nbrhd: Mapping[AtomId, set[AtomId]]
     # atomid: label
-    g1_labels: dict[AtomId, int]
-    g2_labels: dict[AtomId, int]
+    g1_labels: Mapping[AtomId, int]
+    g2_labels: Mapping[AtomId, int]
     # label: set of atomids
-    nodes_of_g1Labels: dict[int, set[AtomId]]
-    nodes_of_g2Labels: dict[int, set[AtomId]]
+    nodes_of_g1Labels: Mapping[int, set[AtomId]]
+    nodes_of_g2Labels: Mapping[int, set[AtomId]]
     # degree: set of atomids
-    g1_degree: dict[AtomId, int]
-    g2_nodes_of_degree: dict[int, set[AtomId]]
+    g1_degree: Mapping[AtomId, int]
+    g2_nodes_of_degree: Mapping[int, set[AtomId]]
     # atomid: list of stereos containing the atom
-    g1_stereo: dict[AtomId, list[Stereo]]
-    g2_stereo: dict[AtomId, list[Stereo]]
+    g1_stereo: Mapping[AtomId, list[Stereo]]
+    g2_stereo: Mapping[AtomId, list[Stereo]]
 
-    g1_stereo_changes: dict[AtomId, list[StereoChangeDict]]
-    g2_stereo_changes: dict[AtomId, list[StereoChangeDict]]
+    g1_stereo_changes: Mapping[AtomId, Mapping[StereoChange, list[Stereo]]]
+    g2_stereo_changes: Mapping[AtomId, Mapping[StereoChange, list[Stereo]]]
 
 
 class _State(NamedTuple):
@@ -120,7 +84,7 @@ class _State(NamedTuple):
     external2: set[int]  # atoms not in mapping and not in frontier2
 
 
-def group_keys_by_value(many_to_one: dict[Any, Any]) -> dict[Any, set[Any]]:
+def group_keys_by_value(many_to_one: dict[KT, VT]) -> dict[VT, set[KT]]:
     """Inverts a many-to-one mapping to create a one-to-many mapping.
 
     Converts a dictionary where multiple keys may point to the same value
@@ -133,14 +97,14 @@ def group_keys_by_value(many_to_one: dict[Any, Any]) -> dict[Any, set[Any]]:
     :param many_to_one: Dictionary to invert
     :return: Inverted dictionary where each value maps to a set of keys
     """
-    inverted = defaultdict(set)
+    inverted: defaultdict[VT, set[KT]] = defaultdict(set)
     for key, value in many_to_one.items():
         inverted[value].add(key)
     return dict(inverted)
 
 
 def bfs_layers(
-    neighbor_dict: dict[AtomId, Iterable[AtomId]],
+    neighbor_dict: Mapping[AtomId, Iterable[AtomId]],
     sources: Iterable[AtomId] | AtomId,
 ) -> Iterator[list[AtomId]]:
     """
@@ -152,9 +116,9 @@ def bfs_layers(
     :param neighbor_dict: Dictionary of neighbors for each atom
     :param sources: Sources to start from
     """
-    if sources in neighbor_dict:
+    if isinstance(sources, int):
         sources = [sources]
-
+    
     current_layer = list(sources)
     visited = set(sources)
 
@@ -165,7 +129,7 @@ def bfs_layers(
     # nodes at same distance from sources at each iteration
     while current_layer:
         yield current_layer
-        next_layer = []
+        next_layer: list[AtomId] = []
         for node in current_layer:
             for child in neighbor_dict[node]:
                 if child not in visited:
@@ -190,8 +154,8 @@ def _sanity_check_and_init(
             "Subgraph isomorphism is not compatible with color refinement."
         )
 
-    g1_nbrhd = g1._neighbors
-    g2_nbrhd = g2._neighbors
+    g1_nbrhd = g1.neighbors
+    g2_nbrhd = g2.neighbors
 
     if len(g1_nbrhd) == 0 or len(g2_nbrhd) == 0:
         return None
@@ -220,12 +184,9 @@ def _sanity_check_and_init(
 
     atom_labels = ("atom_type", *labels) if labels else ("atom_type",)
 
-    max_iter = color_refine if isinstance(color_refine, int) else None
-
-    if color_refine:
-        raise NotImplementedError("Color refinement is not implemented yet. ")
+    max_iter = color_refine
     
-    elif color_refine and not stereo and not stereo_change:
+    if color_refine: # and not stereo and not stereo_change:
         g1_labels = color_refine_mg(
             g1, atom_labels=atom_labels, max_iter=max_iter
         )
@@ -233,21 +194,24 @@ def _sanity_check_and_init(
             g2, atom_labels=atom_labels, max_iter=max_iter
         )
 
-    elif color_refine and stereo and not stereo_change:
-        g1_labels = color_refine_smg(
-            g1, atom_labels=atom_labels, max_iter=max_iter
-        )
-        g2_labels = color_refine_smg(
-            g2, atom_labels=atom_labels, max_iter=max_iter
-        )
+    #elif color_refine and stereo and not stereo_change:
+    #
+        # TODO: Implement color refinement for stereo graphs
+        #g1_labels = color_refine_smg(
+        #    g1, atom_labels=atom_labels, max_iter=max_iter
+        #)
+        #g2_labels = color_refine_smg(
+        #    g2, atom_labels=atom_labels, max_iter=max_iter
+        #)
 
-    elif color_refine and stereo and stereo_change:
-        g1_labels = color_refine_scrg(
-            g1, atom_labels=atom_labels, max_iter=max_iter
-        )
-        g2_labels = color_refine_scrg(
-            g2, atom_labels=atom_labels, max_iter=max_iter
-        )
+    #elif color_refine and stereo and stereo_change:
+    #
+        #g1_labels = color_refine_scrg(
+        #    g1, atom_labels=atom_labels, max_iter=max_iter
+        #)
+        #g2_labels = color_refine_scrg(
+        ##    g2, atom_labels=atom_labels, max_iter=max_iter
+        #)
 
     elif not color_refine:
         g1_labels = label_hash(g1, atom_labels=atom_labels)
@@ -255,7 +219,8 @@ def _sanity_check_and_init(
 
     else:
         raise ValueError("Invalid combination of parameters.")
-
+    
+    
     g1_labels_counter = Counter(g1_labels.values())
     g2_labels_counter = Counter(g2_labels.values())
 
@@ -265,10 +230,14 @@ def _sanity_check_and_init(
     elif subgraph and g1_labels_counter > g2_labels_counter:
         return None
 
-    g1_stereo = defaultdict(list)
-    g2_stereo = defaultdict(list)
+    g1_stereo: defaultdict[AtomId, list[Stereo]] = defaultdict(list)
+    g2_stereo: defaultdict[AtomId, list[Stereo]] = defaultdict(list)
 
     if stereo:
+        if TYPE_CHECKING:
+            assert isinstance(g1, StereoMolGraph)
+            assert isinstance(g2, StereoMolGraph)
+
         for s in g1.stereo.values():
             for atom in s.atoms:
                 g1_stereo[atom].append(s)
@@ -277,39 +246,44 @@ def _sanity_check_and_init(
             for atom in s.atoms:
                 g2_stereo[atom].append(s)
 
-    g1_stereo_changes = defaultdict(lambda: defaultdict(list))
-    g2_stereo_changes = defaultdict(lambda: defaultdict(list))
+    g1_stereo_changes: defaultdict[AtomId, defaultdict[StereoChange, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
+
+    g2_stereo_changes: defaultdict[AtomId, defaultdict[StereoChange, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
 
     if stereo_change:
+        if TYPE_CHECKING:
+            assert isinstance(g1, StereoCondensedReactionGraph)
+            assert isinstance(g2, StereoCondensedReactionGraph)
+        
         for _, stereo_change_dict in g1.atom_stereo_changes.items():
-            for stereo_change, atom_stereo in stereo_change_dict.items():
+            for stereo_change_enum, atom_stereo in stereo_change_dict.items():
                 if atom_stereo is not None:
                     for atom in atom_stereo.atoms:
-                        g1_stereo_changes[atom][stereo_change].append(
+                        g1_stereo_changes[atom][stereo_change_enum].append(
                             atom_stereo
                         )
 
         for _, stereo_change_dict in g2.atom_stereo_changes.items():
-            for stereo_change, atom_stereo in stereo_change_dict.items():
+            for stereo_change_enum, atom_stereo in stereo_change_dict.items():
                 if atom_stereo is not None:
                     for atom in atom_stereo.atoms:
-                        g2_stereo_changes[atom][stereo_change].append(
+                        g2_stereo_changes[atom][stereo_change_enum].append(
                             atom_stereo
                         )
 
         for _, stereo_change_dict in g1.bond_stereo_changes.items():
-            for stereo_change, bond_stereo in stereo_change_dict.items():
+            for stereo_change_enum, bond_stereo in stereo_change_dict.items():
                 if bond_stereo is not None:
                     for atom in bond_stereo.atoms:
-                        g1_stereo_changes[atom][stereo_change].append(
+                        g1_stereo_changes[atom][stereo_change_enum].append(
                             bond_stereo
                         )
 
         for _, stereo_change_dict in g2.bond_stereo_changes.items():
-            for stereo_change, bond_stereo in stereo_change_dict.items():
+            for stereo_change_enum, bond_stereo in stereo_change_dict.items():
                 if bond_stereo is not None:
                     for atom in bond_stereo.atoms:
-                        g2_stereo_changes[atom][stereo_change].append(
+                        g2_stereo_changes[atom][stereo_change_enum].append(
                             bond_stereo
                         )
 
@@ -339,9 +313,9 @@ def _sanity_check_and_init(
 def _wrap_all(
     *funcs: Callable[[AtomId, AtomId, _State, _Parameters], bool],
 ) -> Callable[[AtomId, AtomId, _State, _Parameters], bool]:
-    def wrapper(*args, **kwargs):
-        return all(f(*args, **kwargs) for f in funcs)
-
+    def wrapper(a: AtomId, b: AtomId, state: _State, params: _Parameters) -> bool:
+        return all(f(a, b, state, params) for f in funcs)
+    
     return wrapper
 
 
@@ -358,7 +332,7 @@ def vf2pp_all_isomorphisms(
     bond_labels: Optional[Iterable[str]] = None,
     color_refine: bool | int = True,
     stereo: bool = False,
-    stereo_change = False,
+    stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
     if params_state := _sanity_check_and_init(
@@ -370,7 +344,7 @@ def vf2pp_all_isomorphisms(
 
     # setup helper function based on input parameters
 
-    feasibility_funcs = []
+    feasibility_funcs: list[Callable[[AtomId, AtomId, _State, _Parameters], bool]] = []
     if subgraph:
         feasibility_funcs.append(_subgraph_feasibility)
         if stereo:
@@ -387,13 +361,11 @@ def vf2pp_all_isomorphisms(
     else:
         raise ValueError("Invalid combination of parameters.")
 
-    feasibility = partial(_wrap_all(*feasibility_funcs), params=params)
-    revert_state = partial(_revert_state, params=params)
-    update_state = partial(_update_state, params=params)
-    find_candidates = partial(
-        _find_subgraph_candidates if subgraph else _find_candidates,
-        params=params,
-    )
+    feasibility = _wrap_all(*feasibility_funcs) # type: ignore
+    revert_state = _revert_state
+    update_state = _update_state
+    find_candidates = (_find_subgraph_candidates if subgraph
+                       else _find_candidates)
 
     # to avoid overhead
     mapping = state.mapping
@@ -402,7 +374,7 @@ def vf2pp_all_isomorphisms(
 
     # Initialize the stack
     node_order: list[AtomId] = _matching_order(params)
-    candidates: set[AtomId] = find_candidates(node_order[0], state)
+    candidates: set[AtomId] = find_candidates(node_order[0], state, params)
 
     stack: list[tuple[AtomId, set[AtomId]]] = []
     stack.append((node_order[0], candidates))
@@ -424,23 +396,23 @@ def vf2pp_all_isomorphisms(
                 last_atom1, _ = stack[-1]
                 last_atom2 = mapping.pop(last_atom1)
                 inverted_mapping.pop(last_atom2)
-                revert_state(last_atom1, last_atom2, state)
+                revert_state(last_atom1, last_atom2, state, params)
             continue
 
         mapping[matching_atom] = candidate
         inverted_mapping[candidate] = matching_atom
 
-        if feasibility(matching_atom, candidate, state):
+        if feasibility(matching_atom, candidate, state, params):
             if len(mapping) == termination_length:
                 yield mapping.copy()
                 mapping.pop(matching_atom)
                 inverted_mapping.pop(candidate)
                 continue
 
-            update_state(matching_atom, candidate, state)
+            update_state(matching_atom, candidate, state, params)
             # Append the next node and its candidates to the stack
             matching_atom = node_order[matching_atom_index]
-            candidates = find_candidates(matching_atom, state)
+            candidates = find_candidates(matching_atom, state, params)
             stack.append((matching_atom, candidates))
             matching_atom_index += 1
 
@@ -452,13 +424,13 @@ def vf2pp_all_isomorphisms(
 def _graph_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ):
-    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params
+    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params # type: ignore
     _, _, frontier1, external1, frontier2, external2 = state
 
-    t1_labels = []
-    t2_labels = []
-    t1_tilde_labels = []
-    t2_tilde_labels = []
+    t1_labels: list[int] = []
+    t2_labels: list[int] = []
+    t1_tilde_labels: list[int] = []
+    t2_tilde_labels: list[int] = []
 
     for n in g1_nbrhd[u]:
         if n in external1:
@@ -489,7 +461,7 @@ def _graph_feasibility(
 def _subgraph_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:
-    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params
+    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params # type: ignore
     _, _, frontier1, external1, frontier2, external2 = state
 
     counter1 = Counter(g1_labels[n] for n in g1_nbrhd[u] if n in frontier1)
@@ -532,31 +504,6 @@ def _subgraph_stereo_feasibility(
 
 def _stereo_change_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
-) -> bool:    
-    s1 = [
-        stereo.__class__(
-            atoms=tuple([state.mapping[a] for a in stereo.atoms]),
-            parity=stereo.parity,
-        )
-        for stereo in params.g1_stereo_changes[u].items()
-        if all([a in state.mapping for a in stereo.atoms])
-    ]
-
-    s2 = [
-        stereo
-        for stereo in params.g2_stereo[v]
-        if all([a in state.inverted_mapping for a in stereo.atoms])
-    ]
-
-    if len(s2) != len(s1):
-        return False
-
-    if all(s in s2 for s in s1):
-        return True
-    return False
-
-def _stereo_change_feasibility(
-    u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:
     s1 = {
         (
@@ -568,7 +515,7 @@ def _stereo_change_feasibility(
         )
         for stereo_change, stereo_list in params.g1_stereo_changes[u].items()
         for stereo in stereo_list
-        if stereo is not None
+        if stereo is not None # type: ignore
         and all([a in state.mapping for a in stereo.atoms])
     }
 
@@ -576,7 +523,7 @@ def _stereo_change_feasibility(
         (stereo_change, stereo)
         for stereo_change, stereo_list in params.g2_stereo_changes[u].items()
         for stereo in stereo_list
-        if stereo is not None
+        if stereo is not None # type: ignore
         and all([a in state.inverted_mapping for a in stereo.atoms])
     }
 
@@ -597,18 +544,15 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
         label: len(nodes) for label, nodes in nodes_of_g2Labels.items()
     }
     used_degrees = {node: 0 for node in g1_nbrhd}
-    node_order = []
+    node_order: list[int] = []
 
     while V1_unordered:
         max_rarity = min(label_rarity[g1_labels[x]] for x in V1_unordered)
         rarest_nodes = [
             n for n in V1_unordered if label_rarity[g1_labels[n]] == max_rarity
         ]
-        max_node = max(
-            rarest_nodes,
-            key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get,
-        )
-
+        max_node: AtomId = max(rarest_nodes, key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get,) # type: ignore
+        assert isinstance(max_node, int)
         for dlevel_nodes in bfs_layers(g1_nbrhd, max_node):
             nodes_to_add = dlevel_nodes.copy()
             while nodes_to_add:
@@ -689,8 +633,6 @@ def _find_subgraph_candidates(
         _,
         _,
         nodes_of_g2Labels,
-        g1_deg,
-        g2_a_of_deg,
         *_,
     ) = params
     mapping, inverted_mapping, *_, external2 = state
@@ -789,10 +731,3 @@ def _revert_state(
     if not has_covered_neighbor:
         external2.add(last_atom2)
 
-def _check_subgraph_dummy_stereo(state: _State, params: _Parameters) -> bool:
-    # TODO: check how this should be done
-    g1_stereo_changes = params.g1_stereo_changes
-    g2_stereo_changes = params.g2_stereo_changes
-
-    for a1, a2 in state.mapping.items():
-        ...

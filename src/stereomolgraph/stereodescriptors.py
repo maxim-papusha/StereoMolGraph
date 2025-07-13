@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import numpy as np
 
@@ -11,55 +11,71 @@ from stereomolgraph.cartesian import are_planar, handedness
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Set
+
     from typing_extensions import Self
 
-    from stereomolgraph.graphs.mg import AtomId
+    from stereomolgraph.graphs.mg import AtomId, Bond
 
 A = TypeVar("A", bound=tuple[int, ...], covariant=True)
 P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
 
-class _Stereo(ABC, Generic[A, P]):
+class ABCStereo(ABC, Generic[A, P]):
     """
     Base Class to represent the orientation of a group of atoms in space and
     their allowed permutations PERMUTATION_GROUP refers to the all allowed
     permutations of the atoms which are usually only rotations. Inversions are
     not chemically relevant and therefore not included in the permutations.
 
-    :ivar atoms: Atoms
-    :vartype atoms: tuple[int, ...]
-    :ivar stereo: Stereochemistry
-    :vartype stereo: Stereo
     """
 
     atoms: A
     parity: P
     PERMUTATION_GROUP: frozenset[A]
 
+    @abstractmethod
     def __init__(self, atoms: A, parity: P = None): ...
+
+    @abstractmethod
     def __eq__(self, other: Any) -> bool: ...
+
+    @abstractmethod
     def __hash__(self) -> int: ...
+
+    @abstractmethod
     def invert(self) -> Self: ...
+
+    @abstractmethod
     def get_isomers(self) -> Set[Self]:
         ...
         # """Returns all possible isomers of the stereochemistry"""
 
 
-class _AtomStereo(_Stereo[A, P], Generic[A, P]):
+class ABCAtomStereo(ABCStereo[A, P], ABC, Generic[A, P]):
     @property
     def central_atom(self) -> AtomId:
         return self.atoms[0]
 
 
-class _BondStereo(_Stereo[A, P], Generic[A, P]):
+class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
     @property
-    def bond(self) -> tuple[int, int]:
-        bond = tuple(sorted(self.atoms[2:4]))
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[2:4])
         assert len(bond) == 2
         return bond
 
 
-class _StereoMixin(_Stereo[A, P], ABC, Generic[A, P]):
+Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
+
+AtomStereo: TypeAlias = ABCAtomStereo[
+    tuple[int, ...], None | Literal[-1, 0, 1]
+]
+BondStereo: TypeAlias = ABCBondStereo[
+    tuple[int, ...], None | Literal[-1, 0, 1]
+]
+
+
+class _StereoMixin(ABCStereo[A, P], ABC, Generic[A, P]):
     __slots__ = ("atoms", "parity")
 
     def __repr__(self) -> str:
@@ -81,20 +97,12 @@ class _StereoMixin(_Stereo[A, P], ABC, Generic[A, P]):
                 for perm in self.PERMUTATION_GROUP
             )
 
-    @abstractmethod
-    def get_isomers(self) -> Set[Self]:
-        ...
-        # """Returns all possible isomers of the stereochemistry"""
-
 
 class _ChiralStereoMixin(
     _StereoMixin[A, None | Literal[1, -1]], ABC, Generic[A]
 ):
-    __slots__ = "inversion"
+    __slots__ = ("inversion",)
     inversion: A
-
-    @abstractmethod
-    def get_isomers(self) -> Set[Self]: ...
 
     def invert(self) -> Self:
         if self.parity is None:
@@ -164,10 +172,7 @@ class _ChiralStereoMixin(
 
 
 class _AchiralStereoMixin(_StereoMixin[A, None | Literal[0]], ABC, Generic[A]):
-    __slots__ = ()
-
-    @abstractmethod
-    def get_isomers(self) -> Set[Self]: ...
+    __slots__: tuple[str, ...] = ()
 
     def invert(self) -> Self:
         return self
@@ -211,14 +216,9 @@ class _AchiralStereoMixin(_StereoMixin[A, None | Literal[0]], ABC, Generic[A]):
         raise RuntimeError("Something is wrong with parity")
 
 
-Stereo = _Stereo[tuple[int, ...], None | Literal[1, 0, -1]]
-AtomStereo = _AtomStereo[tuple[int, ...], None | Literal[1, 0, -1]]
-BondStereo = _BondStereo[tuple[int, ...], None | Literal[1, 0, -1]]
-
-
 class Tetrahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int]],
-    _AtomStereo[tuple[int, int, int, int, int], None | Literal[1, -1]],
+    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
@@ -302,7 +302,7 @@ class Tetrahedral(
 
 class SquarePlanar(
     _AchiralStereoMixin[tuple[int, int, int, int, int]],
-    _AtomStereo[tuple[int, int, int, int, int], None | Literal[0]],
+    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
@@ -348,7 +348,7 @@ class SquarePlanar(
 
 class TrigonalBipyramidal(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
-    _AtomStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    ABCAtomStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
@@ -446,7 +446,7 @@ class TrigonalBipyramidal(
 
 class Octahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
-    _AtomStereo[
+    ABCAtomStereo[
         tuple[int, int, int, int, int, int, int], None | Literal[1, -1]
     ],
 ):
@@ -503,7 +503,7 @@ class Octahedral(
 
 class PlanarBond(
     _AchiralStereoMixin[tuple[int, int, int, int, int, int]],
-    _BondStereo[tuple[int, int, int, int, int, int], None | Literal[0]],
+    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
@@ -575,7 +575,7 @@ class PlanarBond(
 
 class AtropBond(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
-    _BondStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""
     Represents all possible configurations of atoms for a

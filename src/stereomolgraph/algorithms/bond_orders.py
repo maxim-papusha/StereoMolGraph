@@ -23,11 +23,11 @@ import numpy as np
 from typing import TYPE_CHECKING
         
 if TYPE_CHECKING:
-    
+    from typing import TypeVar
     from collections.abc import Sequence
 
     from stereomolgraph import Element
-
+    N = TypeVar('N', bound=int)
 
 atomic_valence:dict[int, list[int]] = defaultdict(lambda: [0,1,2,3,4,5,6,7,8])
 atomic_valence[1] = [1]
@@ -45,7 +45,7 @@ atomic_valence[35] = [1]
 atomic_valence[53] = [1]
 atomic_valence[78] = [2, 4]
 
-atomic_valence_electrons = {}
+atomic_valence_electrons: dict[int, int] = {}
 atomic_valence_electrons[1] = 1
 atomic_valence_electrons[5] = 3
 atomic_valence_electrons[6] = 4
@@ -64,10 +64,10 @@ atomic_valence_electrons[78] = 10
 
 def connectivity2bond_orders(
     atom_types: Sequence[Element],
-    connectivity_matrix: np.typing.ArrayLike,
-    allow_charged_fragments=False,
+    connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    allow_charged_fragments:bool=False,
     charge: int = 0,
-) -> tuple[list[list[int]], list[int], list[int]]:
+) -> np.ndarray[tuple[N, N], np.dtype[np.int64]]:
     """
     Calculates Bond orders from atom connectivity.
     Bond orders can be assigned automatically using the algorithm from
@@ -89,7 +89,8 @@ def connectivity2bond_orders(
     :param charge: charge of the whole molecule, defaults to 0.
     :return: bond_order_matrix, atomic_charges, atomic_valence_electrons
     """
-    assert len (atom_types) == len(connectivity_matrix), (
+    con_mat = np.array(connectivity_matrix, dtype=int)
+    assert len (atom_types) == np.shape(connectivity_matrix)[0], (
         "atom_types and connectivity_matrix have to be of the same length"
     )
     atom_nrs = [elem.atomic_nr for elem in atom_types]
@@ -98,11 +99,10 @@ def connectivity2bond_orders(
 
     # convert AC matrix to bond order (BO) matrix
     BO_matrix, atomic_valence_electrons = _AC2BO(
-            np.array(connectivity_matrix, dtype=int),
+            con_mat,
             atom_nrs,
             charge,
             allow_charged_fragments=allow_charged_fragments,
-            use_graph=False,
         )
     
     BO_valences = [sum(row) for row in BO_matrix]
@@ -136,7 +136,10 @@ def connectivity2bond_orders(
 
     return BO_matrix, charges, unpaired_electrons
 
-def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
+def _AC2BO(AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+           atom_nrs: list[int], charge: int, allow_charged_fragments:bool=True
+           ) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int64]],
+                      dict[int, int]]:
     """
 
     implemenation of algorithm shown in Figure 2
@@ -153,7 +156,7 @@ def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
     valences_list_of_lists = []
     AC_valence = list(AC.sum(axis=1))
 
-    for i, (atomicNum, valence) in enumerate(zip(atoms, AC_valence)):
+    for i, (atomicNum, valence) in enumerate(zip(atom_nrs, AC_valence)):
         # valence can't be smaller than number of neighbourgs
         possible_valence = [
             x for x in atomic_valence[atomicNum] if x >= valence
@@ -182,7 +185,7 @@ def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
                 charge,
                 DU_from_AC,
                 atomic_valence_electrons,
-                atoms,
+                atom_nrs,
                 valences,
                 allow_charged_fragments=allow_charged_fragments,
             )
@@ -192,10 +195,10 @@ def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
         if check_len and check_bo:
             return AC, atomic_valence_electrons
 
-        UA_pairs_list = _get_UA_pairs(UA, AC, use_graph=use_graph)
+        UA_pairs_list = _get_UA_pairs(UA, AC)
         for UA_pairs in UA_pairs_list:
             BO = _get_BO(
-                AC, UA, DU_from_AC, valences, UA_pairs, use_graph=use_graph
+                AC, UA, DU_from_AC, valences, UA_pairs
             )
             status = _BO_is_OK(
                 BO,
@@ -203,7 +206,7 @@ def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
                 charge,
                 DU_from_AC,
                 atomic_valence_electrons,
-                atoms,
+                atom_nrs,
                 valences,
                 allow_charged_fragments=allow_charged_fragments,
             )
@@ -213,7 +216,7 @@ def _AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=False):
                 charge,
                 DU_from_AC,
                 atomic_valence_electrons,
-                atoms,
+                atom_nrs,
                 valences,
                 allow_charged_fragments=allow_charged_fragments,
             )
@@ -241,7 +244,7 @@ def _get_UA(maxValence_list, valence_list):
         DU.append(maxValence - valence)
     return UA, DU
 
-def _get_BO(AC, UA, DU, valences, UA_pairs, use_graph=False):
+def _get_BO(AC, UA, DU, valences, UA_pairs):
     BO = AC.copy()
     DU_save = []
 
@@ -253,7 +256,7 @@ def _get_BO(AC, UA, DU, valences, UA_pairs, use_graph=False):
         BO_valence = list(BO.sum(axis=1))
         DU_save = copy.copy(DU)
         UA, DU = _get_UA(valences, BO_valence)
-        UA_pairs = _get_UA_pairs(UA, AC, use_graph=use_graph)[0]
+        UA_pairs = _get_UA_pairs(UA, AC)[0]
 
     return BO
 
@@ -271,7 +274,7 @@ def _BO_is_OK(
     charge,
     DU,
     atomic_valence_electrons,
-    atoms,
+    atom_nrs,
     valences,
     allow_charged_fragments=True,
 ):
@@ -286,7 +289,7 @@ def _BO_is_OK(
         charge,
         DU,
         atomic_valence_electrons,
-        atoms,
+        atom_nrs,
         valences,
         allow_charged_fragments,
     )
@@ -302,7 +305,7 @@ def _charge_is_OK(
     charge,
     DU,
     atomic_valence_electrons,
-    atoms,
+    atom_nrs,
     valences,
     allow_charged_fragments=True,
 ):
@@ -314,7 +317,7 @@ def _charge_is_OK(
 
     if allow_charged_fragments:
         BO_valences = list(BO.sum(axis=1))
-        for i, atom in enumerate(atoms):
+        for i, atom in enumerate(atom_nrs):
             q = _get_atomic_charge(
                 atom, atomic_valence_electrons[atom], BO_valences[i]
             )
@@ -333,7 +336,7 @@ def _charge_is_OK(
 
     return charge == Q
 
-def _get_UA_pairs(UA, AC, use_graph=False):
+def _get_UA_pairs(UA, AC):
     bonds = _get_bonds(UA, AC)
 
     if len(bonds) == 0:

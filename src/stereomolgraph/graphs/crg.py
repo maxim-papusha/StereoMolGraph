@@ -340,7 +340,7 @@ class CondensedReactionGraph(MolGraph):
         cls,
         reactant_geo: Geometry,
         product_geo: Geometry,
-        switching_function: Callable[[float, tuple[Element, Element]], Literal[0, 1]] = BondsFromDistance(),
+        switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """Creates a CondensedReactionGraph from reactant
         and product Geometries.
@@ -383,28 +383,5 @@ class CondensedReactionGraph(MolGraph):
             # labels=["reaction"],
         )
 
-    def apply_reaction(
-        self,
-        reactant: MolGraph,
-        mapping: Mapping[AtomId, AtomId],
-    ) -> Self:
-        """
-        Applies a reaction to the graph and returns the resulting graph.
-        The reactants of the CRG have to be a subgraph of the reactant.
-        Mappings from crg atoms to the reactant can be provided.
-        Atom numberig from the reactant is kept in the resulting graph.
 
-        :param reaction: Reaction to apply
-        :param mapping: Mappings from reactant atoms to crg atoms
-        :return: Resulting graph
-        """
-        crg = self.__class__(reactant)
-
-        for a1, a2 in self.get_formed_bonds():
-            crg.add_formed_bond(mapping[a1], mapping[a2])
-        for a1, a2 in self.get_broken_bonds():
-            crg.remove_bond(mapping[a1], mapping[a2])
-            crg.add_broken_bond(mapping[a1], mapping[a2])
-
-        return crg
 

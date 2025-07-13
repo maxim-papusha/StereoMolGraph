@@ -594,19 +594,6 @@ class TestCondensedReactionGraph(TestMolGraph):
             chiral_reactant_geo, chiral_product_geo2
         )
 
-    def test_apply_reaction(self, chiral_reactant_graph, chiral_product_graph1,
-                            chiral_reaction_scrg1):
-
-        created = chiral_reaction_scrg1.apply_reaction(chiral_reactant_graph,
-                                    {i:i for i in chiral_product_graph1.atoms})
-
-        assert set(chiral_reaction_scrg1.atoms) == set(created.atoms)
-        assert set(chiral_reaction_scrg1.bonds) == set(created.bonds)
-        
-        assert chiral_reaction_scrg1.product() == created.product()
-        assert chiral_reaction_scrg1.reactant() == created.reactant()
-        assert chiral_reaction_scrg1 == created
-
 
     def test_reverse_reaction(self, chiral_reaction_scrg1):
         reversed_reaction = chiral_reaction_scrg1.reverse_reaction()
