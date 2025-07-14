@@ -1,3 +1,4 @@
+# pyright: standard
 from __future__ import annotations
 
 from rdkit import Chem # type: ignore
@@ -18,7 +19,7 @@ def default_view_molgraph(graph):
     View2D()(graph)
 
 
-MolGraph._repr_svg_ = default_repr_svg
+#MolGraph._repr_svg_ = default_repr_svg
 MolGraph._ipython_display_ = default_view_molgraph
 
 
@@ -112,8 +113,8 @@ class View2D(NamedTuple):
                         bonds_to_highlight.append(bond.GetIdx())
                         highlight_bond_colors[bond.GetIdx()] = grey
 
-        Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True)
-        Chem.rdDepictor.StraightenDepiction(mol)
+        Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True) # type: ignore
+        Chem.rdDepictor.StraightenDepiction(mol) # type: ignore
 
         drawer = Draw.rdMolDraw2D.MolDraw2DSVG(self.width, self.height)
 
@@ -147,4 +148,4 @@ class View2D(NamedTuple):
         # imported here, so that this module does not depend on IPython
         from IPython.display import SVG
         svg = self.svg(graph)
-        display(SVG(svg.replace("svg:", "")))  # noqa
+        display(SVG(svg.replace("svg:", "")))  # type: ignore # noqa
