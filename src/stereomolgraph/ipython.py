@@ -22,8 +22,8 @@ MolGraph._ipython_display_ = default_view_molgraph
 
 
 class View2D(NamedTuple):
-    height: float = 300.0
-    width: float = 300.0
+    height: int = 300
+    width: int = 300
     show_atom_numbers: bool = True
     show_h: bool = True
     generate_bond_orders: bool = False

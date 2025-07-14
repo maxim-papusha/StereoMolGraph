@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from stereomolgraph.coords import Geometry
     N = TypeVar("N", bound=int)
+
 AtomId: TypeAlias = int
 
 Bond: TypeAlias = frozenset[AtomId]

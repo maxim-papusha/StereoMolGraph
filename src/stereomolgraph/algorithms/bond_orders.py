@@ -63,10 +63,10 @@ atomic_valence_electrons[78] = 10
 
 def connectivity2bond_orders(
     atom_types: Sequence[Element],
-    connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.flexible]],
     allow_charged_fragments:bool=False,
     charge: int = 0,
-) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int64]],
+) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int8]],
            list[int],
            list[int]]:
     """
@@ -137,9 +137,9 @@ def connectivity2bond_orders(
 
     return BO_matrix, charges, unpaired_electrons
 
-def _AC2BO(AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+def _AC2BO(AC: np.ndarray[tuple[N, N], np.dtype[np.int8]],
            atom_nrs: list[int], charge: int, allow_charged_fragments:bool=True
-           ) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int64]],
+           ) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int8]],
                       dict[int, int]]:
     """
 
@@ -266,7 +266,7 @@ def _get_BO(AC: np.ndarray[tuple[N, N]],
 
     return BO
 
-def _valences_not_too_large(BO: np.ndarray[tuple[N, N], np.dtype[np.int64]], valences: Sequence[int]) -> bool:
+def _valences_not_too_large(BO: np.ndarray[tuple[N, N], np.dtype[np.int8]], valences: Sequence[int]) -> bool:
     number_of_bonds_list = BO.sum(axis=1)
     for valence, number_of_bonds in zip(valences, number_of_bonds_list):
         if number_of_bonds > valence:
@@ -275,8 +275,8 @@ def _valences_not_too_large(BO: np.ndarray[tuple[N, N], np.dtype[np.int64]], val
     return True
 
 def _BO_is_OK(
-    BO : np.ndarray[tuple[N, N], np.dtype[np.int64]],
-    AC : np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    BO : np.ndarray[tuple[N, N], np.dtype[np.int8]],
+    AC : np.ndarray[tuple[N, N], np.dtype[np.int8]],
     charge : int,
     DU: list[int],
     atomic_valence_electrons: dict[int, int],
@@ -306,8 +306,8 @@ def _BO_is_OK(
     return False
 
 def _charge_is_OK(
-    BO: np.ndarray[tuple[N, N], np.dtype[np.int64]],
-    AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    BO: np.ndarray[tuple[N, N], np.dtype[np.int8]],
+    AC: np.ndarray[tuple[N, N], np.dtype[np.int8]],
     charge: int,
     DU: list[int],
     atomic_valence_electrons: dict[int, int],
@@ -342,7 +342,7 @@ def _charge_is_OK(
 
     return charge == q_tot
 
-def _get_UA_pairs(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int64]]
+def _get_UA_pairs(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int8]]
                    ) -> list[tuple[()]] | list[tuple[tuple[int, int], ...]]:
     bonds = _get_bonds(UA, AC)
 
@@ -363,7 +363,7 @@ def _get_UA_pairs(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int
 
     return UA_pairs
 
-def _get_bonds(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int64]]) -> list[tuple[int, int]]:
+def _get_bonds(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int8]]) -> list[tuple[int, int]]:
     bonds: list[tuple[int, int]] = []
 
     for k, i in enumerate(UA):
