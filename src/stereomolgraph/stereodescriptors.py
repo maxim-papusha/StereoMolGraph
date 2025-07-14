@@ -22,7 +22,8 @@ P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
 class ABCStereo(ABC, Generic[A, P]):
     """
-    Base Class to represent the orientation of a group of atoms in space.
+    :class:`~typing.Generic` Class to represent the orientation of a group of
+    atoms in space.
     This is used to represent local stereochemistry and simultanously the
     hybridization of atoms.
     """
