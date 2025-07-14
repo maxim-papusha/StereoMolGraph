@@ -60,8 +60,8 @@ pythonpath = ["."]
 # addopts = "--cov"
 
 [tool.pyright]
-include = ["."]
-strict = true
+include = ["src"]
+exclude = ["tests", "examples"]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]
