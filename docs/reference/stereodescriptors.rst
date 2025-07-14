@@ -9,8 +9,6 @@ Stereodescriptors are standardized notations that precisely define the 3D spatia
 
 They serve as fundamental building blocks for representing molecular stereochemical perception in algorithms.
 
-Core Principles
-----------------
 
 **Order Sensitivity**  
 Stereodescriptor assignments depend critically on the input order of ligand atoms.
@@ -18,8 +16,6 @@ Stereodescriptor assignments depend critically on the input order of ligand atom
 **Permutation Invariance**  
 Within their defined symmetry group, stereodescriptors are invariant to permitted atom permutations.
 
-Practical Implementation
---------------------------
 
 **Chiral Centers**  
 Tetrahedral atoms and other chiral elements use ``1``/``-1`` parity to distinguish enantiomers.   
@@ -37,20 +33,80 @@ The ``None`` parity is used for:
 When using stereodescriptors, remember they encode *local* configuration. Global molecular chirality emerges from combinations of local descriptors and molecular topology.
 
 
-.. autoclass:: stereomolgraph.stereodescriptors.Tetrahedral
+.. autoclass:: stereomolgraph.stereodescriptors.ABCStereo
+    :no-index-entry:
     :members:
+    :member-order: bysource
+
+.. autoclass:: stereomolgraph.stereodescriptors.Stereo
+
+.. autoclass:: stereomolgraph.stereodescriptors.ABCAtomStereo
+    :show-inheritance:
+    :no-index-entry:
+    :members:
+    :member-order: alphabetical
+
+.. autoclass:: stereomolgraph.stereodescriptors.ABCBondStereo
+    :show-inheritance:
+    :no-index-entry:
+    :members:
+    :member-order: alphabetical
+
+.. autoclass:: stereomolgraph.stereodescriptors.AtomStereo
+
+.. autoclass:: stereomolgraph.stereodescriptors.BondStereo 
+
+.. autoclass:: stereomolgraph.stereodescriptors.Tetrahedral
+    :no-index-entry:
+    :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.SquarePlanar
+    :no-index-entry:
     :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.TrigonalBipyramidal
+    :no-index-entry:
     :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.Octahedral
+    :no-index-entry:
     :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.PlanarBond
+    :no-index-entry:
     :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
 
 .. autoclass:: stereomolgraph.stereodescriptors.AtropBond
+    :no-index-entry:
     :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance: 
+
+
+.. autoclass:: stereomolgraph.stereodescriptors._StereoMixin
+    :members:
+    :member-order: alphabetical
+
+.. autoclass:: stereomolgraph.stereodescriptors._AchiralStereoMixin
+    :members:
+    :member-order: alphabetical
+
+.. autoclass:: stereomolgraph.stereodescriptors._ChiralStereoMixin
+    :members:
+    :member-order: alphabetical

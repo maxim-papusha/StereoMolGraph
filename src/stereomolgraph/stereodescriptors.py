@@ -3,65 +3,100 @@ from __future__ import annotations
 import itertools
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import numpy as np
 
-from stereomolgraph.cartesian import are_planar, handedness
+from stereomolgraph.coords import are_planar, handedness
 
 if TYPE_CHECKING:
-    import sys
-    from collections.abc import Iterator
-    from typing import Any, Literal, Optional
+    from collections.abc import Generator, Set
 
-    from stereomolgraph.graph import AtomId
+    from typing_extensions import Self
 
-    # Self is included in typing from 3.11
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
+    from stereomolgraph.graphs.mg import AtomId, Bond
+
+A = TypeVar("A", bound=tuple[int, ...], covariant=True)
+P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
 
-class Stereo(Protocol):
-    """Base Class to represent the orientation of a group of atoms in space and
-    their allowed permutations PERMUTATION_GROUP refers to the all allowed
-    permutations of the atoms which are usually only rotations. Inversions are
-    not chemically relevant and therefore not included in the permutations.
-
-    :ivar atoms: Atoms
-    :vartype atoms: tuple[int, ...]
-    :ivar stereo: Stereochemistry
-    :vartype stereo: Stereo
+class ABCStereo(ABC, Generic[A, P]):
+    """
+    :class:`~typing.Generic` Class to represent the orientation of a group of
+    atoms in space.
+    This is used to represent local stereochemistry and simultanously the
+    hybridization of atoms.
     """
 
-    atoms: tuple[int, ...]
-    parity: Optional[Literal[1, 0, -1]]
-    PERMUTATION_GROUP: tuple[tuple[int, ...]]
+    atoms: A
+    """Atoms are a order dependent tuple of integers."""
 
-    def __eq__(self, other: Any) -> bool: ...
-    def __hash__(self) -> int: ...
-    def get_isomers(self) -> tuple[Self]:
-        """Returns all possible isomers of the stereochemistry"""
+    parity: P
+    """parity is a number that defines the orientation of the atoms. If None,
+    the relative orientation of the atoms is not defined.
+    If 0 the orientation is defined and part of a achiral stereochemistry.
+    If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
+    """
 
+    PERMUTATION_GROUP: frozenset[A]
+    """Defines all allowed permutations defined by the symmetry group under
+    which the stereochemistry is invariant."""
 
-class _BaseStereo(ABC):
-    __slots__ = ("atoms", "parity")
-
-    atoms: tuple[int, ...]
-
-    @property
     @abstractmethod
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, ...], ...]: ...
+    def __init__(self, atoms: A, parity: P = None): ...
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> bool: ...
+
+    @abstractmethod
+    def __hash__(self) -> int: ...
+
+    @abstractmethod
+    def invert(self) -> Self:
+        """Inverts the stereo. If the stereo is achiral, it returns itself."""
+
+    @abstractmethod
+    def get_isomers(self) -> Set[Self]:
+        """Returns all stereoisomers of the stereochemistry. Not just the
+        inverted ones, but all possible stereoisomers."""
+
+
+Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
+
+
+class ABCAtomStereo(ABCStereo[A, P], ABC, Generic[A, P]):
+    @property
+    def central_atom(self) -> AtomId:
+        return self.atoms[0]
+
+
+class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[2:4])
+        assert len(bond) == 2
+        return bond
+
+
+AtomStereo: TypeAlias = ABCAtomStereo[
+    tuple[int, ...], None | Literal[-1, 0, 1]
+]
+BondStereo: TypeAlias = ABCBondStereo[
+    tuple[int, ...], None | Literal[-1, 0, 1]
+]
+
+
+class _StereoMixin(ABCStereo[A, P], ABC, Generic[A, P]):
+    __slots__ = ("atoms", "parity")
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.atoms}, {self.parity})"
 
-    def __init__(self, atoms: tuple[int, ...], parity: None | Literal[1, 0, -1] = None):
+    def __init__(self, atoms: A, parity: P = None):
         self.atoms = atoms
         self.parity = parity
 
-    def _perm_atoms(self) -> Iterator[tuple[int, ...]]:
+    def _perm_atoms(self) -> Generator[tuple[int, ...], None, None]:
         if self.parity is None:
             return (
                 tuple([self.atoms[i] for i in perm])
@@ -69,50 +104,26 @@ class _BaseStereo(ABC):
             )
         else:
             return (
-                tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
+                tuple([self.atoms[i] for i in perm])
+                for perm in self.PERMUTATION_GROUP
             )
 
-    def get_isomers(self) -> tuple[Self]:
-        """Returns all possible isomers of the stereochemistry"""
-        return (self,)
 
-
-class NoStereo(_BaseStereo):
-    __slots__ = ()
-    atoms: tuple[int, ...]
-    parity: None
-
-    def __init__(self, atoms: tuple[int, ...], parity: None = None):
-        super().__init__(atoms=atoms, parity=parity)
-        if parity is not None:
-            raise ValueError("No stereo defined for this class")
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, ...], ...]:
-        return tuple(itertools.permutations(range(len(self.atoms))))
-
-
-class _BaseChiralStereo(_BaseStereo, ABC):
-    __slots__ = ()
-    parity: Optional[Literal[1, -1]]
-
-    @staticmethod
-    @abstractmethod
-    def _invert_atoms(atoms: tuple[int, ...]) -> tuple[int, ...]: ...
-
-    @abstractmethod
-    def get_isomers(self) -> tuple[Self, Self]: ...
+class _ChiralStereoMixin(
+    _StereoMixin[A, None | Literal[1, -1]], ABC, Generic[A]
+):
+    __slots__ = ("inversion",)
+    inversion: A
 
     def invert(self) -> Self:
         if self.parity is None:
             return self
         return self.__class__(self.atoms, self.parity * -1)
 
-    def _inverted_atoms(self) -> tuple[int, ...]:
-        if self.parity is None:
-            return self.atoms
-        else:
-            return self._invert_atoms(self.atoms)
+    def _inverted_atoms(self) -> A:
+        atoms = tuple([self.atoms[i] for i in self.inversion])
+        assert len(atoms) == len(self.atoms) == len(self.inversion)
+        return atoms  # type: ignore[return-value]
 
     def __eq__(self, other: Any) -> bool:
         if other.parity == 0:
@@ -122,7 +133,9 @@ class _BaseChiralStereo(_BaseStereo, ABC):
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
 
-        if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
+        if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
+            set_o_atoms
+        ):
             return False
 
         if self.parity is None or other.parity is None:
@@ -131,7 +144,9 @@ class _BaseChiralStereo(_BaseStereo, ABC):
             return False
 
         elif self.parity == other.parity:
-            if o_atoms == s_atoms or any(o_atoms == p for p in self._perm_atoms()):
+            if o_atoms == s_atoms or any(
+                o_atoms == p for p in self._perm_atoms()
+            ):
                 return True
             return False
 
@@ -146,7 +161,10 @@ class _BaseChiralStereo(_BaseStereo, ABC):
         if self.parity is None:
             return hash(frozenset(Counter(self.atoms).items()))
         perm = frozenset(
-            {tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP}
+            {
+                tuple([self.atoms[i] for i in perm])
+                for perm in self.PERMUTATION_GROUP
+            }
         )
 
         inverted_perm = frozenset(
@@ -164,9 +182,11 @@ class _BaseChiralStereo(_BaseStereo, ABC):
             raise RuntimeError("Something is wrong with parity")
 
 
-class _BaseAchiralStereo(_BaseStereo):
-    __slots__ = ()
-    parity: Optional[Literal[0]]
+class _AchiralStereoMixin(_StereoMixin[A, None | Literal[0]], ABC, Generic[A]):
+    __slots__: tuple[str, ...] = ()
+
+    def invert(self) -> Self:
+        return self
 
     def __eq__(self, other: Any) -> bool:
         if other.parity in (1, -1):
@@ -176,7 +196,9 @@ class _BaseAchiralStereo(_BaseStereo):
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
 
-        if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
+        if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
+            set_o_atoms
+        ):
             return False
 
         if self.parity is None or other.parity is None:
@@ -205,19 +227,10 @@ class _BaseAchiralStereo(_BaseStereo):
         raise RuntimeError("Something is wrong with parity")
 
 
-class AtomStereo(Stereo):
-    @property
-    def central_atom(self) -> AtomId:
-        return self.atoms[0]
-
-
-class BondStereo(Stereo):
-    @property
-    def bond(self) -> tuple[int, int]:
-        return tuple(sorted(self.atoms[2:4]))
-
-
-class Tetrahedral(_BaseChiralStereo, AtomStereo):
+class Tetrahedral(
+    _ChiralStereoMixin[tuple[int, int, int, int, int]],
+    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[1, -1]],
+):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
 
@@ -238,27 +251,9 @@ class Tetrahedral(_BaseChiralStereo, AtomStereo):
     """
 
     __slots__ = ()
-    atoms: tuple[int, int, int, int, int]
-    parity: None | Literal[1, -1]
-
-    def __init__(
-        self,
-        atoms: tuple[int, int, int, int, int],
-        parity: None | Literal[1, -1] = None,
-    ):
-        if len(atoms) != 5:
-            raise ValueError("Tetrahedral stereochemistry has 5 atoms")
-        super().__init__(atoms=atoms, parity=parity)
-
-    def get_isomers(self) -> tuple[Self, Self]:
-        return {
-            Tetrahedral(atoms=self.atoms, parity=1),
-            Tetrahedral(atoms=self.atoms, parity=-1),
-        }
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, int, int, int, int], ...]:
-        return (
+    inversion = (0, 2, 1, 3, 4)
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4),
             (0, 3, 1, 2, 4),
             (0, 2, 3, 1, 4),
@@ -271,44 +266,47 @@ class Tetrahedral(_BaseChiralStereo, AtomStereo):
             (0, 2, 4, 3, 1),
             (0, 3, 2, 4, 1),
             (0, 4, 3, 2, 1),
-        )
+        }
+    )
 
-    @staticmethod
-    def _invert_atoms(atoms) -> tuple[int, ...]:
-        return tuple([atoms[i] for i in (0, 2, 1, 3, 4)])
+    def __init__(
+        self,
+        atoms: tuple[int, int, int, int, int],
+        parity: None | Literal[1, -1] = None,
+    ):
+        super().__init__(atoms=atoms, parity=parity)
+
+    def get_isomers(self) -> set[Self]:
+        return {
+            self.__class__(atoms=self.atoms, parity=1),
+            self.__class__(atoms=self.atoms, parity=-1),
+        }
 
     @classmethod
     def from_coords(
         cls,
         atoms: tuple[int, int, int, int, int],
-        _,  # central atom
-        p1: np.ndarray,
-        p2: np.ndarray,
-        p3: np.ndarray,
-        p4: np.ndarray,
+        coords: np.ndarray[
+            tuple[Literal[5], Literal[3]], np.dtype[np.float64]
+        ],
     ) -> Self:
         """
         Creates the representation of a Tetrahedral Stereochemistry
         from the coordinates of the atoms.
+
         :param atoms: Atoms of the stereochemistry
-        :type atoms: tuple[int, int, int, int]
-        :param p1: coordinates of atom 1
-        :type p1: np.ndarray
-        :param p2: coordinates of atom 2
-        :type p2: np.ndarray
-        :param p3: coordinates of atom 3
-        :type p3: np.ndarray
-        :param p4: coordinates of atom 4
-        :type p4: np.ndarray
-        ...
-        :return: Tetrahedral
-        :rtype: Tetrahedral
+        :param coords: nAtomsx3 numpy array with cartesian coordinates
         """
-        orientation = handedness(p1, p2, p3, p4)
-        return cls(atoms, orientation)
+        orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
+        int_orientation = int(orientation)
+        assert int_orientation in (1, -1), f"Orientation {orientation} is not valid for Tetrahedral stereochemistry."
+        return cls(atoms, int_orientation)
 
 
-class SquarePlanar(_BaseAchiralStereo, AtomStereo):
+class SquarePlanar(
+    _AchiralStereoMixin[tuple[int, int, int, int, int]],
+    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[0]],
+):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
 
@@ -326,22 +324,8 @@ class SquarePlanar(_BaseAchiralStereo, AtomStereo):
     """
 
     __slots__ = ()
-    atoms: tuple[int, int, int, int, int]
-    parity: None | Literal[0]
-
-    @property
-    def central_atom(self) -> AtomId:
-        return self.atoms[0]
-
-    def get_isomers(self) -> tuple[Self, ...]:
-        return {
-            SquarePlanar(atoms=(self.atoms[0], *perm), parity=0)
-            for perm in itertools.permutations(self.atoms[1:])
-        }
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, int, int, int, int], ...]:
-        return (
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4),
             (0, 2, 3, 4, 1),
             (0, 3, 4, 1, 2),
@@ -350,10 +334,25 @@ class SquarePlanar(_BaseAchiralStereo, AtomStereo):
             (0, 3, 2, 1, 4),
             (0, 2, 1, 4, 3),
             (0, 1, 4, 3, 2),
-        )
+        }
+    )
+
+    @property
+    def central_atom(self) -> AtomId:
+        return self.atoms[0]
+
+    def get_isomers(self) -> set[SquarePlanar]:
+        return {
+            SquarePlanar(atoms=atoms, parity=0)
+            for perm in itertools.permutations(self.atoms[1:])
+            if len(atoms := (self.atoms[0], *perm)) == 5
+        }
 
 
-class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
+class TrigonalBipyramidal(
+    _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
+    ABCAtomStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
 
@@ -375,43 +374,33 @@ class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
     """
 
     __slots__ = ()
-    atoms: tuple[int, int, int, int, int, int]
-    parity: None | Literal[1, -1]
-
-    def get_isomers(self) -> tuple[Self, ...]:
-        return {
-            TrigonalBipyramidal(atoms=(self.atoms[0], *perm), parity=p)
-            for perm in itertools.permutations(self.atoms[1:])
-            for p in (1, -1)
-        }
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, int, int, int, int, int], ...]:
-        return (
+    inversion = (0, 1, 2, 3, 5, 4)
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4, 5),
             (0, 1, 2, 5, 3, 4),
             (0, 1, 2, 4, 5, 3),
             (0, 2, 1, 3, 5, 4),
             (0, 2, 1, 5, 4, 3),
             (0, 2, 1, 4, 3, 5),
-        )
+        }
+    )
 
-    @staticmethod
-    def _invert_atoms(
-        atoms: tuple[int, int, int, int, int, int],
-    ) -> tuple[int, int, int, int, int, int]:
-        return tuple([atoms[i] for i in (0, 1, 2, 3, 5, 4)])
+    def get_isomers(self) -> set[Self]:
+        return {
+            self.__class__(atoms=atoms, parity=p)
+            for perm in itertools.permutations(self.atoms[1:])
+            for p in (1, -1)
+            if len(atoms := (self.atoms[0], *perm)) == 6
+        }
 
     @classmethod
     def from_coords(
-        cls: type[Self],
+        cls: type[TrigonalBipyramidal],
         atoms: tuple[int, int, int, int, int, int],
-        _,
-        p1: np.ndarray,
-        p2: np.ndarray,
-        p3: np.ndarray,
-        p4: np.ndarray,
-        p5: np.ndarray,
+        coords: np.ndarray[
+            tuple[Literal[6], Literal[3]], np.dtype[np.float64]
+        ],
     ) -> TrigonalBipyramidal:
         """
         calculates the distance of the atom 5 from the plane defined by the
@@ -428,36 +417,43 @@ class TrigonalBipyramidal(_BaseChiralStereo, AtomStereo):
         # If four atoms are in one plane the structure is a tetragonal pyramid.
 
         # coords_dict
-        central_atom, *atoms = atoms
-        cd: dict[int, Any] = {
-            i: coords for i, coords in zip(atoms, [p1, p2, p3, p4, p5])
-        }
+        index = (1, 2, 3, 4, 5)
 
-        for comb in itertools.combinations(iterable=cd.keys(), r=3):
-            i, j = [x for x in set(cd.keys()) - set(comb)]
-            if are_planar(cd[comb[0]], cd[comb[1]], cd[comb[2]], cd[i]) or are_planar(
-                cd[comb[0]], cd[comb[1]], cd[comb[2]], cd[j]
+        for comb in itertools.combinations(index, r=3):  # index of outer atoms
+            i, j = list(set(index) - set(comb))
+            if are_planar(
+                coords.take([comb[0], comb[1], comb[2], i], axis=0)
+            ) or are_planar(
+                coords.take([comb[0], comb[1], comb[2], j], axis=0)
             ):
                 raise ValueError("four atoms are planar")
 
-            i_rotation = handedness(cd[comb[0]], cd[comb[1]], cd[comb[2]], cd[i])
-            j_rotation = handedness(cd[comb[0]], cd[comb[1]], cd[comb[2]], cd[j]) * -1
+            i_rotation = handedness(
+                coords.take([comb[0], comb[1], comb[2], i], axis=0)
+            )
+            j_rotation = -1 * handedness(
+                coords.take([comb[0], comb[1], comb[2], j], axis=0)
+            )
 
-            comb_is_equatorial = i_rotation == j_rotation
+            comb_is_equatorial = int(i_rotation) == int(j_rotation)
 
             if comb_is_equatorial is True:
                 atoms_in_new_order = (i, j, *comb)
-                orientation = i_rotation
-
-                if orientation == 1:
-                    return TrigonalBipyramidal((central_atom, *atoms_in_new_order), 1)
-                elif orientation == -1:
-                    return TrigonalBipyramidal((central_atom, *atoms_in_new_order), -1)
+                orientation = int(i_rotation)
+                tb_atoms = (atoms[0], *atoms_in_new_order)
+                assert len(tb_atoms) == 6
+                assert orientation in (1, -1)
+                return TrigonalBipyramidal(tb_atoms, orientation)
         else:
             raise ValueError("something went wrong")
 
 
-class Octahedral(_BaseChiralStereo, AtomStereo):
+class Octahedral(
+    _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
+    ABCAtomStereo[
+        tuple[int, int, int, int, int, int, int], None | Literal[1, -1]
+    ],
+):
     """Represents all possible configurations of atoms for a Octahedral
     Stereochemistry::
 
@@ -470,19 +466,9 @@ class Octahedral(_BaseChiralStereo, AtomStereo):
     """
 
     __slots__ = ()
-    atoms: tuple[int, int, int, int, int, int]
-    parity: None | Literal[1, -1]
-
-    def get_isomers(self) -> tuple[Self, ...]:
-        return {
-            Octahedral(atoms=(self.atoms[0], *perm), parity=p)
-            for perm in itertools.permutations(self.atoms[1:])
-            for p in (1, -1)
-        }
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, int, int, int, int, int, int], ...]:
-        return (
+    inversion = (0, 2, 1, 3, 4, 5, 6)
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4, 5, 6),
             (0, 1, 2, 6, 3, 4, 5),
             (0, 1, 2, 5, 6, 3, 4),
@@ -507,16 +493,22 @@ class Octahedral(_BaseChiralStereo, AtomStereo):
             (0, 6, 4, 2, 3, 1, 5),
             (0, 6, 4, 5, 2, 3, 1),
             (0, 6, 4, 1, 5, 2, 3),
-        )
+        }
+    )
 
-    @staticmethod
-    def _invert_atoms(
-        atoms: tuple[int, int, int, int, int, int],
-    ) -> tuple[int, int, int, int, int, int]:
-        return tuple([atoms[i] for i in (0, 2, 1, 3, 4, 5, 6)])
+    def get_isomers(self) -> set[Octahedral]:
+        return {
+            Octahedral(atoms=atoms, parity=p)
+            for perm in itertools.permutations(self.atoms[1:])
+            for p in (1, -1)
+            if len((atoms := (self.atoms[0], *perm))) == 7
+        }
 
 
-class PlanarBond(_BaseAchiralStereo, BondStereo):
+class PlanarBond(
+    _AchiralStereoMixin[tuple[int, int, int, int, int, int]],
+    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[0]],
+):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
 
@@ -537,64 +529,62 @@ class PlanarBond(_BaseAchiralStereo, BondStereo):
     """
 
     __slots__ = ()
-    atoms: tuple[int, int, int, int, int, int]
-    parity: None | Literal[0]
-
-    def get_isomers(self) -> tuple[Self, ...]:
-        return (
-            PlanarBond(self.atoms, 0),
-            PlanarBond(tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4)), 0),
-        )
-
-    @property
-    def PERMUTATION_GROUP(
-        self,
-    ) -> tuple[tuple[int, int, int, int, int, int], ...]:
-        return (
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4, 5),
             (1, 0, 2, 3, 5, 4),
             (4, 5, 3, 2, 0, 1),
             (5, 4, 3, 2, 1, 0),
-        )
+        }
+    )
+
+    def get_isomers(self) -> set[PlanarBond]:
+        reordered_atoms = tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4))
+        assert len(reordered_atoms) == 6
+        return {
+            PlanarBond(self.atoms, 0),
+            PlanarBond(reordered_atoms, 0),
+        }
 
     def __init__(
         self,
         atoms: tuple[int, int, int, int, int, int],
-        parity: Optional[Literal[0]] = None,
+        parity: None | Literal[0] = None,
     ):
-        if len(atoms) != 6:
-            raise ValueError("PlanarBond needs 6 atoms")
         super().__init__(atoms, parity)
 
     @classmethod
     def from_coords(
         cls,
         atoms: tuple[int, int, int, int, int, int],
-        p0: np.ndarray,
-        p1: np.ndarray,
-        p2: np.ndarray,
-        p3: np.ndarray,
-        p4: np.ndarray,
-        p5: np.ndarray,
-    ) -> Self:
-        a = (p0 - p1) / np.linalg.norm(p0 - p1)
-        b = (p4 - p5) / np.linalg.norm(p4 - p5)
+        coords: np.ndarray[
+            tuple[Literal[6], Literal[3]], np.dtype[np.float64]
+        ],
+    ) -> PlanarBond:
+        a = (coords[0] - coords[1]) / np.linalg.norm(coords[0] - coords[1])
+        b = (coords[4] - coords[5]) / np.linalg.norm(coords[4] - coords[5])
         result = int(np.sign(np.dot(a, b)))
-        if result == 1:
-            return cls(atoms, 0)
-        elif result == -1:
-            atoms = tuple(atoms[i] for i in (1, 0, 2, 3, 4, 5))
-            return cls(atoms, 0)
+
+        if result == -1:
+            new_atoms = tuple(atoms[i] for i in (1, 0, 2, 3, 4, 5))
+        elif result == 1:
+            new_atoms = atoms
         elif result == 0:
             raise ValueError("atoms are tetrahedral")
         else:
             raise ValueError("something went wrong")
+        assert len(new_atoms) == 6
+        return cls(new_atoms, 0)
 
 
-class AtropBond(_BaseChiralStereo, BondStereo):
+class AtropBond(
+    _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
+    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+):
     r"""
     Represents all possible configurations of atoms for a
     Atropostereoisomer bond::
+    
         parity = 1          parity = -1
         1       5           1        5
          \     /            ◀      /
@@ -605,23 +595,21 @@ class AtropBond(_BaseChiralStereo, BondStereo):
 
     """
 
-    def get_isomers(self) -> tuple[Self, ...]:
-        return (
-            AtropBond(self.atoms, 0),
-            AtropBond(tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4)), 0),
-        )
-
-    @property
-    def PERMUTATION_GROUP(self) -> tuple[tuple[int, int, int, int, int, int], ...]:
-        return (
+    __slots__ = ()
+    inversion = (1, 0, 2, 3, 4, 5)
+    PERMUTATION_GROUP = frozenset(
+        {
             (0, 1, 2, 3, 4, 5),
             (1, 0, 2, 3, 5, 4),
             (4, 5, 3, 2, 1, 0),
             (5, 4, 3, 2, 0, 1),
-        )
+        }
+    )
 
-    @staticmethod
-    def _invert_atoms(
-        atoms: tuple[int, int, int, int, int, int],
-    ) -> tuple[int, int, int, int, int, int]:
-        return tuple([atoms[i] for i in (1, 0, 2, 3, 4, 5, 6)])
+    def get_isomers(self) -> set[AtropBond]:
+        other_atoms = tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4))
+        assert len(other_atoms) == 6
+        return {
+            AtropBond(self.atoms, 1),
+            AtropBond(other_atoms, -1),
+        }

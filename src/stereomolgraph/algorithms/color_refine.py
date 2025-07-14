@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Literal, Optional
 
-    from stereomolgraph.graph import (
+    from stereomolgraph.graphs.mg import (
         AtomId,
         MolGraph,
     )
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
     out: Optional[np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]]] = None,
-) -> np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]]:
+) -> np.ndarray:
     """
     Mimics the python SipHash hashing function for tuples of integers
     with numpy int64 arrays.
@@ -38,21 +38,21 @@ def numpy_int_tuple_hash(
         arr_shape = arr.shape
         length = arr_shape[-1]
         if out is None:
-            out = np.full(arr_shape[:-1], 0x345678, dtype=np.int64)
+            output = np.full(arr_shape[:-1], 0x345678, dtype=np.int64)
         else:
-            out.fill(0x345678)
+            output = out
+            output.fill(0x345678)
 
         n = 82518 + 2 * length
         m = range(n, n - 2 * (length - 1), -2)
         mults = itertools.accumulate(m, initial=1000003)
 
         for idx, mult in enumerate(mults):
-            out ^= arr[..., idx]
-            out *= mult
+            output ^= arr[..., idx]
+            output *= mult
 
-        out += 97531
-        return out
-
+        output += 97531
+        return output
 
 def label_hash(
     mg: MolGraph,
@@ -61,13 +61,12 @@ def label_hash(
 ) -> dict[AtomId, int]:
     if atom_labels == ("atom_type",) and bond_labels is None:
         atom_hash = {
-            atom: mg.get_atom_attribute(atom, "atom_type").atomic_nr
+            atom: mg.get_atom_type(atom).atomic_nr
             for atom in mg.atoms
         }
-        #print("WTF", atom_hash)
 
     elif atom_labels is None and bond_labels is None:
-        atom_hash = {atom: None for atom in mg.atoms}
+        atom_hash = {atom: 0 for atom in mg.atoms}
 
     elif atom_labels:
         atom_labels = sorted(atom_labels)
@@ -84,9 +83,9 @@ def label_hash(
             ))
               for atom, label_dict in mg.atoms_with_attributes.items()
         }
-
+    else:
+        raise ValueError("Invalid combination of atom and bond labels.")
     return atom_hash
-
 
 def color_refine_mg(
     mg: MolGraph,
@@ -107,15 +106,15 @@ def color_refine_mg(
         for atom in mg.atoms
     }
 
-    grouped = defaultdict(dict)
+    grouped: defaultdict[int, dict[int, set[int]]] = defaultdict(dict)
     for key, value in d.items():
         grouped[len(value)][key] = value
 
-    masks = []
-    data = []
-    t_arrs = []
-    t_hashs = []
-    a_hashs = []
+    masks: list[np.ndarray] = []
+    data: list[np.ndarray] = []
+    t_arrs: list[np.ndarray] = []
+    t_hashs: list[np.ndarray] = []
+    a_hashs: list[np.ndarray] = []
 
     for group in list(grouped.values()):
         mask = np.zeros_like(atom_hash, dtype=bool)

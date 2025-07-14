@@ -1,31 +1,29 @@
+# pyright: standard
 from __future__ import annotations
 
 from rdkit import Chem # type: ignore
 from rdkit.Chem import Draw # type: ignore
 from typing import NamedTuple
 
-from stereomolgraph.graph import (
+from stereomolgraph import (
         MolGraph,
         CondensedReactionGraph,
         StereoMolGraph,
-        StereoCondensedReactionGraph,
-        PlanarBond)
-
+        StereoCondensedReactionGraph)
+from stereomolgraph.stereodescriptors import PlanarBond
 
 def default_repr_svg(graph):
     return View2D().svg(graph)
 
-def default_view_molgraph(graph):
-    View2D()(graph)
+def default_view_molgraph(self: MolGraph) -> None:
+    View2D()(self)
 
-
-MolGraph._repr_svg_ = default_repr_svg
 MolGraph._ipython_display_ = default_view_molgraph
 
 
 class View2D(NamedTuple):
-    height: float = 300
-    width: float = 300
+    height: int = 300
+    width: int = 300
     show_atom_numbers: bool = True
     show_h: bool = True
     generate_bond_orders: bool = False
@@ -113,8 +111,8 @@ class View2D(NamedTuple):
                         bonds_to_highlight.append(bond.GetIdx())
                         highlight_bond_colors[bond.GetIdx()] = grey
 
-        Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True)
-        Chem.rdDepictor.StraightenDepiction(mol)
+        Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True) # type: ignore
+        Chem.rdDepictor.StraightenDepiction(mol) # type: ignore
 
         drawer = Draw.rdMolDraw2D.MolDraw2DSVG(self.width, self.height)
 
@@ -148,4 +146,4 @@ class View2D(NamedTuple):
         # imported here, so that this module does not depend on IPython
         from IPython.display import SVG
         svg = self.svg(graph)
-        display(SVG(svg.replace("svg:", "")))  # noqa
+        display(SVG(svg.replace("svg:", "")))  # type: ignore # noqa

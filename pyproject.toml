@@ -36,26 +36,32 @@ dependencies = [
 ]
 
 [dependency-groups]
-docs = ["sphinx<7.0",
+docs = ["ipykernel",
+       "sphinx>=8.2,<9;python_version>='3.11'",
        "sphinx-rtd-theme",
        "myst-nb",
-       "ipykernel",
        "sphinx-autodoc-typehints",
        "sphinx-copybutton"]
 
 dev = [{include-group = "docs"},
-       "scipy>=1.8,<2",
+
        "pytest>=7.1.2,<8",
        "pytest-cov>=6,<7",
+       
        "ruff>=0.6.0",
-       "testbook",
-       "typing-extensions>=4.12;python_version<'3.13'"
+
+       "pyright",
+       "typing-extensions>=4.12;python_version<'3.13'",
         # official module to add type hinting features used in future Python versions
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 # addopts = "--cov"
+
+[tool.pyright]
+include = ["src"]
+exclude = ["tests", "examples"]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]

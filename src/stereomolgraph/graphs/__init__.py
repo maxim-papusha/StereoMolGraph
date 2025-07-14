@@ -3,18 +3,14 @@
 CondensedReactionGraph and StereoCondensedReactionGraph"""
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-    from stereomolgraph.graphs.smg import StereoMolGraph
     from stereomolgraph.graphs.crg import CondensedReactionGraph
+    from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
     from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
-    from stereomolgraph.periodictable import (
-        Element,
-        PERIODIC_TABLE,
-        COVALENT_RADII,
-    )
+    from stereomolgraph.graphs.smg import StereoMolGraph
 
 
 def __getattr__(name: str):

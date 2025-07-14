@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
+    from typing import Any
+    
 """
 Periodic table of elements.
 
@@ -37,13 +38,13 @@ class Element:
     def __hash__(self) -> int:
         return self.atomic_nr
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Element):
             return self.atomic_nr == other.atomic_nr
         else:
             return NotImplemented
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: Any) -> bool:
         if isinstance(other, Element):
             return self.atomic_nr < other.atomic_nr
         else:

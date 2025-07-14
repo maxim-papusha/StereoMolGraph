@@ -1,3 +1,4 @@
+# pyright: standard
 from __future__ import annotations
 
 import warnings
@@ -5,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import rdkit.Chem as Chem  # type: ignore
 
-from stereomolgraph._bond_order import connectivity2bond_orders
+from stereomolgraph.algorithms.bond_orders import connectivity2bond_orders
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
@@ -16,11 +17,9 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-    from stereomolgraph.graph import (
-        CondensedReactionGraph,
-        MolGraph,
-        StereoMolGraph,
-    )
+    from stereomolgraph.graphs.crg import CondensedReactionGraph
+    from stereomolgraph.graphs.mg import MolGraph
+    from stereomolgraph.graphs.smg import StereoMolGraph
 
 
 bond_type_dict = {
@@ -52,16 +51,20 @@ bond_type_dict = {
 }
 
 
-def _set_bond_orders(
+def set_bond_orders(
     graph: MolGraph,
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
+    allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
-    bond_order_mat = connectivity2bond_orders(
-        atom_types=graph.atom_types,
-        connectivity_matrix=graph.connectivity_matrix(),
-        charge=charge,
+    bond_order_mat, atomic_charges, unpaired_electrons = (
+        connectivity2bond_orders(
+            atom_types=graph.atom_types,
+            connectivity_matrix=graph.connectivity_matrix(),
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
     )
 
     index_map_num_dict = {i: map_num for i, map_num in enumerate(graph.atoms)}
@@ -72,18 +75,29 @@ def _set_bond_orders(
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[
-            index_map_num_dict[atom1], index_map_num_dict[atom2]
+        bond_order = bond_order_mat[index_map_num_dict[atom1]][
+            index_map_num_dict[atom2]
         ]
 
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
         ).SetBondType(bond_type_dict[bond_order])
+
+    for i, atomic_charge in enumerate(atomic_charges):
+        if atomic_charge:
+            mol.GetAtomWithIdx(i).SetFormalCharge(int(atomic_charge))
+    for i, unpaired_e in enumerate(unpaired_electrons):
+        if unpaired_e:
+            mol.GetAtomWithIdx(i).SetNumRadicalElectrons(unpaired_e)
+
     return mol
 
 
-def _mol_graph_to_rdmol(
-    graph: MolGraph, generate_bond_orders=False, charge=0
+def mol_graph_to_rdmol(
+    graph: MolGraph,
+    generate_bond_orders=False,
+    allow_charged_fragments=False,
+    charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     mol = Chem.RWMol()
 
@@ -112,17 +126,22 @@ def _mol_graph_to_rdmol(
                 # mol.GetBondBetweenAtoms(i, j).SetBondType(
                 #    Chem.rdchem.BondType.SINGLE)
     if generate_bond_orders:
-        mol = _set_bond_orders(
+        mol = set_bond_orders(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
         )
 
     return mol, idx_map_num_dict
 
 
-def _stereo_mol_graph_to_rdmol(
-    graph: StereoMolGraph, generate_bond_orders=False, charge=0
+def stereo_mol_graph_to_rdmol(
+    graph: StereoMolGraph,
+    generate_bond_orders=False,
+    allow_charged_fragments=False,
+    charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     """
     Creates a RDKit mol object using the connectivity of the mol graph.
@@ -131,14 +150,16 @@ def _stereo_mol_graph_to_rdmol(
     :return: RDKit molecule
     :rtype: Chem.rdchem.RWMol
     """
-    # print("StereoMolGraph")
     rd_tetrahedral = {
         1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW,
         -1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
         None: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL,
     }
-    mol, idx_map_num_dict = _mol_graph_to_rdmol(
-        graph, generate_bond_orders=generate_bond_orders, charge=charge
+    mol, idx_map_num_dict = mol_graph_to_rdmol(
+        graph,
+        generate_bond_orders=generate_bond_orders,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
     )
 
     map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
@@ -341,7 +362,8 @@ def _stereo_mol_graph_to_rdmol(
                 # )
                 # is None
                 # for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
-                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j]))) in graph.bonds):
+                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j])))
+                #         in graph.bonds):
         #
         #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
@@ -369,7 +391,7 @@ def _stereo_mol_graph_to_rdmol(
                 raise Exception(f"something wrong with {b_stereo}")
 
     if generate_bond_orders:
-        mol = _set_bond_orders(
+        mol = set_bond_orders(
             graph=graph,
             mol=mol,
             idx_map_num_dict=idx_map_num_dict,
@@ -378,17 +400,25 @@ def _stereo_mol_graph_to_rdmol(
     return mol, idx_map_num_dict
 
 
-def _set_crg_bond_orders(
+def set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
     idx_map_num_dict: dict[int, int],
+    generate_bond_orders=False,
+    allow_charged_fragments=False,
     charge=0,
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-    r, r_idx_map_num_dict = _mol_graph_to_rdmol(
-        graph.reactant(), generate_bond_orders=True, charge=charge
+    r, r_idx_map_num_dict = mol_graph_to_rdmol(
+        graph.reactant(),
+        generate_bond_orders=True,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
     )
-    p, p_idx_map_num_dict = _mol_graph_to_rdmol(
-        graph.product(), generate_bond_orders=True, charge=charge
+    p, p_idx_map_num_dict = mol_graph_to_rdmol(
+        graph.product(),
+        generate_bond_orders=True,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
     )
     assert r_idx_map_num_dict == p_idx_map_num_dict == idx_map_num_dict
 
