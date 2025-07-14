@@ -36,7 +36,8 @@ dependencies = [
 ]
 
 [dependency-groups]
-docs = ["ipykernel",
+notebook = ["ipykernel"]
+docs = [{include-group = "notebook"},
        "sphinx>=8.2,<9;python_version>='3.11'",
        "sphinx-rtd-theme",
        "myst-nb",
