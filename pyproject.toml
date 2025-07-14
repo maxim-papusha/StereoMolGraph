@@ -59,6 +59,10 @@ dev = [{include-group = "docs"},
 pythonpath = ["."]
 # addopts = "--cov"
 
+[tool.pyright]
+include = ["."]
+strict = true
+
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]
 
