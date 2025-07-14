@@ -77,3 +77,5 @@ typehints_defaults: Literal["comma", "braces", "braces-after"] = "braces-after"
 typehints_document_rtype_none = False
 typehints_use_signature = True
 typehints_use_signature_return = True
+
+github_url = "https://github.com/maxim-papusha/StereoMolGraph"
