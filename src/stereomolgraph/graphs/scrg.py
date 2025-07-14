@@ -124,6 +124,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         if (atom := atoms.pop()) not in self._atom_attrs:
             raise ValueError(f"Atom {atom} not in graph")
+        
+        self._atom_stereo_change[atom] = StereoChangeDict[AtomStereo]()
         for stereo_change, atom_stereo in {
             StereoChange.BROKEN: broken,
             StereoChange.FLEETING: fleeting,
@@ -148,6 +150,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             raise ValueError("Provide stereo information for one atom only")
         if (bond := bonds.pop()) not in self._bond_attrs:
             raise ValueError(f"Bond {bond} not in graph")
+        
+        self._bond_stereo_change[bond] = StereoChangeDict[BondStereo]()
         for stereo_change, bond_stereo in {
             StereoChange.BROKEN: broken,
             StereoChange.FORMED: formed,
@@ -317,30 +321,20 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         :return: Reversed reaction
         """
         rev_reac = super().reverse_reaction()
-        for _atom, change_dict in rev_reac._atom_stereo_change.items():
-            new_change_dict = {
-                stereo_change.value: atom_stereo
-                for stereo_change, atom_stereo in change_dict.items()
-            }
-            if formed_stereo := change_dict.get("formed", None) is not None:
-                new_change_dict["broken"] = formed_stereo
-            if broken_stereo := change_dict.get("broken", None) is not None:
-                new_change_dict["formed"] = broken_stereo
-            # raise ValueError(change_dict ,new_change_dict)
-            rev_reac.set_atom_stereo_change(**new_change_dict)
+        
+        for _atom, atom_change_dict in rev_reac._atom_stereo_change.items():
+            new_atom_change_dict = {"fleeting": atom_change_dict[StereoChange.FLEETING],
+                               "broken": atom_change_dict[StereoChange.FORMED],
+                               "formed": atom_change_dict[StereoChange.BROKEN]}
 
-        for _bond, change_dict in rev_reac._bond_stereo_change.items():
-            new_change_dict = {
-                stereo_change.value: bond_stereo
-                for stereo_change, bond_stereo in change_dict.items()
-            }
-            if formed_stereo := change_dict.get("formed", None) is not None:
-                new_change_dict["broken"] = formed_stereo
-            if broken_stereo := change_dict.get("broken", None) is not None:
-                new_change_dict["formed"] = broken_stereo
-            # raise ValueError(change_dict ,new_change_dict)
-            rev_reac.set_bond_stereo_change(**new_change_dict)
+            rev_reac.set_atom_stereo_change(**new_atom_change_dict)
 
+        for _bond, bond_change_dict in rev_reac._bond_stereo_change.items():
+            new_bond_change_dict = {"fleeting": bond_change_dict[StereoChange.FLEETING],
+                               "broken": bond_change_dict[StereoChange.FORMED],
+                               "formed": bond_change_dict[StereoChange.BROKEN]}
+            rev_reac.set_bond_stereo_change(**new_bond_change_dict)
+            
         return rev_reac
 
     def enantiomer(self) -> Self:

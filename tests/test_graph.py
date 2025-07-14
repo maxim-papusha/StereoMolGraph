@@ -592,6 +592,7 @@ class TestCondensedReactionGraph(TestMolGraph):
             reversed_reaction.get_formed_bonds()
             == chiral_reaction_scrg1.get_broken_bonds()
         )
+        
         double_reverset_reaction = reversed_reaction.reverse_reaction()
         assert double_reverset_reaction == chiral_reaction_scrg1
 
@@ -1705,6 +1706,25 @@ class TestStereoCondensedReactionGraph(
         assert not chiral_reaction_chiral_ts_scrg1.is_isomorphic(
             chiral_reaction_chiral_ts_scrg2
         )
+
+    def test_reverse_reaction(self, chiral_reaction_scrg1):
+        reversed_reaction = chiral_reaction_scrg1.reverse_reaction()
+        assert (
+            reversed_reaction.get_broken_bonds()
+            == chiral_reaction_scrg1.get_formed_bonds()
+        )
+        assert (
+            reversed_reaction.get_formed_bonds()
+            == chiral_reaction_scrg1.get_broken_bonds()
+        )
+        
+        double_reverset_reaction = reversed_reaction.reverse_reaction()
+        assert (chiral_reaction_scrg1.atom_stereo == double_reverset_reaction.atom_stereo)
+        assert (chiral_reaction_scrg1.bond_stereo == double_reverset_reaction.bond_stereo)
+        assert (chiral_reaction_scrg1.bond_stereo_changes == double_reverset_reaction.bond_stereo_changes)
+        assert (chiral_reaction_scrg1.atom_stereo_changes == double_reverset_reaction.atom_stereo_changes)
+
+        assert double_reverset_reaction == chiral_reaction_scrg1
 
     @pytest.mark.skip(reason="Not implemented")
     def test_color_refine_stereo_reaction(
