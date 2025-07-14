@@ -1,4 +1,4 @@
-# StereoMolGraph
+# StereoMolGraph #
 [![View Documentation](https://img.shields.io/badge/📖-Documentation-8CA1AF)](https://stereomolgraph.readthedocs.io)
 [![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
@@ -7,8 +7,9 @@
 [![Type Check](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml)
 [![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml)
 
-
-A Python graph library for molecules and transition states with stereochemistry.
-
 Work in progress and a manuscript in preparation.
 More documentation and tutorials coming end of summer 2025
+
+A lightweitht Python library for **Molecules** and **Transition States** with **Stereochemistry**.
+The object oriendet structure abstracts aways the mathematical complexety of the regirous grouptheorethical threatment of stereochemistry.
+Provides algorithmically fast and robust implementations of **__hash__** based on the Weisfeiler-Leman algorithm and **__eq__** based on the VF2++ isomorphism algorithm.

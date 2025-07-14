@@ -395,13 +395,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         return mol, idx_map_num_dict
 
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[MolGraph]) -> Self:
+    def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """Creates a MolGraph object from a list of MolGraph objects
 
         :param mol_graphs: list of MolGraph objects
         :return: Returns Combined MolGraph
         """
-        graph = cls(super().from_composed_molgraphs(mol_graphs))
+        graph = cls(super().compose(mol_graphs))
         for mol_graph in mol_graphs:
             graph._atom_stereo_change.update(cls(mol_graph)._atom_stereo_change)
             graph._bond_stereo_change.update(cls(mol_graph)._bond_stereo_change)

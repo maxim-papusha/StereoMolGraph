@@ -528,7 +528,7 @@ class MolGraph:
                 self.add_bond(int(i), int(j))
 
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[MolGraph]) -> Self:
+    def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """
         Combines all graphs in the iterable into one. Duplicate nodes or edges
         are overwritten, such that the resulting graph only contains one node

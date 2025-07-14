@@ -352,7 +352,7 @@ class StereoMolGraph(MolGraph):
 
 
     @classmethod
-    def from_composed_molgraphs(cls, mol_graphs: Iterable[MolGraph]) -> Self:
+    def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """Creates a MolGraph object from a list of MolGraph objects.
         
         Duplicate nodes or edges are overwritten, such that the resulting
@@ -364,7 +364,7 @@ class StereoMolGraph(MolGraph):
         :return: Returns MolGraph
         """
 
-        graph = cls(super().from_composed_molgraphs(mol_graphs))
+        graph = cls(super().compose(mol_graphs))
         for mol_graph in mol_graphs:
             graph._atom_stereo.update(cls(mol_graph)._atom_stereo)
             graph._bond_stereo.update(cls(mol_graph)._bond_stereo)

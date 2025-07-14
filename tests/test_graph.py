@@ -265,18 +265,18 @@ class TestMolGraph:
         for mapping in g.get_subgraph_isomorphic_mappings(smg):
             assert Bond((mapping[0], mapping[1])) in smg.bonds
 
-    def test_from_composed_molgraphs(
+    def test_compose(
         self, water_graph, mol_graph, empty_mol_graph
     ):
 
-        comp_graph = self._TestClass.from_composed_molgraphs(
+        comp_graph = self._TestClass.compose(
             [water_graph, empty_mol_graph]
         )
         assert comp_graph.atom_types == water_graph.atom_types
         assert comp_graph.atoms == water_graph.atoms
         assert comp_graph.bonds == water_graph.bonds
 
-        comp_graph = self._TestClass.from_composed_molgraphs(
+        comp_graph = self._TestClass.compose(
             [water_graph, mol_graph]
         )
         assert comp_graph.atom_types == mol_graph.atom_types
@@ -295,7 +295,7 @@ class TestMolGraph:
         }
         chiral_product_graph2.relabel_atoms(relabel_mapping, copy=False)
 
-        combined = self._TestClass.from_composed_molgraphs(
+        combined = self._TestClass.compose(
             [chiral_product_graph1, chiral_product_graph2]
         )
 
@@ -1051,7 +1051,7 @@ class TestStereoMolGraph(TestMolGraph):
         }
         chiral_product_graph2.relabel_atoms(relabel_mapping, copy=False)
 
-        combined = self._TestClass.from_composed_molgraphs(
+        combined = self._TestClass.compose(
             [chiral_product_graph1, chiral_product_graph2]
         )
 
@@ -1519,7 +1519,7 @@ class TestStereoCondensedReactionGraph(
         }
         chiral_product_graph2.relabel_atoms(relabel_mapping, copy=False)
 
-        combined = self._TestClass.from_composed_molgraphs(
+        combined = self._TestClass.compose(
             [chiral_product_graph1, chiral_product_graph2]
         )
 
