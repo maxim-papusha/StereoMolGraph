@@ -298,7 +298,9 @@ class Tetrahedral(
         :param coords: nAtomsx3 numpy array with cartesian coordinates
         """
         orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
-        return cls(atoms, orientation)
+        int_orientation = int(orientation)
+        assert int_orientation in (1, -1)
+        return cls(atoms, int_orientation)
 
 
 class SquarePlanar(
@@ -433,13 +435,14 @@ class TrigonalBipyramidal(
                 coords.take([comb[0], comb[1], comb[2], j], axis=0)
             )
 
-            comb_is_equatorial = i_rotation == j_rotation
+            comb_is_equatorial = int(i_rotation) == int(j_rotation)
 
             if comb_is_equatorial is True:
                 atoms_in_new_order = (i, j, *comb)
-                orientation = i_rotation
+                orientation = int(i_rotation)
                 tb_atoms = (atoms[0], *atoms_in_new_order)
                 assert len(tb_atoms) == 6
+                assert orientation in (1, -1)
                 return TrigonalBipyramidal(tb_atoms, orientation)
         else:
             raise ValueError("something went wrong")

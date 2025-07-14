@@ -16,13 +16,18 @@ if TYPE_CHECKING:
 
     from collections.abc import Callable, Iterable, Sequence, Mapping
     from os import PathLike
-    from typing import Literal, TypeVar
-
+    from typing import Literal, TypeVar, TypeVarTuple
+    
     N = TypeVar('N', bound=int)
-
+    THREE = Literal[3]
+    Shape = TypeVarTuple
+    ShapeND = tuple[int, ...]
+    ShapeNDType = TypeVar("ShapeNDType", bound=ShapeND)
+    ShapeVarGen = TypeVarTuple('ShapeVarGen')
 
 def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
-               threshold: float = 0.5) -> bool:
+               threshold: float = 0.5
+               ) -> np.ndarray[tuple[Literal[1]], np.dtype[np.bool_]]:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -55,30 +60,33 @@ def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
                 return False
     return True
 
-
 def handedness(
-    coords: np.ndarray[tuple[Literal[4], Literal[3]], np.dtype[np.float64]],
-) -> Literal[1, -1]:
+    coords: np.ndarray[tuple[Literal[4], Literal[3]], np.dtype[np.floating]],
+) -> np.ndarray[tuple[Literal[1]], np.dtype[np.int8]]:
     """
     Calculates the orientation of the atom 4 from the plane defined
     by the first three atoms from their coordinates.
 
 
     """
-    vec1 = coords[0] - coords[1]
-    vec2 = coords[2] - coords[3]
-    vec3 = coords[3] - coords[1]
-    normal = np.cross(vec1, vec2)
-    norm_normal = normal / np.linalg.norm(normal)
-    result = int(np.sign(np.dot(norm_normal, vec3))) # type: ignore
-    if result == 0:
-        raise ValueError("atoms are planar")
-    assert result in (-1, 1), "result must be -1 or 1"
+    vec1 = coords[..., 0, :] - coords[..., 1, :]
+    vec2 = coords[..., 2, :] - coords[..., 3, :]
+    vec3 = coords[..., 3, :] - coords[..., 1, :]
+    
+    normal = np.cross(vec1, vec2, axis=-1)
+    
+    # Normalize normal vectors (in-place operations)
+    norm = np.linalg.norm(normal, axis=-1, keepdims=True)
+    np.divide(normal, norm, out=normal)  # in-place division
+    
+    # Compute dot product (in-place multiply and sum)
+    dot_product = np.sum(np.multiply(normal, vec3, out=normal), axis=-1)
+    result = np.sign(dot_product, casting="unsafe", dtype=np.int8)
     return result
 
 def pairwise_distances(
-    coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.float64]],
-) -> np.ndarray[tuple[N, N], np.dtype[np.float64]]:
+    coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.floating]],
+) -> np.ndarray[tuple[N, N], np.dtype[np.floating]]:
     diff = coords[:, None] - coords[None, :]
     diff **= 2
     summed = np.sum(diff, axis=-1)

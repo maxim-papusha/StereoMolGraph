@@ -15,11 +15,9 @@ from stereomolgraph.stereodescriptors import PlanarBond
 def default_repr_svg(graph):
     return View2D().svg(graph)
 
-def default_view_molgraph(graph):
-    View2D()(graph)
+def default_view_molgraph(self: MolGraph) -> None:
+    View2D()(self)
 
-
-#MolGraph._repr_svg_ = default_repr_svg
 MolGraph._ipython_display_ = default_view_molgraph
 
 

@@ -704,3 +704,11 @@ class MolGraph:
         """
         return any(self.get_isomorphic_mappings(other))
 
+    def __repr__(self) -> str:
+        a_list = [(a, a_type.symbol) for a, a_type
+                  in zip(self.atoms, self.atom_types)]
+        b_list = [tuple(sorted(bond)) for bond in self.bonds]
+        return f"{self.__class__.__name__}\nAtoms: {a_list}\nBonds: {b_list}\n"
+
+    def _ipython_display_(self) -> None:
+        print(self.__repr__())
