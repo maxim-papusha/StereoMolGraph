@@ -1,4 +1,5 @@
 # pyright: standard
+# typing with rdkit is not fully supported
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
