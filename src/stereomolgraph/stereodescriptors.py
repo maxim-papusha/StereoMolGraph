@@ -299,7 +299,7 @@ class Tetrahedral(
         """
         orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
         int_orientation = int(orientation)
-        assert int_orientation in (1, -1)
+        assert int_orientation in (1, -1), f"Orientation {orientation} is not valid for Tetrahedral stereochemistry."
         return cls(atoms, int_orientation)
 
 

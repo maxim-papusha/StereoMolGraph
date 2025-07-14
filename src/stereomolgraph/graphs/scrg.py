@@ -329,7 +329,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             # raise ValueError(change_dict ,new_change_dict)
             rev_reac.set_atom_stereo_change(**new_change_dict)
 
-        for bond, change_dict in rev_reac._bond_stereo_change.items():
+        for _bond, change_dict in rev_reac._bond_stereo_change.items():
             new_change_dict = {
                 stereo_change.value: bond_stereo
                 for stereo_change, bond_stereo in change_dict.items()

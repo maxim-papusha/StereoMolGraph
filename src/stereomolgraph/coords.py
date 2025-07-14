@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
                threshold: float = 0.5
-               ) -> np.ndarray[tuple[Literal[1]], np.dtype[np.bool_]]:
+               ) -> bool:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -81,7 +81,8 @@ def handedness(
     
     # Compute dot product (in-place multiply and sum)
     dot_product = np.sum(np.multiply(normal, vec3, out=normal), axis=-1)
-    result = np.sign(dot_product, casting="unsafe", dtype=np.int8)
+    result = np.sign(dot_product).astype(np.int8)
+    #, casting="unsafe", dtype=np.int8)
     return result
 
 def pairwise_distances(
