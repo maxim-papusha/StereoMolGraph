@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 ![PyPI - Version](https://img.shields.io/pypi/v/StereoMolGraph?link=https%3A%2F%2Fpypi.org%2Fproject%2FStereoMolGraph)
 [![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?logo=github)](https://github.com/maxim-papusha/StereoMolGraph)
+[![Documentation Status](https://readthedocs.org/projects/stereomolgraph/badge/?version=dev)](https://stereomolgraph.readthedocs.io/en/latest/?badge=dev)
 [![Type Check](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml)
 [![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml)
 
@@ -13,3 +14,12 @@ More documentation and tutorials coming end of summer 2025
 A lightweitht Python library for **Molecules** and **Transition States** with **Stereochemistry**.
 The object oriendet structure abstracts aways the mathematical complexety of the regirous grouptheorethical threatment of stereochemistry.
 Provides algorithmically fast and robust implementations of **hashing** based on the Weisfeiler-Leman algorithm and **equality** based on the VF2++ isomorphism algorithm.
+
+## Documentation ##
+
+## Installation ##
+
+## Citation ##
+
+## Contact ##
+
