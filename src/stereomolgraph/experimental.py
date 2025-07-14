@@ -8,15 +8,15 @@ from stereomolgraph import StereoMolGraph, StereoCondensedReactionGraph
 from stereomolgraph.graphs.scrg import StereoChange
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Collection
     from typing import Optional
-    from stereomolgraph.graphs.smg import AtomId, StereoMolGraph
+    from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
 
 
 def generate_stereoisomers(graph: StereoMolGraph,
                            enantiomers:bool =  True,
-                           atoms: Optional[AtomId] = None,
-                           bonds: Optional[Iterable[AtomId]] = None) -> set[StereoMolGraph]:
+                           atoms: Optional[Iterable[AtomId]] = None,
+                           bonds: Optional[Iterable[Bond]] = None) -> Collection[StereoMolGraph]:
         """Generates all stereoisomers of a StereoMolGraph by generation of
         all combinations of parities. Only includes stereocenter which have a
         parity of None. If a parity is set, it is not changed.
@@ -43,8 +43,8 @@ def generate_stereoisomers(graph: StereoMolGraph,
             bond_stereos = (stereo.get_isomers() for b in bonds
                             if (stereo := graph.get_bond_stereo(b)) is not None)
 
-        isomers = set()
-        enantiomers_set = set()
+        isomers: set[StereoMolGraph] = set()
+        enantiomers_set: set[StereoMolGraph] = set()
 
         for a_stereos, b_stereos in itertools.product(itertools.product(*atom_stereos),
                                                       itertools.product(*bond_stereos)):
@@ -65,9 +65,9 @@ def generate_stereoisomers(graph: StereoMolGraph,
 
 def generate_fleeting_stereoisomers(graph: StereoCondensedReactionGraph,
                                enantiomers:bool =  True,
-                               atoms: Optional[AtomId] = None,
-                               bonds: Optional[Iterable[AtomId, AtomId]] = None
-                               ) -> set[StereoCondensedReactionGraph]:
+                               atoms: Optional[Iterable[AtomId]] = None,
+                               bonds: Optional[Iterable[Bond]] = None
+                               ) -> Collection[StereoCondensedReactionGraph]:
         # TODO: extend to more than fleeting stereochemistry 
         # add checks if fleeting stereochemistry is valid relative to formed and broken
 
@@ -93,8 +93,8 @@ def generate_fleeting_stereoisomers(graph: StereoCondensedReactionGraph,
                                  and (stereo := stereo_change_dict[StereoChange.FLEETING]))
                                  and stereo.parity is None]
 
-        isomers = []
-        enantiomers_set = set()
+        isomers: list[StereoCondensedReactionGraph] = []
+        enantiomers_set: set[StereoCondensedReactionGraph] = set()
 
         for a_stereos, b_stereos in itertools.product(itertools.product(*atom_stereos),
                                                       itertools.product(*bond_stereos)):
@@ -129,26 +129,3 @@ def topological_symmetry_number(graph: StereoMolGraph) -> int:
 
         mappings = graph.get_isomorphic_mappings(graph)
         return deque(enumerate(mappings, 1), maxlen=1)[0][0]
-
-
-def get_automorphic_structures(
-        graph,
-        atoms: tuple[int, ...],
-    ) -> set[tuple[int, ...]]:
-        """
-        Returns all automorphic reoccurrences of the given atoms in structure
-        Can be used for single atoms, two atoms (for bonds),
-        three atoms(for angles), four atoms (for dihedrals) and n atoms for any
-        structure for example identical reactive sides.
-
-        :param atoms: Atoms to be used for search
-        :type atoms: tuple[int, ...]
-        :return: Automorphically equivalent sets of atoms
-        :rtype: set[tuple[atom_id]]
-        """
-        return set(
-            (
-                tuple(mapping[atom] for atom in atoms)
-                for mapping in graph.get_isomorphic_mappings(graph)
-            )
-        )

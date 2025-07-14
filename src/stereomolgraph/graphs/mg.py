@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from stereomolgraph.periodictable import PERIODIC_TABLE, Element
-from stereomolgraph.cartesian import BondsFromDistance
+from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     
     from rdkit import Chem # type: ignore
 
-    from stereomolgraph.cartesian import Geometry
+    from stereomolgraph.coords import Geometry
     N = TypeVar("N", bound=int)
 AtomId: TypeAlias = int
 

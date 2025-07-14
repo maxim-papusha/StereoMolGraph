@@ -1,29 +1,21 @@
 from __future__ import annotations
 
-
 from enum import Enum
-
 from typing import TYPE_CHECKING
 
-import numpy as np
-from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-from stereomolgraph.cartesian import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-
-
-from stereomolgraph.graph2rdmol import (
-    mol_graph_to_rdmol,
-    set_crg_bond_orders
-)
+from stereomolgraph.coords import BondsFromDistance
+from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
+from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 
 if TYPE_CHECKING:
 
-    from collections.abc import Callable, Iterator, Mapping
-    from typing import Any, Self, Literal
-    
+    from collections.abc import Iterator
+    from typing import Any, Self
+
     from rdkit import Chem
-    from stereomolgraph.periodictable import Element
-    from stereomolgraph.cartesian import Geometry
+
+    from stereomolgraph.coords import Geometry
 
 
 class BondChange(Enum):
@@ -132,7 +124,6 @@ class CondensedReactionGraph(MolGraph):
                 b_bonds.add(bond)
         return b_bonds
         
-
     def active_atoms(self, additional_layer: int = 0) -> set[int]:
         """
         Atoms involved in the reaction with additional layers of atoms
@@ -149,36 +140,6 @@ class CondensedReactionGraph(MolGraph):
             for atom in active_atoms.copy():
                 active_atoms.update(self._neighbors[atom])
         return active_atoms
-
-    def connectivity_matrix(
-        self,
-    ) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
-        """
-        Returns a connectivity matrix of the graph. Order is the same
-        as in self.atoms
-        Formed bonds and broken bonds are represented as 0.5.
-
-        :return: Connectivity matrix
-        """
-
-        matrix = np.array(super().connectivity_matrix(), dtype=float)
-        atoms = tuple(self.atoms)
-        for bond in self.get_formed_bonds():
-            a1, a2 = bond
-            index_atom1 = atoms.index(a1)
-            index_atom2 = atoms.index(a2)
-
-            matrix[index_atom1][index_atom2] = 0.5
-            matrix[index_atom2][index_atom1] = 0.5
-
-        for bond in self.get_broken_bonds():
-            a1, a2 = bond
-            index_atom1 = atoms.index(a1)
-            index_atom2 = atoms.index(a2)
-
-            matrix[index_atom1][index_atom2] = 0.5
-            matrix[index_atom2][index_atom1] = 0.5
-        return matrix
 
     def _to_rdmol(
         self,

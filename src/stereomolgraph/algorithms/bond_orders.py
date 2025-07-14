@@ -17,14 +17,13 @@ import copy
 import itertools
 import warnings
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from typing import TYPE_CHECKING
-        
 if TYPE_CHECKING:
-    from typing import TypeVar
     from collections.abc import Sequence
+    from typing import TypeVar
 
     from stereomolgraph import Element
     N = TypeVar('N', bound=int)
@@ -67,7 +66,9 @@ def connectivity2bond_orders(
     connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.int64]],
     allow_charged_fragments:bool=False,
     charge: int = 0,
-) -> np.ndarray[tuple[N, N], np.dtype[np.int64]]:
+) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int64]],
+           list[int],
+           list[int]]:
     """
     Calculates Bond orders from atom connectivity.
     Bond orders can be assigned automatically using the algorithm from
@@ -153,12 +154,12 @@ def _AC2BO(AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
     """
 
     # make a list of valences, e.g. for CO: [[4],[2,1]]
-    valences_list_of_lists = []
-    AC_valence = list(AC.sum(axis=1))
+    valences_list_of_lists:list[list[int]] = []
+    AC_valence: list[int] = list(AC.sum(axis=1))
 
     for i, (atomicNum, valence) in enumerate(zip(atom_nrs, AC_valence)):
         # valence can't be smaller than number of neighbourgs
-        possible_valence = [
+        possible_valence: list[int] = [
             x for x in atomic_valence[atomicNum] if x >= valence
         ]
         if not possible_valence:
@@ -232,9 +233,10 @@ def _AC2BO(AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
 
     return best_BO, atomic_valence_electrons
 
-def _get_UA(maxValence_list, valence_list):
-    UA = []
-    DU = []
+def _get_UA(maxValence_list: Sequence[int], valence_list: list[int]
+            ) -> tuple[list[int], list[int]]:
+    UA: list[int] = []
+    DU: list[int] = []
     for i, (maxValence, valence) in enumerate(
         zip(maxValence_list, valence_list)
     ):
@@ -244,7 +246,11 @@ def _get_UA(maxValence_list, valence_list):
         DU.append(maxValence - valence)
     return UA, DU
 
-def _get_BO(AC, UA, DU, valences, UA_pairs):
+def _get_BO(AC: np.ndarray[tuple[N, N]],
+            UA: Sequence[int],
+            DU: Sequence[int],
+            valences: Sequence[int],
+            UA_pairs: tuple[tuple[int, int], ...]):
     BO = AC.copy()
     DU_save = []
 
@@ -255,12 +261,12 @@ def _get_BO(AC, UA, DU, valences, UA_pairs):
 
         BO_valence = list(BO.sum(axis=1))
         DU_save = copy.copy(DU)
-        UA, DU = _get_UA(valences, BO_valence)
+        UA, DU = _get_UA(valences, BO_valence) # type: ignore[assignment]
         UA_pairs = _get_UA_pairs(UA, AC)[0]
 
     return BO
 
-def _valences_not_too_large(BO, valences):
+def _valences_not_too_large(BO: np.ndarray[tuple[N, N], np.dtype[np.int64]], valences: Sequence[int]) -> bool:
     number_of_bonds_list = BO.sum(axis=1)
     for valence, number_of_bonds in zip(valences, number_of_bonds_list):
         if number_of_bonds > valence:
@@ -269,15 +275,15 @@ def _valences_not_too_large(BO, valences):
     return True
 
 def _BO_is_OK(
-    BO,
-    AC,
-    charge,
-    DU,
-    atomic_valence_electrons,
-    atom_nrs,
-    valences,
-    allow_charged_fragments=True,
-):
+    BO : np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    AC : np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    charge : int,
+    DU: list[int],
+    atomic_valence_electrons: dict[int, int],
+    atom_nrs: list[int],
+    valences: Sequence[int],
+    allow_charged_fragments:bool=True,
+) -> bool:
 
     if not _valences_not_too_large(BO, valences):
         return False
@@ -300,43 +306,44 @@ def _BO_is_OK(
     return False
 
 def _charge_is_OK(
-    BO,
-    AC,
-    charge,
-    DU,
-    atomic_valence_electrons,
-    atom_nrs,
-    valences,
-    allow_charged_fragments=True,
-):
+    BO: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    AC: np.ndarray[tuple[N, N], np.dtype[np.int64]],
+    charge: int,
+    DU: list[int],
+    atomic_valence_electrons: dict[int, int],
+    atom_nrs: list[int],
+    valences: Sequence[int],
+    allow_charged_fragments:bool=True,
+) -> bool:
     # total charge
-    Q = 0
+    q_tot = 0
 
     # charge fragment list
-    q_list = []
+    q_list: list[int] = []
 
     if allow_charged_fragments:
         BO_valences = list(BO.sum(axis=1))
         for i, atom in enumerate(atom_nrs):
-            q = _get_atomic_charge(
+            q: int = _get_atomic_charge(
                 atom, atomic_valence_electrons[atom], BO_valences[i]
             )
-            Q += q
+            q_tot += q
             if atom == 6:
                 number_of_single_bonds_to_C = list(BO[i, :]).count(1)
                 if number_of_single_bonds_to_C == 2 and BO_valences[i] == 2:
-                    Q += 1
+                    q_tot += 1
                     q = 2
-                if number_of_single_bonds_to_C == 3 and Q + 1 < charge:
-                    Q += 2
+                if number_of_single_bonds_to_C == 3 and q_tot + 1 < charge:
+                    q_tot += 2
                     q = 1
 
             if q != 0:
                 q_list.append(q)
 
-    return charge == Q
+    return charge == q_tot
 
-def _get_UA_pairs(UA, AC):
+def _get_UA_pairs(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int64]]
+                   ) -> list[tuple[()]] | list[tuple[tuple[int, int], ...]]:
     bonds = _get_bonds(UA, AC)
 
     if len(bonds) == 0:
@@ -352,21 +359,23 @@ def _get_UA_pairs(UA, AC):
             UA_pairs = [combo]
 
         elif atoms_in_combo == max_atoms_in_combo:
-            UA_pairs.append(combo)
+            UA_pairs.append(combo) # type: ignore[assignment]
 
     return UA_pairs
 
-def _get_bonds(UA, AC):
-    bonds = []
+def _get_bonds(UA: Sequence[int], AC: np.ndarray[tuple[N, N], np.dtype[np.int64]]) -> list[tuple[int, int]]:
+    bonds: list[tuple[int, int]] = []
 
     for k, i in enumerate(UA):
         for j in UA[k + 1 :]:
             if AC[i, j] == 1:
-                bonds.append(tuple(sorted([i, j])))
+                to_append = tuple(sorted([i, j]))
+                assert len(to_append) == 2
+                bonds.append(to_append)
 
     return bonds
 
-def _get_atomic_charge(atom, atomic_valence_electrons, BO_valence):
+def _get_atomic_charge(atom: int, atomic_valence_electrons: int, BO_valence: int) -> int:
     if atom == 1:
         charge = 1 - BO_valence
     elif atom == 5:

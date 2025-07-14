@@ -1,8 +1,6 @@
 Graphs
 ==================
 
-.. rst-class:: colored-ref
-
 .. list-table:: Graph Classes Comparison
    :widths: 30 20 20 15 15
    :header-rows: 1

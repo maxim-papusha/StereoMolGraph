@@ -16,7 +16,7 @@ StereoMolGraph documentation
    
    reference/graph
    reference/stereodescriptors
-   reference/cartesian
+   reference/coords
 
 .. toctree::
    :maxdepth: 2

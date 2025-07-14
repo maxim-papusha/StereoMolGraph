@@ -1,7 +1,7 @@
 import pathlib
 
 import pytest
-from stereomolgraph.cartesian import Geometry
+from stereomolgraph.coords import Geometry
 
 @pytest.fixture(scope='session')
 def data_path() -> pathlib.Path:

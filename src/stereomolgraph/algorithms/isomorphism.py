@@ -4,17 +4,14 @@ Based of VF2++ from https://doi.org/10.1016/j.dam.2018.02.018"""
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple
 
 from stereomolgraph.algorithms.color_refine import color_refine_mg, label_hash
-#    color_refine_scrg,
-#    color_refine_smg,
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Hashable, Mapping
+    from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
     from typing import Optional, TypeVar
-    from stereomolgraph.stereodescriptors import Stereo
-    from stereomolgraph.graphs.scrg import StereoChange
+
     from stereomolgraph.graphs import (
         AtomId,
         CondensedReactionGraph,
@@ -22,6 +19,8 @@ if TYPE_CHECKING:
         StereoCondensedReactionGraph,
         StereoMolGraph,
     )
+    from stereomolgraph.graphs.scrg import StereoChange
+    from stereomolgraph.stereodescriptors import Stereo
 
     KT = TypeVar("KT", bound=Hashable, covariant=True)
     VT = TypeVar("VT", bound=Hashable, covariant=True)

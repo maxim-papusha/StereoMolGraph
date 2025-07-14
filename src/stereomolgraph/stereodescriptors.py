@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import numpy as np
 
-from stereomolgraph.cartesian import are_planar, handedness
+from stereomolgraph.coords import are_planar, handedness
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Set
@@ -24,8 +24,7 @@ class ABCStereo(ABC, Generic[A, P]):
     """
     Base Class to represent the orientation of a group of atoms in space.
     This is used to represent local stereochemistry and simultanously the
-    hybridization of atoms. 
-
+    hybridization of atoms.
     """
 
     atoms: A
@@ -33,7 +32,7 @@ class ABCStereo(ABC, Generic[A, P]):
 
     parity: P
     """parity is a number that defines the orientation of the atoms. If None,
-    the relative orientation of the atoms is not defined. 
+    the relative orientation of the atoms is not defined.
     If 0 the orientation is defined and part of a achiral stereochemistry.
     If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
     """
@@ -53,10 +52,8 @@ class ABCStereo(ABC, Generic[A, P]):
 
     @abstractmethod
     def invert(self) -> Self:
-        """
-        Inverts the stereo. If the stereo is achiral, it returns itself.
-        """
-        
+        """Inverts the stereo. If the stereo is achiral, it returns itself."""
+
     @abstractmethod
     def get_isomers(self) -> Set[Self]:
         """Returns all stereoisomers of the stereochemistry. Not just the
@@ -78,7 +75,7 @@ class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
         bond = frozenset(self.atoms[2:4])
         assert len(bond) == 2
         return bond
-    
+
 
 AtomStereo: TypeAlias = ABCAtomStereo[
     tuple[int, ...], None | Literal[-1, 0, 1]
@@ -295,7 +292,7 @@ class Tetrahedral(
         """
         Creates the representation of a Tetrahedral Stereochemistry
         from the coordinates of the atoms.
-        
+
         :param atoms: Atoms of the stereochemistry
         :param coords: nAtomsx3 numpy array with cartesian coordinates
         """

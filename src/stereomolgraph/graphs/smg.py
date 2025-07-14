@@ -2,35 +2,31 @@ from __future__ import annotations
 
 from copy import deepcopy
 from types import MappingProxyType
-from typing import TYPE_CHECKING, TypeVar, Literal, cast
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
-from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-from stereomolgraph.cartesian import are_planar
+
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.coords import are_planar
+from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
+from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
+from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
+    PlanarBond,
     Tetrahedral,
     TrigonalBipyramidal,
-    PlanarBond,
-    )
-
-
-from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
-
-from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
-    
+)
 
 if TYPE_CHECKING:
 
     from collections.abc import Iterable, Iterator, Mapping
+    from typing import Self
 
     from rdkit import Chem
 
-    from stereomolgraph.cartesian import Geometry
-       
-    from typing import Self
+    from stereomolgraph.coords import Geometry
     A = TypeVar("A", bound=tuple[int, ...], covariant=True)
     P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
@@ -428,7 +424,7 @@ class StereoMolGraph(MolGraph):
         
 
     def get_subgraph_isomorphic_mappings(
-        self, other: Self, stereo: bool = True
+        self, other: MolGraph, stereo: bool = True
     ) -> Iterator[dict[int, int]]:
         """Subgraph isomorphic mappings from "self" onto "other".
         Other can be of equal size or larger than "self".
@@ -442,6 +438,10 @@ class StereoMolGraph(MolGraph):
         :return: Mappings from the atoms of self onto the atoms of other
         :raises TypeError: Not defined for objects different types
         """
+        if other.__class__ is not self.__class__:
+            return
+            yield
+        
         return vf2pp_all_isomorphisms(
             self,
             other,
@@ -450,8 +450,6 @@ class StereoMolGraph(MolGraph):
             stereo_change=False,
             subgraph=True,
         )
-
-
 
     def is_stereo_valid(self) -> bool:
         """

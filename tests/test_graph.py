@@ -13,7 +13,7 @@ from stereomolgraph import (AtomId,
                             StereoMolGraph,
                             CondensedReactionGraph,
                             StereoCondensedReactionGraph)
-from stereomolgraph.cartesian import Geometry, are_planar
+from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import BondChange
 from stereomolgraph.graphs.scrg import StereoChange, StereoChangeDict
 
@@ -494,19 +494,6 @@ class TestCondensedReactionGraph(TestMolGraph):
             crg.add_bond(i, i-1)
         for j in range(0, 5):
             assert set(crg.active_atoms( additional_layer=j)) == {*range(j+2)}
-
-    def test_connectivity_matrix(self, crg):
-        assert np.allclose(
-            crg.connectivity_matrix(),
-            np.array(
-                [
-                    [0.0, 0.5, 1.0, 0.0],
-                    [0.5, 0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0, 0.5],
-                    [0.0, 0.0, 0.5, 0.0],
-                ]
-            ),
-        )
 
     def test_reactant_with_attributes(self, crg):
         crg_copy = crg.copy()
@@ -1551,9 +1538,11 @@ class TestStereoCondensedReactionGraph(
             | chiral_product_graph2.stereo
         )
         assert (
-            combined.stereo_changes
-            == chiral_product_graph1.stereo_changes
-            | chiral_product_graph2.stereo_changes
+            {**combined.atom_stereo_changes, **combined.bond_stereo_changes}
+            == {**chiral_product_graph1.atom_stereo_changes,
+                **chiral_product_graph1.bond_stereo_changes,
+                **chiral_product_graph2.atom_stereo_changes,
+                **chiral_product_graph2.bond_stereo_changes}
         )
 
     def test_from_chain_of_states_reaction(self, data_path):

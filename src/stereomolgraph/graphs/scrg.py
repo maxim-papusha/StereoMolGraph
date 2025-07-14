@@ -10,7 +10,7 @@ from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.graphs.crg import CondensedReactionGraph
 
-from stereomolgraph.cartesian import BondsFromDistance
+from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
@@ -24,13 +24,12 @@ from stereomolgraph.graph2rdmol import set_crg_bond_orders
 if TYPE_CHECKING:
 
     import sys
-    from stereomolgraph.periodictable import Element
-    from collections.abc import Callable, Iterable, Iterator, Mapping
-    from typing import Optional, Literal
+    from collections.abc import Iterable, Iterator, Mapping
+    from typing import Optional
     
     from rdkit import Chem
 
-    from stereomolgraph.cartesian import Geometry
+    from stereomolgraph.coords import Geometry
        
     # Self is included in typing from 3.11
     if sys.version_info >= (3, 11):
@@ -83,11 +82,6 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     @property
     def bond_stereo_changes(self) -> Mapping[Bond, StereoChangeDict[BondStereo]]:
         return MappingProxyType(self._bond_stereo_change)
-
-    @property
-    def stereo_changes(self) -> Mapping[AtomId | Bond, StereoChangeDict[AtomStereo |BondStereo]]:
-        return MappingProxyType(self._atom_stereo_change
-                                | self._bond_stereo_change)
 
     def get_atom_stereo_change(
         self, atom: int
@@ -194,7 +188,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         for bond in self.get_formed_bonds() | self.get_broken_bonds():
             active_atoms.update(bond)
             
-        for _atom_or_bond, stereo_change in self.stereo_changes.items():
+        for _atom, stereo_change in self.atom_stereo_changes.items():
+            for _change, stereo in stereo_change.items():
+                if stereo is not None:
+                    active_atoms.update(stereo.atoms)
+        for _bond, stereo_change in self.bond_stereo_changes.items():
             for _change, stereo in stereo_change.items():
                 if stereo is not None:
                     active_atoms.update(stereo.atoms)

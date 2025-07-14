@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from stereomolgraph.cartesian import Geometry
+from stereomolgraph.coords import Geometry
 
 
 class TestGeometry:
