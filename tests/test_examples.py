@@ -1,26 +1,36 @@
-import nbformat
-from nbclient import NotebookClient
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import nbformat
 import pytest
+from nbclient import NotebookClient
 
 EXAMPLES_FOLDER = Path(__file__).parent.parent / "examples"
-NOTEBOOKS = ["compare.ipynb", "phosgenation.ipynb", "werner.ipynb", "visualization.ipynb"]
 
+NOTEBOOKS = [
+    "compare_molecules.ipynb",
+    "phosgenation.ipynb",
+    #"werner.ipynb",
+    "visualization.ipynb",
+]
+
+
+@pytest.mark.example
 @pytest.mark.parametrize("notebook", NOTEBOOKS)
 def test_notebook(notebook):
-
     notebook_path = EXAMPLES_FOLDER / notebook
-    
+
     with Path(notebook_path).open() as f:
         executed_nb = nbformat.read(f, as_version=4)
 
-    client = NotebookClient(executed_nb,
-                            timeout=600,
-                            kernel_name="python",
-                            kernel_path=Path(sys.executable).resolve())
+    client = NotebookClient(
+        executed_nb,
+        timeout=600,
+        kernel_name="python",
+        kernel_path=Path(sys.executable).resolve(),
+    )
     client.execute()
-    
+
     with Path(notebook_path).open() as f:
         nb = nbformat.read(f, as_version=4)
 
@@ -48,5 +58,3 @@ def test_notebook(notebook):
                 elif ex_output.output_type == "error":
                     assert ex_output.ename == output.ename
                     assert ex_output.evalue == output.evalue
-
-

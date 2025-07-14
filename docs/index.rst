@@ -22,6 +22,7 @@ StereoMolGraph documentation
    :maxdepth: 2
    :caption: Example Notebooks:
    
+   examples/compare_molecules.ipynb
    examples/visualization.ipynb
    examples/phosgenation.ipynb
    examples/werner.ipynb

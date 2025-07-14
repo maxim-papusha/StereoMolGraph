@@ -6,7 +6,8 @@
 [![Documentation Status](https://readthedocs.org/projects/stereomolgraph/badge/?version=dev)](https://stereomolgraph.readthedocs.io/en/latest/?badge=dev)
 [![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?logo=github)](https://github.com/maxim-papusha/StereoMolGraph)
 [![Type Check](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml)
-[![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_test.yaml)
+[![Test Examples](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml)
+[![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
 
 Work in progress and a manuscript in preparation.
 More documentation and tutorials coming end of summer 2025
