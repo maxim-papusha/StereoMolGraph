@@ -78,4 +78,8 @@ typehints_document_rtype_none = False
 typehints_use_signature = True
 typehints_use_signature_return = True
 
+rst_prolog = """
+:github_url: https://github.com/maxim-papusha/StereoMolGraph
+"""
+
 github_url = "https://github.com/maxim-papusha/StereoMolGraph"
