@@ -63,7 +63,7 @@ atomic_valence_electrons[78] = 10
 
 def connectivity2bond_orders(
     atom_types: Sequence[Element],
-    connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.flexible]],
+    connectivity_matrix: np.ndarray[tuple[N, N], np.dtype[np.integer]],
     allow_charged_fragments:bool=False,
     charge: int = 0,
 ) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int8]],
