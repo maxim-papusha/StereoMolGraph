@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from copy import deepcopy
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, TypeVar, Generic
+from typing import TYPE_CHECKING, Generic, TypeVar
 
+from stereomolgraph.algorithms.color_refine import color_refine_mg
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.coords import BondsFromDistance
+from stereomolgraph.graph2rdmol import set_crg_bond_orders
+from stereomolgraph.graphs.crg import CondensedReactionGraph
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
-from stereomolgraph.graphs.crg import CondensedReactionGraph
-
-from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
-    Tetrahedral,
     Stereo,
-    )
-
-from stereomolgraph.graph2rdmol import set_crg_bond_orders
+    Tetrahedral,
+)
 
 if TYPE_CHECKING:
 
@@ -74,6 +73,59 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         if mol_graph and isinstance(mol_graph, StereoCondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
             self._bond_stereo_change.update(mol_graph._bond_stereo_change)
+    
+    def __hash__(self) -> int:
+        # Get molecular graphs and their colorings
+        r = self.reactant()
+        p = self.product()
+        r_colors = color_refine_mg(r)
+        p_colors = color_refine_mg(p)
+        ts_colors = color_refine_mg(self)
+        
+        # Helper function to compute stereo hashes
+        def stereo_hash(stereo):
+            return hash(stereo.__class__(
+                tuple(hash((r_colors[a], p_colors[a], ts_colors[a])) 
+                for a in stereo.atoms
+            ), stereo.parity))
+        
+        # Compute atom and bond stereo hashes
+        atom_stereo = {a: stereo_hash(s) for a, s in self.atom_stereo.items()}
+        bond_stereo = {b: stereo_hash(s) for b, s in self.bond_stereo.items()}
+        
+        # Compute stereo change hashes
+        def stereo_change_hash(change_dict):
+            return tuple(
+                (change, stereo_hash(s))
+                for change, s in change_dict.items()
+                if s is not None
+            )
+        
+        atom_stereo_change = {
+            a: hash(stereo_change_hash(change_dict))
+            for a, change_dict in self._atom_stereo_change.items()
+        }
+        
+        bond_stereo_change = {
+            b: hash(stereo_change_hash(change_dict))
+            for b, change_dict in self._bond_stereo_change.items()
+        }
+        
+        # Combine all hashes
+        components = (
+            r_colors,
+            p_colors,
+            ts_colors,
+            atom_stereo,
+            bond_stereo,
+            atom_stereo_change,
+            bond_stereo_change
+        )
+        
+        return hash(tuple(
+            hash(frozenset(Counter(d.values()).items()))
+            for d in components
+        ))
 
     @property
     def atom_stereo_changes(self) -> Mapping[AtomId, StereoChangeDict[AtomStereo]]:

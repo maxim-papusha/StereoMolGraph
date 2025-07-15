@@ -647,12 +647,8 @@ class MolGraph:
         return NotImplemented
 
     def __hash__(self) -> int:
-        return self.color_refine_hash()
-
-    def color_refine_hash(self) -> int:
-        """TODO"""
         color_dict: dict[int, int] = color_refine_mg(self, )
-        return hash(tuple(sorted(Counter(color_dict.values()).items())))
+        return hash(frozenset(Counter(color_dict.values()).items()))
 
     def get_subgraph_isomorphic_mappings(
         self, other: Self,

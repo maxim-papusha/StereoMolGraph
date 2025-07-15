@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
 from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 
+from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import are_planar
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
@@ -52,6 +54,19 @@ class StereoMolGraph(MolGraph):
         else:
             self._atom_stereo = {}
             self._bond_stereo = {}
+
+    def __hash__(self) -> int:
+        color_dict: dict[AtomId, int] = color_refine_mg(self, )
+        connectivity_hash = set(Counter(color_dict.values()).items())
+        atom_stereo = {s.__class__( tuple([color_dict[a] for a in s.atoms]),
+                                   s.parity)
+                                   for s in self.atom_stereo.values()}
+        bond_stereo = {s.__class__(tuple([color_dict[a] for a in s.atoms]),
+                                   s.parity)
+                                   for s in self.bond_stereo.values()}
+        return hash((frozenset(connectivity_hash),
+                     frozenset(atom_stereo),
+                     frozenset(bond_stereo)))
 
     @property
     def stereo(self) -> Mapping[AtomId | Bond, AtomStereo | BondStereo]:

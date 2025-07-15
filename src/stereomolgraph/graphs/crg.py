@@ -1,8 +1,9 @@
 from __future__ import annotations
-
+from collections import Counter
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
@@ -40,6 +41,13 @@ class CondensedReactionGraph(MolGraph):
     _atom_attrs: dict[AtomId, dict[str, Any]]
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
+
+    def __hash__(self) -> int:
+        r_color_dict = color_refine_mg(self.reactant())
+        p_color_dict = color_refine_mg(self.product())
+        color_dict = {a: (r_color_dict[a], p_color_dict[a])
+                      for a in self.atoms}
+        return hash(frozenset(Counter(color_dict.values()).items()))
 
     def add_bond(self, atom1: int, atom2: int, **attr:Any):
         """
