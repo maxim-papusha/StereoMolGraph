@@ -627,7 +627,7 @@ class TestPlanar:
 
     def test_are_planar_false(self):
         coords = np.array([[0.0, 0.0, 0.0],[1.0, 0.0, 0.0],[0.0, 1.0, 0.0],[1.0, 1.0, 1.0]], dtype=np.float64)
-        assert are_planar(coords, threshold=0.5) is False
+        assert not are_planar(coords, threshold=0.5)
 
 
 class TestTetrahedral:
@@ -701,10 +701,10 @@ class TestTrigonalBipyramidal:
 
     def test_equality_with_none(self):
         stereo1 = TrigonalBipyramidal(
-            (0, 1, 2, 3, 4), None
+            (0, 1, 2, 3, 4, 5), None
         )
         stereo2 = TrigonalBipyramidal(
-            (1, 0, 2, 3, 4), None
+            (1, 0, 2, 3, 4, 5), None
         )
         assert stereo1 == stereo2
 

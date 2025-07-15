@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import numpy as np
 
-from stereomolgraph.coords import are_planar, handedness
+from stereomolgraph.coords import are_planar, handedness, pairwise_distances, angle_from_coords
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Set
@@ -407,47 +407,34 @@ class TrigonalBipyramidal(
         first three atoms in Angstrom. The sign of the distance is determined
         by the side of the plane that atom 5 is on.
         """
-        # For a trigonal bipyramidal geometry there are three atoms equatorial,
-        # one on the top and one on the bottom.
-        # first all combinations of three atoms are generated.
-        # If Tetrahedral.from_coords(a, b, c, d)
-        # == Tetrahedral.from_coords(a,b,c,e).invert()
-        # Than the atoms a, b, c are equatorial, because they have an atom
-        # above and below them.
-        # If four atoms are in one plane the structure is a tetragonal pyramid.
 
         # coords_dict
-        index = (1, 2, 3, 4, 5)
+        _index_central_atom = 0
+        indices = (1, 2, 3, 4, 5)
 
-        for comb in itertools.combinations(index, r=3):  # index of outer atoms
-            i, j = list(set(index) - set(comb))
-            if are_planar(
-                coords.take([comb[0], comb[1], comb[2], i], axis=0)
-            ) or are_planar(
-                coords.take([comb[0], comb[1], comb[2], j], axis=0)
-            ):
-                raise ValueError("four atoms are planar")
+        if np.any(are_planar(coords[[1,2,3,4,5]])):
+            raise ValueError("Four atoms are planar!")
+        
+        lst = np.array([[i, 0, j] for i, j
+                        in itertools.combinations(indices, 2)], dtype=np.int8)
 
-            i_rotation = handedness(
-                coords.take([comb[0], comb[1], comb[2], i], axis=0)
-            )
-            j_rotation = -1 * handedness(
-                coords.take([comb[0], comb[1], comb[2], j], axis=0)
-            )
+        # The atoms with the largest angle are the axial atoms
+        angles = angle_from_coords(coords[lst])
+        i, j = lst[angles.argmax()][[0, 2]] # axial atoms
+        
+        equatorial = [a for a in indices if a not in (i, j)]
+        i_rotation = handedness(coords.take( [*equatorial, i], axis=0))
+        j_rotation = -1 * handedness(coords.take([*equatorial, j], axis=0))
 
-            comb_is_equatorial = int(i_rotation) == int(j_rotation)
+        assert int(i_rotation) == int(j_rotation)
 
-            if comb_is_equatorial is True:
-                atoms_in_new_order = (i, j, *comb)
-                orientation = int(i_rotation)
-                tb_atoms = (atoms[0], *atoms_in_new_order)
-                assert len(tb_atoms) == 6
-                assert orientation in (1, -1)
-                return TrigonalBipyramidal(tb_atoms, orientation)
-        else:
-            raise ValueError("something went wrong")
-
-
+        atoms_in_new_order = (i, j, *equatorial)
+        orientation = int(i_rotation)
+        tb_atoms = (atoms[0], *atoms_in_new_order)
+        assert len(tb_atoms) == 6
+        assert orientation in (1, -1)
+        return TrigonalBipyramidal(tb_atoms, orientation)
+        
 class Octahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
     ABCAtomStereo[

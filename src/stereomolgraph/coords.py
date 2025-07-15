@@ -9,25 +9,26 @@ import numpy as np
 from stereomolgraph.periodictable import (
     COVALENT_RADII,
     PERIODIC_TABLE,
-    Element
+    Element,
 )
 
 if TYPE_CHECKING:
-
-    from collections.abc import Callable, Iterable, Sequence, Mapping
+    from collections.abc import Callable, Iterable, Mapping, Sequence
     from os import PathLike
-    from typing import Literal, TypeVar, TypeVarTuple
-    
-    N = TypeVar('N', bound=int)
+    from typing import Literal, TypeVar
+
+    NP_FLOAT = TypeVar(
+        "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
+    )
+    N = TypeVar("N", bound=int)
+    ONE = Literal[1]
+    #TWO = Literal[2]
     THREE = Literal[3]
-    Shape = TypeVarTuple
-    ShapeND = tuple[int, ...]
-    ShapeNDType = TypeVar("ShapeNDType", bound=ShapeND)
-    ShapeVarGen = TypeVarTuple('ShapeVarGen')
+    FOUR = Literal[4]
 
 def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
                threshold: float = 0.5
-               ) -> bool:
+               ) -> np.bool_:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -44,7 +45,7 @@ def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
     if threshold <= 0:
         raise ValueError("threshold has to be bigger than 0")
     if len(points) < 4:
-        return True
+        return np.bool_(True)
 
     for p1, p2, p3, p4 in combinations(points, 4):
         d = deque([p1, p2, p3, p4])
@@ -57,12 +58,39 @@ def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
             norm_normal = normal / np.linalg.norm(normal)
             result = abs(np.dot(norm_normal, vec3))
             if result > threshold:
-                return False
-    return True
+                return np.bool_(False)
+    return np.bool_(True)
+
+def are_planar_volume(
+    coords: np.ndarray[tuple[FOUR, THREE], NP_FLOAT], threshold: float = 3.0
+) -> np.ndarray[tuple[ONE], np.dtype[np.bool_]]:
+    if coords.shape[-2] > 4:
+        raise NotImplementedError(
+            "are_planar_volume is not implemented for more than 4 points"
+        )
+        #for comb in combinations(range(coords.shape[-2]), 4):
+        #    if not are_planar_volume(coords[..., list(comb), :], threshold=threshold):
+        #        return np.array([False], dtype=np.bool_)
+        #    else:
+        #        return np.array([True], dtype=np.bool_)
+
+    assert coords.shape[-1] == 3
+    assert coords.shape[-2] == 4
+
+    v1 = coords[..., 0, :] - coords[..., 1, :]
+    v2 = coords[..., 2, :] - coords[..., 3, :]
+    v3 = coords[..., 3, :] - coords[..., 1, :]
+
+    normal = np.cross(v2, v3, axis=-1)
+
+    volumes = np.abs(np.sum(v1 * normal, axis=-1))
+
+    return volumes < threshold
+
 
 def handedness(
-    coords: np.ndarray[tuple[Literal[4], Literal[3]], np.dtype[np.floating]],
-) -> np.ndarray[tuple[Literal[1]], np.dtype[np.int8]]:
+    coords: np.ndarray[tuple[FOUR, THREE], NP_FLOAT],
+) -> np.ndarray[tuple[ONE], np.dtype[np.int8]]:
     """
     Calculates the orientation of the atom 4 from the plane defined
     by the first three atoms from their coordinates.
@@ -72,27 +100,82 @@ def handedness(
     vec1 = coords[..., 0, :] - coords[..., 1, :]
     vec2 = coords[..., 2, :] - coords[..., 3, :]
     vec3 = coords[..., 3, :] - coords[..., 1, :]
-    
+
     normal = np.cross(vec1, vec2, axis=-1)
-    
+
     # Normalize normal vectors (in-place operations)
     norm = np.linalg.norm(normal, axis=-1, keepdims=True)
     np.divide(normal, norm, out=normal)  # in-place division
-    
+
     # Compute dot product (in-place multiply and sum)
-    dot_product = np.sum(np.multiply(normal, vec3, out=normal), axis=-1)
+    np.multiply(normal, vec3, out=normal)
+    dot_product = np.sum(normal, axis=-1)
     result = np.sign(dot_product).astype(np.int8)
-    #, casting="unsafe", dtype=np.int8)
     return result
 
+
+def angle_from_coords(
+    coords: np.ndarray[tuple[THREE, THREE], NP_FLOAT],
+    out: None | np.ndarray[tuple[ONE], NP_FLOAT] = None,
+) -> np.ndarray[tuple[int, ...], NP_FLOAT]:
+    """ """
+    assert np.issubdtype(coords.dtype, np.floating)
+    assert coords.shape[-1] == 3
+    assert coords.shape[-2] == 3
+
+    BA = coords[..., 0, :] - coords[..., 1, :]
+    BC = coords[..., 2, :] - coords[..., 1, :]
+
+    # Compute dot product and norms
+    dot_product = np.einsum("...i,...i->...", BA, BC)
+    assert dot_product is not None
+    norm_BA = np.linalg.norm(BA, axis=-1)
+    norm_BC = np.linalg.norm(BC, axis=-1)
+
+    if out is not None:
+        assert out.shape == dot_product.shape, "Output array must match shape"
+        assert out.dtype == coords.dtype, "Output array must match dtype"
+    else:
+        output_shape = coords.shape[:-2]
+        if output_shape == ():
+            output_shape = (1,)
+
+        out = np.empty(output_shape, dtype=coords.dtype)  # type: ignore
+        assert out is not None, "Output array must be provided or created"
+        assert out.shape == output_shape, (
+            "Output array must be created with correct shape"
+        )
+
+    # Compute cosine of angle with safe division
+    denominator = np.multiply(norm_BA, norm_BC, out=out)  # Reuse out as temp
+    np.divide(dot_product, denominator, where=(denominator != 0), out=out)
+
+    # Clip and compute angle
+    np.clip(out, -1.0, 1.0, out=out)
+    np.arccos(out, out=out)
+    np.rad2deg(out, out=out)
+    assert out is not None
+    return out  # .squeeze()[()] if out.ndim == 0 else out
+
+
 def pairwise_distances(
-    coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.floating]],
-) -> np.ndarray[tuple[N, N], np.dtype[np.floating]]:
-    diff = coords[:, None] - coords[None, :]
-    diff **= 2
-    summed = np.sum(diff, axis=-1)
-    np.sqrt(summed, out=summed)
-    return summed
+    coords: np.ndarray[tuple[N, THREE], NP_FLOAT],
+) -> np.ndarray[tuple[N, N], NP_FLOAT]:
+    if coords.shape[-1] != 3:
+        raise ValueError("Last dimension must be size 3 for 3D coordinates")
+
+    # Compute differences using broadcasting
+    diff = (
+        coords[..., :, None, :] - coords[..., None, :, :]
+    )  # shape (..., N, N, 3)
+
+    # Square differences and sum along last dimension
+    np.square(diff, out=diff)  # in-place squaring
+    summed = np.sum(diff, axis=-1)  # shape (..., N, N)
+
+    # Compute distances in-place
+    distances = np.sqrt(summed, out=summed)
+    return distances
 
 
 class Geometry:
@@ -116,7 +199,9 @@ class Geometry:
     def __init__(
         self,
         atom_types: Iterable[int | str | Element] = tuple(),
-        coords: np.ndarray[tuple[int, int], np.dtype[np.float64]] = np.empty((0, 3), dtype=np.float64),
+        coords: np.ndarray[tuple[int, int], NP_FLOAT] = np.empty(
+            (0, 3), dtype=np.float64
+        ),
     ):
         self.coords = np.array(coords, dtype=np.float64)
         self.atom_types = tuple([PERIODIC_TABLE[atom] for atom in atom_types])
@@ -127,11 +212,8 @@ class Geometry:
             and len(self.atom_types) == self.coords.shape[0]
         )
 
-
     @classmethod
-    def from_xyz_file(
-        cls, path: PathLike[str] | str
-    ) -> Geometry:
+    def from_xyz_file(cls, path: PathLike[str] | str) -> Geometry:
         """Create a Geometry from an XYZ file."""
 
         dt = np.dtype(
@@ -172,12 +254,9 @@ class Geometry:
         return xyz
 
 
-
-
-
-
 def default_connectivity_cutoff(atom_types: tuple[Element, Element]) -> float:
     return sum(COVALENT_RADII[a] for a in atom_types) * 1.2
+
 
 CONNECTIVITY_CUTOFF_FUNC: Callable[[tuple[Element, Element]], float] = (
     default_connectivity_cutoff
@@ -189,14 +268,16 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
     A dictionary that calls a default function with keys as arguments,
     when a key is missing.
     """
-    default_func: Callable[[tuple[Element, Element]], float]
 
+    default_func: Callable[[tuple[Element, Element]], float]
 
     def __init__(
         self,
         *,
-        default_func: Callable[[tuple[Element, Element]], float] = CONNECTIVITY_CUTOFF_FUNC,
-        **kwargs: Mapping[tuple[Element, Element], float]
+        default_func: Callable[
+            [tuple[Element, Element]], float
+        ] = CONNECTIVITY_CUTOFF_FUNC,
+        **kwargs: Mapping[tuple[Element, Element], float],
     ):
         super().__init__(**kwargs)
         self.default_func = default_func
@@ -208,7 +289,7 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
             pass
         else:
             ret = self.default_func(key)
-        
+
         self[key] = ret
 
         return ret
@@ -216,8 +297,9 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
     def array(self, atom_types: Sequence[Element]) -> np.ndarray:
         n_atoms = len(atom_types)
         array = np.zeros((n_atoms, n_atoms))
-        for (atom1, atom_type1), (atom2, atom_type2) in \
-                combinations(enumerate(atom_types), 2):
+        for (atom1, atom_type1), (atom2, atom_type2) in combinations(
+            enumerate(atom_types), 2
+        ):
             value = self[atom_type1, atom_type2]
             array[atom1][atom2] = value
             array[atom2][atom1] = value
@@ -225,16 +307,32 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
 
 
 class BondsFromDistance:
+    def __init__(
+        self,
+        connectivity_cutoff: Callable[
+            [tuple[Element, Element]], float
+        ] = CONNECTIVITY_CUTOFF_FUNC,
+    ):
+        self.connectivity_cutoff = _DefaultFuncDict(
+            default_func=connectivity_cutoff
+        )
 
-    def __init__(self, connectivity_cutoff: Callable[[tuple[Element, Element]], float] = CONNECTIVITY_CUTOFF_FUNC):
-        self.connectivity_cutoff = _DefaultFuncDict(default_func=connectivity_cutoff)
-
-    def __call__(self, distance:float, atom_types: tuple[Element, Element]) -> Literal[0, 1]:
+    def __call__(
+        self, distance: float, atom_types: tuple[Element, Element]
+    ) -> Literal[0, 1]:
         if distance < 0:
-            raise ValueError('distance can not be negative')
+            raise ValueError("distance can not be negative")
         else:
             return 1 if distance < self.connectivity_cutoff[atom_types] else 0
 
-    def array(self, coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]], atom_types: Sequence[Element]) -> np.ndarray:
-        return np.where(pairwise_distances(coords) < self.connectivity_cutoff.array(atom_types), 1, 0)
-
+    def array(
+        self,
+        coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
+        atom_types: Sequence[Element],
+    ) -> np.ndarray:
+        return np.where(
+            pairwise_distances(coords)
+            < self.connectivity_cutoff.array(atom_types),
+            1,
+            0,
+        )
