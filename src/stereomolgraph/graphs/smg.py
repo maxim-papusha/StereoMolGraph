@@ -22,7 +22,6 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-
     from collections.abc import Iterable, Iterator, Mapping
     from typing import Self
 
