@@ -8,8 +8,6 @@ jobs:
   type-check:
     strategy:
       fail-fast: false
-      matrix:
-        python-version: ["3.13",]
     name: Type Check - Python 3.13
     runs-on: ubuntu-latest
     steps:
