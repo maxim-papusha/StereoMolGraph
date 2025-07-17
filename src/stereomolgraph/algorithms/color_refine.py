@@ -55,7 +55,7 @@ def numpy_int_tuple_hash(
         output += 97531
         return output
 
-def numpy_int_set_hash()
+def numpy_int_set_hash(): ...
 
 def label_hash(
     mg: MolGraph,
