@@ -45,7 +45,8 @@ class CondensedReactionGraph(MolGraph):
     def __hash__(self) -> int:
         r_color_dict = color_refine_mg(self.reactant())
         p_color_dict = color_refine_mg(self.product())
-        color_dict = {a: (r_color_dict[a], p_color_dict[a])
+        ts_colors = color_refine_mg(self)
+        color_dict = {a: (r_color_dict[a], ts_colors[a], p_color_dict[a])
                       for a in self.atoms}
         return hash(frozenset(Counter(color_dict.values()).items()))
 

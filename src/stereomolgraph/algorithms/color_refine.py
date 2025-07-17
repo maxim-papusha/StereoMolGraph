@@ -8,13 +8,14 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Literal, Optional
+    from typing import Literal, Optional, TypeVar
 
     from stereomolgraph.graphs.mg import (
         AtomId,
         MolGraph,
     )
 
+    N = TypeVar("N", bound=int)
 
 def numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
@@ -53,6 +54,8 @@ def numpy_int_tuple_hash(
 
         output += 97531
         return output
+
+def numpy_int_set_hash()
 
 def label_hash(
     mg: MolGraph,
@@ -95,7 +98,7 @@ def color_refine_mg(
 ) -> dict[AtomId, int]:
     atom_label_hash = label_hash(mg, atom_labels, bond_labels)
 
-    atom_hash = np.array(
+    atom_hash: np.ndarray = np.array(
         [atom_label_hash[atom] for atom in mg.atoms], dtype=np.int64
     )
 
@@ -117,7 +120,7 @@ def color_refine_mg(
     a_hashs: list[np.ndarray] = []
 
     for group in list(grouped.values()):
-        mask = np.zeros_like(atom_hash, dtype=bool)
+        mask = np.zeros_like(atom_hash, dtype=np.bool_)
         k = [int(i) for i in group.keys()]
         mask[k] = True
         group_values = [(k, *v) for k, v in group.items()]  # rename me
