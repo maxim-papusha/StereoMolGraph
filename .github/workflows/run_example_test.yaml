@@ -8,11 +8,8 @@ jobs:
   run-tests:
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.13"]
-    name: Test Examples - ${{ matrix.os }} ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    name: Test Examples - ubuntu-latest 3.13
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +17,7 @@ jobs:
       - name: Install uv and set Python version
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.13
 
       - name: Run tests
         run: uv run pytest -m example
