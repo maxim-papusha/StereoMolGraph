@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import sys
+
 from collections import defaultdict, Counter
 from copy import deepcopy
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic
 
 from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
@@ -30,11 +32,11 @@ if TYPE_CHECKING:
 
     from stereomolgraph.coords import Geometry
        
-    # Self is included in typing from 3.11
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
+# Self is included in typing from 3.11
+if sys.version_info >= (3, 11):
+    from typing import Self, TypeVar
+else:
+    from typing_extensions import Self, TypeVar
 
 S = TypeVar("S", bound="Stereo", contravariant=True)
 

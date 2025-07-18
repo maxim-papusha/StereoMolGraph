@@ -1,9 +1,9 @@
 from __future__ import annotations
-
+import sys
 import itertools
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 import numpy as np
 
@@ -16,8 +16,18 @@ if TYPE_CHECKING:
 
     from stereomolgraph.graphs.mg import AtomId, Bond
 
-A = TypeVar("A", bound=tuple[int, ...], covariant=True, default=tuple[int, ...])
-P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True, default=None | Literal[1, 0, -1])
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
+
+
+A = TypeVar("A", bound=tuple[int, ...],
+            covariant=True,
+            default=tuple[int, ...])
+P = TypeVar("P", bound=None | Literal[1, 0, -1],
+            covariant=True,
+            default=None | Literal[1, 0, -1])
 
 
 class Stereo(ABC, Generic[A, P]):
@@ -288,7 +298,9 @@ class Tetrahedral(
         """
         orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
         int_orientation = int(orientation)
-        assert int_orientation in (1, -1), f"Orientation {orientation} is not valid for Tetrahedral stereochemistry."
+        assert int_orientation in (1, -1), (
+            f"Orientation {orientation} is not valid for Tetrahedral "
+            "stereochemistry.")
         return cls(atoms, int_orientation)
 
 
