@@ -8,7 +8,7 @@ jobs:
   type-check:
     strategy:
       fail-fast: false
-    name: Type Check - Python 3.10
+    name: Type Check - Python 3.11
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,7 +17,7 @@ jobs:
       - name: Install uv and set Python version
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: 3.10
+          python-version: 3.11
 
       - name: Run pyright
         run: uv run pyright
