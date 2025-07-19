@@ -346,7 +346,7 @@ class CondensedReactionGraph(MolGraph):
         return vf2pp_all_isomorphisms(
             self,
             other,
-            color_refine=False, # TODO: implement color refinement
+            color_refine=True, # TODO: implement color refinement
             stereo=False,
             stereo_change=False,
             subgraph=False,

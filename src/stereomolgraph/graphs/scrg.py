@@ -83,12 +83,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         r_colors = color_refine_mg(r)
         p_colors = color_refine_mg(p)
         ts_colors = color_refine_mg(self)
+        colors = {a : hash((r_colors[a], p_colors[a], ts_colors[a]))
+                  for a in self.atoms}
         
         # Helper function to compute stereo hashes
         def stereo_hash(stereo):
             return hash(stereo.__class__(
-                tuple(hash((r_colors[a], p_colors[a], ts_colors[a])) 
-                for a in stereo.atoms
+                tuple(colors[a] for a in stereo.atoms
             ), stereo.parity))
         
         # Compute atom and bond stereo hashes
@@ -115,9 +116,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         
         # Combine all hashes
         components = (
-            r_colors,
-            p_colors,
-            ts_colors,
+            colors,
             atom_stereo,
             bond_stereo,
             atom_stereo_change,
@@ -685,7 +684,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             self,
             other,
             labels=None,
-            color_refine=False, # TODO: implement color refinement
+            color_refine=True, # TODO: implement color refinement
             stereo=stereo,
             stereo_change=stereo_change,
             subgraph=False,
