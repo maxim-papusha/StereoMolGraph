@@ -4,7 +4,6 @@ import sys
 
 from collections import defaultdict, Counter
 from copy import deepcopy
-from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
@@ -12,7 +11,7 @@ from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import set_crg_bond_orders
-from stereomolgraph.graphs.crg import CondensedReactionGraph
+from stereomolgraph.graphs.crg import CondensedReactionGraph, Change
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.stereodescriptors import (
@@ -40,18 +39,10 @@ else:
 
 S = TypeVar("S", bound="Stereo", contravariant=True)
 
-class StereoChange(Enum):
-    BROKEN = "broken"
-    FLEETING = "fleeting"
-    FORMED = "formed"
 
-    def __repr__(self) -> str:
-        return self.name
-
-
-class StereoChangeDict(dict[StereoChange, None | S], Generic[S]):
-    def __missing__(self, key: StereoChange) -> None:
-        if key in StereoChange:
+class ChangeDict(dict[Change, None | S], Generic[S]):
+    def __missing__(self, key: Change) -> None:
+        if key in Change:
             return None
         else:
             raise KeyError(f"{key} not in {self.__class__.__name__}")
@@ -64,13 +55,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     """
 
     __slots__ = ("_atom_stereo_change", "_bond_stereo_change")
-    _atom_stereo_change: defaultdict[AtomId, StereoChangeDict[AtomStereo]]
-    _bond_stereo_change: defaultdict[Bond, StereoChangeDict[BondStereo]]
+    _atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]]
+    _bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]]
 
     def __init__(self, mol_graph: Optional[MolGraph] = None):
         super().__init__(mol_graph)
-        self._atom_stereo_change = defaultdict(StereoChangeDict[AtomStereo])
-        self._bond_stereo_change = defaultdict(StereoChangeDict[BondStereo])
+        self._atom_stereo_change = defaultdict(ChangeDict[AtomStereo])
+        self._bond_stereo_change = defaultdict(ChangeDict[BondStereo])
         
         if mol_graph and isinstance(mol_graph, StereoCondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
@@ -129,16 +120,16 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         ))
 
     @property
-    def atom_stereo_changes(self) -> Mapping[AtomId, StereoChangeDict[AtomStereo]]:
+    def atom_stereo_changes(self) -> Mapping[AtomId, ChangeDict[AtomStereo]]:
         return MappingProxyType(self._atom_stereo_change)
 
     @property
-    def bond_stereo_changes(self) -> Mapping[Bond, StereoChangeDict[BondStereo]]:
+    def bond_stereo_changes(self) -> Mapping[Bond, ChangeDict[BondStereo]]:
         return MappingProxyType(self._bond_stereo_change)
 
     def get_atom_stereo_change(
         self, atom: int
-    ) -> None | Mapping[StereoChange, AtomStereo | None]:
+    ) -> None | Mapping[Change, AtomStereo | None]:
         
         if atom in self._atom_attrs:
             if atom in self._atom_stereo_change:
@@ -150,7 +141,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
     def get_bond_stereo_change(
         self, bond: Iterable[int]
-        ) -> None | Mapping[StereoChange, BondStereo | None]:
+        ) -> None | Mapping[Change, BondStereo | None]:
         
         bond = Bond(bond)
         if bond in self._bond_attrs:
@@ -178,11 +169,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         if (atom := atoms.pop()) not in self._atom_attrs:
             raise ValueError(f"Atom {atom} not in graph")
         
-        self._atom_stereo_change[atom] = StereoChangeDict[AtomStereo]()
+        self._atom_stereo_change[atom] = ChangeDict[AtomStereo]()
         for stereo_change, atom_stereo in {
-            StereoChange.BROKEN: broken,
-            StereoChange.FLEETING: fleeting,
-            StereoChange.FORMED: formed,
+            Change.BROKEN: broken,
+            Change.FLEETING: fleeting,
+            Change.FORMED: formed,
         }.items():
             if atom_stereo:
                 self._atom_stereo_change[atom][stereo_change] = atom_stereo
@@ -204,17 +195,17 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         if (bond := bonds.pop()) not in self._bond_attrs:
             raise ValueError(f"Bond {bond} not in graph")
         
-        self._bond_stereo_change[bond] = StereoChangeDict[BondStereo]()
+        self._bond_stereo_change[bond] = ChangeDict[BondStereo]()
         for stereo_change, bond_stereo in {
-            StereoChange.BROKEN: broken,
-            StereoChange.FORMED: formed,
-            StereoChange.FLEETING: fleeting
+            Change.BROKEN: broken,
+            Change.FORMED: formed,
+            Change.FLEETING: fleeting
         }.items():
             if bond_stereo:
                 self._bond_stereo_change[bond][stereo_change] = bond_stereo
 
     def delete_atom_stereo_change(
-        self, atom: AtomId, stereo_change: Optional[StereoChange] = None
+        self, atom: AtomId, stereo_change: Optional[Change] = None
     ):
         if stereo_change is None:
             del self._atom_stereo_change[atom]
@@ -223,7 +214,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
     def delete_bond_stereo_change(
         self, bond: Iterable[AtomId],
-        stereo_change: Optional[StereoChange] = None
+        stereo_change: Optional[Change] = None
     ):
         bond = Bond(bond)
         if stereo_change is None:
@@ -283,7 +274,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             super().relabel_atoms(mapping, copy=copy)
         )
 
-        atom_stereo_change:defaultdict[AtomId, StereoChangeDict[AtomStereo]] = defaultdict(StereoChangeDict[AtomStereo])
+        atom_stereo_change:defaultdict[AtomId, ChangeDict[AtomStereo]] = defaultdict(ChangeDict[AtomStereo])
         
         for atom, stereo_change_dict in self._atom_stereo_change.items():
             for stereo_change, atom_stereo in stereo_change_dict.items():
@@ -293,7 +284,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                         atom_stereo.parity)
                 atom_stereo_change[mapping[atom]][stereo_change] = new_stereo
 
-        bond_stereo_change: defaultdict[Bond, StereoChangeDict[BondStereo]] = defaultdict(StereoChangeDict[BondStereo])
+        bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]] = defaultdict(ChangeDict[BondStereo])
         
         for bond, stereo_change_dict in self._bond_stereo_change.items():
             for stereo_change, bond_stereo in stereo_change_dict.items():
@@ -331,12 +322,12 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         reactant._bond_stereo = deepcopy(self._bond_stereo)
 
         for atom, change_dict in self._atom_stereo_change.items():
-            if stereo := change_dict[StereoChange.BROKEN]:
+            if stereo := change_dict[Change.BROKEN]:
                 reactant._atom_stereo[atom] = stereo
                 
 
         for _bond, change_dict in self._bond_stereo_change.items():
-            if stereo := change_dict[StereoChange.BROKEN]:
+            if stereo := change_dict[Change.BROKEN]:
                 #reactant._bond_stereo[bond] = stereo
                 reactant.set_bond_stereo(stereo)
 
@@ -356,11 +347,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         product._bond_stereo = deepcopy(self._bond_stereo)
 
         for _atom, change_dict in self._atom_stereo_change.items():
-            if stereo := change_dict[StereoChange.FORMED]:
+            if stereo := change_dict[Change.FORMED]:
                 product.set_atom_stereo(stereo)
 
         for _bond, change_dict in self._bond_stereo_change.items():
-            if stereo := change_dict[StereoChange.FORMED]:
+            if stereo := change_dict[Change.FORMED]:
                 product.set_bond_stereo(stereo)
 
         return product
@@ -376,16 +367,16 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         rev_reac = super().reverse_reaction()
         
         for _atom, atom_change_dict in rev_reac._atom_stereo_change.items():
-            new_atom_change_dict = {"fleeting": atom_change_dict[StereoChange.FLEETING],
-                               "broken": atom_change_dict[StereoChange.FORMED],
-                               "formed": atom_change_dict[StereoChange.BROKEN]}
+            new_atom_change_dict = {"fleeting": atom_change_dict[Change.FLEETING],
+                               "broken": atom_change_dict[Change.FORMED],
+                               "formed": atom_change_dict[Change.BROKEN]}
 
             rev_reac.set_atom_stereo_change(**new_atom_change_dict)
 
         for _bond, bond_change_dict in rev_reac._bond_stereo_change.items():
-            new_bond_change_dict = {"fleeting": bond_change_dict[StereoChange.FLEETING],
-                               "broken": bond_change_dict[StereoChange.FORMED],
-                               "formed": bond_change_dict[StereoChange.BROKEN]}
+            new_bond_change_dict = {"fleeting": bond_change_dict[Change.FLEETING],
+                               "broken": bond_change_dict[Change.FORMED],
+                               "formed": bond_change_dict[Change.BROKEN]}
             rev_reac.set_bond_stereo_change(**new_bond_change_dict)
             
         return rev_reac
@@ -421,17 +412,17 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         ts_smg = StereoMolGraph(self) # bond change is now just a bond
         
         for _atom, stereo_change_dict in self.atom_stereo_changes.items():
-            atom_stereo = next((stereo for stereo_change in (StereoChange.FLEETING,
-                                                             StereoChange.BROKEN,
-                                                             StereoChange.FORMED)
+            atom_stereo = next((stereo for stereo_change in (Change.FLEETING,
+                                                             Change.BROKEN,
+                                                             Change.FORMED)
                                 if (stereo := stereo_change_dict[stereo_change]) is not None), None)
             if atom_stereo:
                 ts_smg.set_atom_stereo(atom_stereo)
 
         for _bond, stereo_change_dict in self.bond_stereo_changes.items():
-            bond_stereo = next((stereo for stereo_change in (StereoChange.FLEETING,
-                                                             StereoChange.BROKEN,
-                                                             StereoChange.FORMED)
+            bond_stereo = next((stereo for stereo_change in (Change.FLEETING,
+                                                             Change.BROKEN,
+                                                             Change.FORMED)
                                 if (stereo := stereo_change_dict[stereo_change]) is not None), None)
             if bond_stereo:
                 ts_smg.set_bond_stereo(bond_stereo)

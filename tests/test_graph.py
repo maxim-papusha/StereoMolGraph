@@ -7,15 +7,14 @@ import pytest
 import rdkit.Chem  # type: ignore
 
 from stereomolgraph import PERIODIC_TABLE as PTOE
-from stereomolgraph import (AtomId,
-                            Bond,
+from stereomolgraph import (Bond,
                             MolGraph,
                             StereoMolGraph,
                             CondensedReactionGraph,
                             StereoCondensedReactionGraph)
 from stereomolgraph.coords import Geometry, are_planar
-from stereomolgraph.graphs.crg import BondChange
-from stereomolgraph.graphs.scrg import StereoChange, StereoChangeDict
+from stereomolgraph.graphs.crg import Change
+from stereomolgraph.graphs.scrg import ChangeDict
 
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -381,9 +380,9 @@ class TestCondensedReactionGraph(TestMolGraph):
         crg.add_atom(1, atom_type="H")
         crg.add_atom(2, atom_type="O")
         crg.add_atom(3, atom_type="H")
-        crg.add_bond(0, 1, reaction=BondChange.FORMED)
+        crg.add_bond(0, 1, reaction=Change.FORMED)
         crg.add_bond(0, 2, bond_label="bond_label_C1O3")
-        crg.add_bond(2, 3, reaction=BondChange.BROKEN)
+        crg.add_bond(2, 3, reaction=Change.BROKEN)
         return crg
 
     def test_bonds(self, chiral_reactant_graph, chiral_product_graph1,
@@ -406,9 +405,9 @@ class TestCondensedReactionGraph(TestMolGraph):
             crg.add_bond(0, 1, reaction="test")
 
     def test_add_bond_with_reaction_attr(self, crg):
-        crg.add_bond(0, 1, reaction=BondChange.FORMED, bond_order=1)
+        crg.add_bond(0, 1, reaction=Change.FORMED, bond_order=1)
         assert (
-            crg.get_bond_attribute(0, 1, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(0, 1, attr="reaction") == Change.FORMED
         )
         assert crg.get_bond_attribute(0, 1, attr="bond_order") == 1
 
@@ -417,9 +416,9 @@ class TestCondensedReactionGraph(TestMolGraph):
             crg.set_bond_attribute(0, 1, attr="reaction", value="test")
 
     def test_set_bond_attribute_reaction(self, crg):
-        crg.set_bond_attribute(0, 1, attr="reaction", value=BondChange.FORMED)
+        crg.set_bond_attribute(0, 1, attr="reaction", value=Change.FORMED)
         assert (
-            crg.get_bond_attribute(0, 1, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(0, 1, attr="reaction") == Change.FORMED
         )
 
     def test_set_bond_attribute(self, crg):
@@ -429,13 +428,13 @@ class TestCondensedReactionGraph(TestMolGraph):
     def test_add_formed_bond(self, crg):
         crg.add_formed_bond(1, 2)
         assert (
-            crg.get_bond_attribute(1, 2, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(1, 2, attr="reaction") == Change.FORMED
         )
 
     def test_add_broken_bond(self, crg):
         crg.add_broken_bond(1, 2)
         assert (
-            crg.get_bond_attribute(2, 1, attr="reaction") == BondChange.BROKEN
+            crg.get_bond_attribute(2, 1, attr="reaction") == Change.BROKEN
         )
 
     def test_get_formed_bonds(self, crg):
@@ -1412,7 +1411,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, StereoChange.FORMED)
+            if value in (None, Change.FORMED)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1424,7 +1423,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.FORMED)
+            if value in (None, Change.FORMED)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1436,7 +1435,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.BROKEN)
+            if value in (None, Change.BROKEN)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1448,7 +1447,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.BROKEN)
+            if value in (None, Change.BROKEN)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1522,32 +1521,32 @@ class TestStereoCondensedReactionGraph(
         }
         bonds = {
             Bond((0, 1)): {},
-            Bond((1, 2)): {"reaction": BondChange.BROKEN},
+            Bond((1, 2)): {"reaction": Change.BROKEN},
             Bond((1, 7)): {},
             Bond((1, 3)): {},
-            Bond((2, 6)): {"reaction": BondChange.FORMED},
+            Bond((2, 6)): {"reaction": Change.FORMED},
             Bond((3, 4)): {},
-            Bond((3, 6)): {"reaction": BondChange.BROKEN},
+            Bond((3, 6)): {"reaction": Change.BROKEN},
             Bond((3, 5)): {},
             Bond((7, 10)): {},
             Bond((7, 9)): {},
             Bond((7, 8)): {},
         }
         stereo = {7: Tetrahedral((7, 1, 8, 9, 10), -1)}
-        atom_stereo_change = defaultdict(StereoChangeDict,{
-            1: StereoChangeDict({
-                StereoChange.BROKEN: Tetrahedral(
+        atom_stereo_change = defaultdict(ChangeDict,{
+            1: ChangeDict({
+                Change.BROKEN: Tetrahedral(
                     (1, 0, 2, 3, 7), -1
                 )
             }),
-            3: StereoChangeDict({
-                StereoChange.BROKEN: Tetrahedral(
+            3: ChangeDict({
+                Change.BROKEN: Tetrahedral(
                     (3, 1, 4, 5, 6), -1
                 )
             }),})
-        bond_stereo_change = defaultdict(StereoChangeDict,{
-            Bond({1, 3}): StereoChangeDict({
-                StereoChange.FORMED: PlanarBond(
+        bond_stereo_change = defaultdict(ChangeDict,{
+            Bond({1, 3}): ChangeDict({
+                Change.FORMED: PlanarBond(
                     (4, 5, 3, 1, 0, 7), 0
                 )})})
         assert scrg.atoms_with_attributes == atoms
@@ -1574,10 +1573,10 @@ class TestStereoCondensedReactionGraph(
     ):
         scrg = scrg_stereo_inversion
         assert scrg.get_atom_stereo_change(0) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (0, 1, 2, 3, 4), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (0, 1, 2, 3, 4), -1
             ),
         }
@@ -1587,10 +1586,10 @@ class TestStereoCondensedReactionGraph(
         scrg = scrg_stereo_inversion
         scrg.relabel_atoms({0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=False)
         assert scrg.get_atom_stereo_change(11) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),
         }
@@ -1602,10 +1601,10 @@ class TestStereoCondensedReactionGraph(
             {0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=True
         )
         assert new_scrg.get_atom_stereo_change(11) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),
         }

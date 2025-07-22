@@ -5,7 +5,7 @@ from collections import deque
 from typing import TYPE_CHECKING
 
 from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
-from stereomolgraph.graphs.scrg import StereoChange
+from stereomolgraph.graphs.scrg import Change
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable
@@ -94,7 +94,7 @@ def generate_fleeting_stereoisomers(
             for a in graph.atoms
             if (
                 (stereo_change_dict := graph.get_atom_stereo_change(a))
-                and (stereo := stereo_change_dict[StereoChange.FLEETING])
+                and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
         ]
@@ -104,7 +104,7 @@ def generate_fleeting_stereoisomers(
             for a in atoms
             if (
                 (stereo_change_dict := graph.get_atom_stereo_change(a))
-                and (stereo := stereo_change_dict[StereoChange.FLEETING])
+                and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
         ]
@@ -115,7 +115,7 @@ def generate_fleeting_stereoisomers(
             for b in graph.bonds
             if (
                 (stereo_change_dict := graph.get_bond_stereo_change(b))
-                and (stereo := stereo_change_dict[StereoChange.FLEETING])
+                and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
         ]
@@ -125,7 +125,7 @@ def generate_fleeting_stereoisomers(
             for b in bonds
             if (
                 (stereo_change_dict := graph.get_bond_stereo_change(b))
-                and (stereo := stereo_change_dict[StereoChange.FLEETING])
+                and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
         ]
