@@ -75,7 +75,6 @@ dev = [{include-group = "docs"},
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-# addopts = "--cov"
 
 [tool.pyright]
 include = ["src"]
