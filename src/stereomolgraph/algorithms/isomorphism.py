@@ -19,7 +19,7 @@ if TYPE_CHECKING:
         StereoCondensedReactionGraph,
         StereoMolGraph,
     )
-    from stereomolgraph.graphs.scrg import StereoChange
+    from stereomolgraph.graphs.scrg import Change
     from stereomolgraph.stereodescriptors import Stereo
 
     KT = TypeVar("KT", bound=Hashable, covariant=True)
@@ -58,8 +58,8 @@ class _Parameters(NamedTuple):
     g1_stereo: Mapping[AtomId, list[Stereo]]
     g2_stereo: Mapping[AtomId, list[Stereo]]
 
-    g1_stereo_changes: Mapping[AtomId, Mapping[StereoChange, list[Stereo]]]
-    g2_stereo_changes: Mapping[AtomId, Mapping[StereoChange, list[Stereo]]]
+    g1_stereo_changes: Mapping[AtomId, Mapping[Change, list[Stereo]]]
+    g2_stereo_changes: Mapping[AtomId, Mapping[Change, list[Stereo]]]
 
 
 class _State(NamedTuple):
@@ -245,9 +245,9 @@ def _sanity_check_and_init(
             for atom in s.atoms:
                 g2_stereo[atom].append(s)
 
-    g1_stereo_changes: defaultdict[AtomId, defaultdict[StereoChange, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
+    g1_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
 
-    g2_stereo_changes: defaultdict[AtomId, defaultdict[StereoChange, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
+    g2_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
 
     if stereo_change:
         if TYPE_CHECKING:
