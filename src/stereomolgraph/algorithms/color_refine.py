@@ -64,7 +64,7 @@ def label_hash(
 ) -> dict[AtomId, int]:
     if atom_labels == ("atom_type",) and bond_labels is None:
         atom_hash = {
-            atom: mg.get_atom_type(atom).atomic_nr
+            atom: hash(mg.get_atom_type(atom))
             for atom in mg.atoms
         }
 

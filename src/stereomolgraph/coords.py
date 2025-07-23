@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph.periodictable import (
+from stereomolgraph import (
     COVALENT_RADII,
     PERIODIC_TABLE,
     Element,

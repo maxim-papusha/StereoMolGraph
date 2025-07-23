@@ -9,17 +9,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from typing import Any
     
-"""
-Periodic table of elements.
-
-.. data:: PERIODIC_TABLE
-
-    Mapping containing all elements of the periodic table. Elements are
-    retreivable by element symbol or atomic number, simply import this table,
-    e.g. via ``from periodic_table import PERIODIC_TABLE as PTOE``, and obtain
-    the element ``PTOE['He']`` or ``PTOE[2]``
-
-"""
 
 
 @total_ordering

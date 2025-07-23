@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph.periodictable import PERIODIC_TABLE, Element
+from stereomolgraph import PERIODIC_TABLE, Element
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.algorithms.color_refine import color_refine_mg
