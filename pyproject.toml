@@ -21,7 +21,8 @@ maintainers = [
   {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"}
 ]
 authors = [
-  {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de"},
+  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"},
+  {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de"}, 
 ]
 
 
