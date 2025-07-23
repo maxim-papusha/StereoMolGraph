@@ -18,13 +18,12 @@ keywords = [
 ]
 
 maintainers = [
-  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de", orcid = "https://orcid.org/0009-0000-8580-4777"}
+  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"}
 ]
 authors = [
-  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de", orcid = "https://orcid.org/0009-0000-8580-4777"},
-  {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de", orcid = "https://orcid.org/0000-0003-1923-3747"}, 
+  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"},
+  {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de"}, 
 ]
-
 
 classifiers = [
   "Development Status :: 4 - Beta",
