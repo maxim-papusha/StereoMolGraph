@@ -4,12 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b2"
+version = "0.0.0b3"
 readme = "README.md"
 requires-python = ">=3.10"
 
-description = ""
-keywords = []
+description = "A graph library for chiral molecules, reactions and transition states"
+keywords = [
+    "chemistry",
+    "reaction",
+    "graph",
+    "molecule",
+    "transition state",
+]
+
+maintainers = [
+  {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"}
+]
+authors = [
+  {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de"},
+]
+
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -17,6 +31,8 @@ classifiers = [
   "Intended Audience :: Science/Research", 
 
   "License :: OSI Approved :: MIT License",
+  
+  "Operating System :: OS Independent",
 
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Chemistry",
@@ -56,6 +72,11 @@ dev = [{include-group = "docs"},
         # official module to add type hinting features used in future Python versions
 ]
 
+[[project.maintainers]]
+name = "Maxim Papusha"
+email = "chemtrayzer@ltt.rwth-aachen.de"
+
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 # addopts = "--cov"
@@ -73,3 +94,5 @@ docstring-code-format = true
 [project.urls]
 Documentation = "https://stereomolgraph.readthedocs.io/"
 Repository = "https://github.com/maxim-papusha/StereoMolGraph.git"
+PyPi = "https://pypi.org/project/StereoMolGraph/"
+Zenodo = "https://doi.org/10.5281/zenodo.16360310"
