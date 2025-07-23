@@ -1,13 +1,13 @@
 from __future__ import annotations
-
+import sys
 import itertools
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 import numpy as np
 
-from stereomolgraph.coords import are_planar, handedness
+from stereomolgraph.coords import are_planar, handedness, angle_from_coords
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Set
@@ -16,11 +16,21 @@ if TYPE_CHECKING:
 
     from stereomolgraph.graphs.mg import AtomId, Bond
 
-A = TypeVar("A", bound=tuple[int, ...], covariant=True)
-P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
 
 
-class ABCStereo(ABC, Generic[A, P]):
+A = TypeVar("A", bound=tuple[int, ...],
+            covariant=True,
+            default=tuple[int, ...])
+P = TypeVar("P", bound=None | Literal[1, 0, -1],
+            covariant=True,
+            default=None | Literal[1, 0, -1])
+
+
+class Stereo(ABC, Generic[A, P]):
     """
     :class:`~typing.Generic` Class to represent the orientation of a group of
     atoms in space.
@@ -61,16 +71,13 @@ class ABCStereo(ABC, Generic[A, P]):
         inverted ones, but all possible stereoisomers."""
 
 
-Stereo: TypeAlias = ABCStereo[tuple[int, ...], None | Literal[1, 0, -1]]
-
-
-class ABCAtomStereo(ABCStereo[A, P], ABC, Generic[A, P]):
+class AtomStereo(Stereo[A, P], ABC, Generic[A, P]):
     @property
     def central_atom(self) -> AtomId:
         return self.atoms[0]
 
 
-class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
+class BondStereo(Stereo[A, P], ABC, Generic[A, P]):
     @property
     def bond(self) -> Bond:
         bond = frozenset(self.atoms[2:4])
@@ -78,15 +85,7 @@ class ABCBondStereo(ABCStereo[A, P], ABC, Generic[A, P]):
         return bond
 
 
-AtomStereo: TypeAlias = ABCAtomStereo[
-    tuple[int, ...], None | Literal[-1, 0, 1]
-]
-BondStereo: TypeAlias = ABCBondStereo[
-    tuple[int, ...], None | Literal[-1, 0, 1]
-]
-
-
-class _StereoMixin(ABCStereo[A, P], ABC, Generic[A, P]):
+class _StereoMixin(Stereo[A, P], ABC, Generic[A, P]):
     __slots__ = ("atoms", "parity")
 
     def __repr__(self) -> str:
@@ -229,7 +228,7 @@ class _AchiralStereoMixin(_StereoMixin[A, None | Literal[0]], ABC, Generic[A]):
 
 class Tetrahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int]],
-    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[1, -1]],
+    AtomStereo[tuple[int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
@@ -299,13 +298,15 @@ class Tetrahedral(
         """
         orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
         int_orientation = int(orientation)
-        assert int_orientation in (1, -1), f"Orientation {orientation} is not valid for Tetrahedral stereochemistry."
+        assert int_orientation in (1, -1), (
+            f"Orientation {orientation} is not valid for Tetrahedral "
+            "stereochemistry.")
         return cls(atoms, int_orientation)
 
 
 class SquarePlanar(
     _AchiralStereoMixin[tuple[int, int, int, int, int]],
-    ABCAtomStereo[tuple[int, int, int, int, int], None | Literal[0]],
+    AtomStereo[tuple[int, int, int, int, int], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
@@ -351,7 +352,7 @@ class SquarePlanar(
 
 class TrigonalBipyramidal(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
-    ABCAtomStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    AtomStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
@@ -407,50 +408,37 @@ class TrigonalBipyramidal(
         first three atoms in Angstrom. The sign of the distance is determined
         by the side of the plane that atom 5 is on.
         """
-        # For a trigonal bipyramidal geometry there are three atoms equatorial,
-        # one on the top and one on the bottom.
-        # first all combinations of three atoms are generated.
-        # If Tetrahedral.from_coords(a, b, c, d)
-        # == Tetrahedral.from_coords(a,b,c,e).invert()
-        # Than the atoms a, b, c are equatorial, because they have an atom
-        # above and below them.
-        # If four atoms are in one plane the structure is a tetragonal pyramid.
 
         # coords_dict
-        index = (1, 2, 3, 4, 5)
+        _index_central_atom = 0
+        indices = (1, 2, 3, 4, 5)
 
-        for comb in itertools.combinations(index, r=3):  # index of outer atoms
-            i, j = list(set(index) - set(comb))
-            if are_planar(
-                coords.take([comb[0], comb[1], comb[2], i], axis=0)
-            ) or are_planar(
-                coords.take([comb[0], comb[1], comb[2], j], axis=0)
-            ):
-                raise ValueError("four atoms are planar")
+        if np.any(are_planar(coords[[1,2,3,4,5]])):
+            raise ValueError("Four atoms are planar!")
+        
+        lst = np.array([[i, 0, j] for i, j
+                        in itertools.combinations(indices, 2)], dtype=np.int8)
 
-            i_rotation = handedness(
-                coords.take([comb[0], comb[1], comb[2], i], axis=0)
-            )
-            j_rotation = -1 * handedness(
-                coords.take([comb[0], comb[1], comb[2], j], axis=0)
-            )
+        # The atoms with the largest angle are the axial atoms
+        angles = angle_from_coords(coords[lst])
+        i, j = lst[angles.argmax()][[0, 2]] # axial atoms
+        
+        equatorial = [a for a in indices if a not in (i, j)]
+        i_rotation = handedness(coords.take( [*equatorial, i], axis=0))
+        j_rotation = -1 * handedness(coords.take([*equatorial, j], axis=0))
 
-            comb_is_equatorial = int(i_rotation) == int(j_rotation)
+        assert int(i_rotation) == int(j_rotation)
 
-            if comb_is_equatorial is True:
-                atoms_in_new_order = (i, j, *comb)
-                orientation = int(i_rotation)
-                tb_atoms = (atoms[0], *atoms_in_new_order)
-                assert len(tb_atoms) == 6
-                assert orientation in (1, -1)
-                return TrigonalBipyramidal(tb_atoms, orientation)
-        else:
-            raise ValueError("something went wrong")
-
-
+        atoms_in_new_order = (i, j, *equatorial)
+        orientation = int(i_rotation)
+        tb_atoms = (atoms[0], *atoms_in_new_order)
+        assert len(tb_atoms) == 6
+        assert orientation in (1, -1)
+        return TrigonalBipyramidal(tb_atoms, orientation)
+        
 class Octahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
-    ABCAtomStereo[
+    AtomStereo[
         tuple[int, int, int, int, int, int, int], None | Literal[1, -1]
     ],
 ):
@@ -507,7 +495,7 @@ class Octahedral(
 
 class PlanarBond(
     _AchiralStereoMixin[tuple[int, int, int, int, int, int]],
-    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[0]],
+    BondStereo[tuple[int, int, int, int, int, int], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
@@ -579,7 +567,7 @@ class PlanarBond(
 
 class AtropBond(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int]],
-    ABCBondStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    BondStereo[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
 ):
     r"""
     Represents all possible configurations of atoms for a

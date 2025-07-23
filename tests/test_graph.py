@@ -7,15 +7,14 @@ import pytest
 import rdkit.Chem  # type: ignore
 
 from stereomolgraph import PERIODIC_TABLE as PTOE
-from stereomolgraph import (AtomId,
-                            Bond,
+from stereomolgraph import (Bond,
                             MolGraph,
                             StereoMolGraph,
                             CondensedReactionGraph,
                             StereoCondensedReactionGraph)
 from stereomolgraph.coords import Geometry, are_planar
-from stereomolgraph.graphs.crg import BondChange
-from stereomolgraph.graphs.scrg import StereoChange, StereoChangeDict
+from stereomolgraph.graphs.crg import Change
+from stereomolgraph.graphs.scrg import ChangeDict
 
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -187,7 +186,7 @@ class TestMolGraph:
         assert all(atom in new_graph.atoms for atom in mapping.values())
         assert all(atom not in new_graph.atoms for atom in mapping.keys())
 
-    @pytest.mark.skip("Not Implemented")
+    #@pytest.mark.skip("Not Implemented")
     def test_connected_components(self, mol_graph):
         assert [i for i in mol_graph.connected_components()] == [{0, 1}, {2}]
 
@@ -211,15 +210,6 @@ class TestMolGraph:
         copied_mol_graph = enantiomer_graph1.copy()
         assert id(copied_mol_graph) != id(enantiomer_graph1)
 
-    @pytest.mark.skip()
-    def test_from_sparse_array(self, water_graph):
-        atom_types = [PTOE["H"], PTOE["H"], PTOE["O"]]
-        sp_arr = scipy.sparse.csr_matrix([[0, 0, 1], [0, 0, 1], [1, 1, 0]])
-        graph = self._TestClass.from_atom_types_and_bond_order_sparse_array(
-            atom_types, sp_arr
-        )
-        assert graph == water_graph
-
     def test_get_isomorphic_mappings(self, water_graph, mol_graph):
         assert [] == [
             i for i in mol_graph.get_isomorphic_mappings(water_graph)
@@ -239,31 +229,12 @@ class TestMolGraph:
             list(enantiomer_graph1.get_isomorphic_mappings(enantiomer_graph2))
         )
 
-    @pytest.mark.skip("Subgraph isomorphism not released yet")
-    def test_subgraph_isomorphic_mappings(
-        self, water_graph, enantiomer_graph1
-    ):
-        water_graph.remove_atom(1)
-        assert (tuple(water_graph.get_subgraph_isomorphic_mappings(enantiomer_graph1)
-        )) == ({0: 1, 2: 7},)
 
     def test_get_automorphic_mappings(self, water_graph):
         assert all(
             mapping in ({0: 0, 1: 1, 2: 2}, {0: 0, 2: 1, 1: 2})
             for mapping in (i for i in water_graph.get_isomorphic_mappings(water_graph))
         )
-
-    @pytest.mark.skip("Subgraph isomorphism not released yet")
-    def test_subgraph_isomorphic_mappings_fullerene(self):
-        fullerene_c60_smiles = "C12=C3C4=C5C6=C1C7=C8C9=C1C%10=C%11C(=C29)C3=C2C3=C4C4=C5C5=C9C6=C7C6=C7C8=C1C1=C8C%10=C%10C%11=C2C2=C3C3=C4C4=C5C5=C%11C%12=C(C6=C95)C7=C1C1=C%12C5=C%11C4=C3C3=C5C(=C81)C%10=C23"
-        rdmol = rdkit.Chem.MolFromSmiles(fullerene_c60_smiles)
-        smg = self._TestClass.from_rdmol(rdmol)
-        g = self._TestClass()
-        g.add_atom(0, "C")
-        g.add_atom(1, "C")
-        g.add_bond(0, 1)
-        for mapping in g.get_subgraph_isomorphic_mappings(smg):
-            assert Bond((mapping[0], mapping[1])) in smg.bonds
 
     def test_compose(
         self, water_graph, mol_graph, empty_mol_graph
@@ -388,15 +359,15 @@ class TestMolGraph:
         )
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
-        assert (enantiomer_graph1.color_refine_hash()
-                == enantiomer_graph2.color_refine_hash())
+        assert (hash(enantiomer_graph1)
+                == hash(enantiomer_graph2))
 
     def test_hash_relabel(self, water_graph):
         relabel_water = water_graph.relabel_atoms(
             {0: 1, 1: 0, 2: 13}, copy=True
         )
-        assert (water_graph.color_refine_hash()
-                == relabel_water.color_refine_hash())
+        assert (hash(water_graph)
+                == hash(relabel_water))
 
 
 class TestCondensedReactionGraph(TestMolGraph):
@@ -409,9 +380,9 @@ class TestCondensedReactionGraph(TestMolGraph):
         crg.add_atom(1, atom_type="H")
         crg.add_atom(2, atom_type="O")
         crg.add_atom(3, atom_type="H")
-        crg.add_bond(0, 1, reaction=BondChange.FORMED)
+        crg.add_bond(0, 1, reaction=Change.FORMED)
         crg.add_bond(0, 2, bond_label="bond_label_C1O3")
-        crg.add_bond(2, 3, reaction=BondChange.BROKEN)
+        crg.add_bond(2, 3, reaction=Change.BROKEN)
         return crg
 
     def test_bonds(self, chiral_reactant_graph, chiral_product_graph1,
@@ -434,9 +405,9 @@ class TestCondensedReactionGraph(TestMolGraph):
             crg.add_bond(0, 1, reaction="test")
 
     def test_add_bond_with_reaction_attr(self, crg):
-        crg.add_bond(0, 1, reaction=BondChange.FORMED, bond_order=1)
+        crg.add_bond(0, 1, reaction=Change.FORMED, bond_order=1)
         assert (
-            crg.get_bond_attribute(0, 1, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(0, 1, attr="reaction") == Change.FORMED
         )
         assert crg.get_bond_attribute(0, 1, attr="bond_order") == 1
 
@@ -445,9 +416,9 @@ class TestCondensedReactionGraph(TestMolGraph):
             crg.set_bond_attribute(0, 1, attr="reaction", value="test")
 
     def test_set_bond_attribute_reaction(self, crg):
-        crg.set_bond_attribute(0, 1, attr="reaction", value=BondChange.FORMED)
+        crg.set_bond_attribute(0, 1, attr="reaction", value=Change.FORMED)
         assert (
-            crg.get_bond_attribute(0, 1, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(0, 1, attr="reaction") == Change.FORMED
         )
 
     def test_set_bond_attribute(self, crg):
@@ -457,13 +428,13 @@ class TestCondensedReactionGraph(TestMolGraph):
     def test_add_formed_bond(self, crg):
         crg.add_formed_bond(1, 2)
         assert (
-            crg.get_bond_attribute(1, 2, attr="reaction") == BondChange.FORMED
+            crg.get_bond_attribute(1, 2, attr="reaction") == Change.FORMED
         )
 
     def test_add_broken_bond(self, crg):
         crg.add_broken_bond(1, 2)
         assert (
-            crg.get_bond_attribute(2, 1, attr="reaction") == BondChange.BROKEN
+            crg.get_bond_attribute(2, 1, attr="reaction") == Change.BROKEN
         )
 
     def test_get_formed_bonds(self, crg):
@@ -607,18 +578,6 @@ class TestCondensedReactionGraph(TestMolGraph):
         )
         assert chiral_reaction_scrg1.is_isomorphic(chiral_reaction_scrg2)
 
-    @pytest.mark.skip(reason="Not implemented yet")
-    def test_subgraph_isomorphism_reactant_ts(
-        self, chiral_reaction_scrg1, chiral_reactant_graph
-    ):
-        raise ValueError(
-            list(
-                chiral_reaction_scrg1.get_subgraph_isomorphic_mappings(
-                    chiral_reactant_graph
-                )
-            )
-        )
-
 
 class TestPlanar:
     def test_are_planar_true(self):
@@ -627,7 +586,7 @@ class TestPlanar:
 
     def test_are_planar_false(self):
         coords = np.array([[0.0, 0.0, 0.0],[1.0, 0.0, 0.0],[0.0, 1.0, 0.0],[1.0, 1.0, 1.0]], dtype=np.float64)
-        assert are_planar(coords, threshold=0.5) is False
+        assert not are_planar(coords, threshold=0.5)
 
 
 class TestTetrahedral:
@@ -701,10 +660,10 @@ class TestTrigonalBipyramidal:
 
     def test_equality_with_none(self):
         stereo1 = TrigonalBipyramidal(
-            (0, 1, 2, 3, 4), None
+            (0, 1, 2, 3, 4, 5), None
         )
         stereo2 = TrigonalBipyramidal(
-            (1, 0, 2, 3, 4), None
+            (1, 0, 2, 3, 4, 5), None
         )
         assert stereo1 == stereo2
 
@@ -1419,26 +1378,11 @@ class TestStereoMolGraph(TestMolGraph):
         assert enantiomer_graph1.enantiomer().is_isomorphic(enantiomer_graph2)
         assert not enantiomer_graph1.is_isomorphic(enantiomer_graph2)
 
-    @pytest.mark.skip(reason="Not implemented")
-    @pytest.mark.parametrize("inchi, sigma", [
-        ("InChI=1S/H2O/h1H2", 2),
-        ("InChI=1S/CH4/h1H4", 12),
-        ("InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H", 12),
-        ("InChI=1S/C6H12/c1-2-4-6-5-3-1/h1-6H2", 12),
-    ], ids = ["H2O", "CH4", "benzene", "cyclohexane",],
-    )
-    def test_rotational_symmetry_number(self, inchi, sigma):
-        ...
-        #geo = Geometry.from_inchi(inchi)
-        #graph = self._TestClass.from_geometry(geo)
-        #assert graph.rotational_symmetry_number() == sigma
-
-    @pytest.mark.skip("Chiral hash not implemented")
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
         assert enantiomer_graph1._atom_stereo != enantiomer_graph2._atom_stereo
         #raise Exception(enantiomer_graph1._atom_stereo, enantiomer_graph2._atom_stereo)
-        assert (enantiomer_graph1.color_refine_hash()
-                != enantiomer_graph2.color_refine_hash())
+        assert (hash(enantiomer_graph1)
+                != hash(enantiomer_graph2))
 
     def test_valid_stereo(self, chiral_product_graph1):
         assert chiral_product_graph1.is_stereo_valid()
@@ -1467,7 +1411,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, StereoChange.FORMED)
+            if value in (None, Change.FORMED)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1479,7 +1423,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.FORMED)
+            if value in (None, Change.FORMED)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1491,7 +1435,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.BROKEN)
+            if value in (None, Change.BROKEN)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1503,7 +1447,7 @@ class TestStereoCondensedReactionGraph(
         expected_mol_atom_stereo = {
             key: value
             for key, value in crg._atom_stereo.items()
-            if value in (None, BondChange.BROKEN)
+            if value in (None, Change.BROKEN)
         }
         assert (
             crg.product(keep_attributes=True)._atom_stereo
@@ -1577,32 +1521,32 @@ class TestStereoCondensedReactionGraph(
         }
         bonds = {
             Bond((0, 1)): {},
-            Bond((1, 2)): {"reaction": BondChange.BROKEN},
+            Bond((1, 2)): {"reaction": Change.BROKEN},
             Bond((1, 7)): {},
             Bond((1, 3)): {},
-            Bond((2, 6)): {"reaction": BondChange.FORMED},
+            Bond((2, 6)): {"reaction": Change.FORMED},
             Bond((3, 4)): {},
-            Bond((3, 6)): {"reaction": BondChange.BROKEN},
+            Bond((3, 6)): {"reaction": Change.BROKEN},
             Bond((3, 5)): {},
             Bond((7, 10)): {},
             Bond((7, 9)): {},
             Bond((7, 8)): {},
         }
         stereo = {7: Tetrahedral((7, 1, 8, 9, 10), -1)}
-        atom_stereo_change = defaultdict(StereoChangeDict,{
-            1: StereoChangeDict({
-                StereoChange.BROKEN: Tetrahedral(
+        atom_stereo_change = defaultdict(ChangeDict,{
+            1: ChangeDict({
+                Change.BROKEN: Tetrahedral(
                     (1, 0, 2, 3, 7), -1
                 )
             }),
-            3: StereoChangeDict({
-                StereoChange.BROKEN: Tetrahedral(
+            3: ChangeDict({
+                Change.BROKEN: Tetrahedral(
                     (3, 1, 4, 5, 6), -1
                 )
             }),})
-        bond_stereo_change = defaultdict(StereoChangeDict,{
-            Bond({1, 3}): StereoChangeDict({
-                StereoChange.FORMED: PlanarBond(
+        bond_stereo_change = defaultdict(ChangeDict,{
+            Bond({1, 3}): ChangeDict({
+                Change.FORMED: PlanarBond(
                     (4, 5, 3, 1, 0, 7), 0
                 )})})
         assert scrg.atoms_with_attributes == atoms
@@ -1629,10 +1573,10 @@ class TestStereoCondensedReactionGraph(
     ):
         scrg = scrg_stereo_inversion
         assert scrg.get_atom_stereo_change(0) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (0, 1, 2, 3, 4), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (0, 1, 2, 3, 4), -1
             ),
         }
@@ -1642,10 +1586,10 @@ class TestStereoCondensedReactionGraph(
         scrg = scrg_stereo_inversion
         scrg.relabel_atoms({0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=False)
         assert scrg.get_atom_stereo_change(11) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),
         }
@@ -1657,10 +1601,10 @@ class TestStereoCondensedReactionGraph(
             {0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=True
         )
         assert new_scrg.get_atom_stereo_change(11) == {
-            StereoChange.BROKEN: Tetrahedral(
+            Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
-            StereoChange.FORMED: Tetrahedral(
+            Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),
         }
@@ -1726,31 +1670,24 @@ class TestStereoCondensedReactionGraph(
 
         assert double_reverset_reaction == chiral_reaction_scrg1
 
-    @pytest.mark.skip(reason="Not implemented")
-    def test_color_refine_stereo_reaction(
+    def test_hash_stereo_reaction(
         self, chiral_reaction_scrg1, chiral_reaction_scrg2
     ):
         assert (
-            chiral_reaction_scrg1.color_refine_hash()
-            != chiral_reaction_scrg2.color_refine_hash()
+            hash(chiral_reaction_scrg1)
+            != hash(chiral_reaction_scrg2)
         )
 
-    @pytest.mark.skip(reason="Not implemented")
-    def test_color_refine_hash_stereo_reaction_with_ts(
+    def test_hash_stereo_reaction_with_ts(
         self, chiral_reaction_chiral_ts_scrg1, chiral_reaction_chiral_ts_scrg2
     ):
         assert (
-            chiral_reaction_chiral_ts_scrg1.color_refine_hash()
-            != chiral_reaction_chiral_ts_scrg2.color_refine_hash()
+            hash(chiral_reaction_chiral_ts_scrg1)
+            != hash(chiral_reaction_chiral_ts_scrg2)
         )
 
-    @pytest.mark.skip(reason="Not implemented")
-    def test_symmetry_number(self, chiral_reaction_chiral_ts_scrg1):
-        assert chiral_reaction_chiral_ts_scrg1.symmetry_number() == 9
-
-    @pytest.mark.skip(reason="Not implemented")
-    def test_color_refine_hash_enantiomers(
+    def test_hash_enantiomers(
         self, enantiomer_graph1, enantiomer_graph2
     ):
-        assert (enantiomer_graph1.color_refine_hahs()
-                != enantiomer_graph2.color_refine_hash())
+        assert (hash(enantiomer_graph1)
+                != hash(enantiomer_graph2))

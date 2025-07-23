@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
 from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 
+from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import are_planar
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
@@ -20,7 +22,6 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-
     from collections.abc import Iterable, Iterator, Mapping
     from typing import Self
 
@@ -52,6 +53,19 @@ class StereoMolGraph(MolGraph):
         else:
             self._atom_stereo = {}
             self._bond_stereo = {}
+
+    def __hash__(self) -> int:
+        color_dict: dict[AtomId, int] = color_refine_mg(self, )
+        connectivity_hash = set(Counter(color_dict.values()).items())
+        atom_stereo = {s.__class__( tuple([color_dict[a] for a in s.atoms]),
+                                   s.parity)
+                                   for s in self.atom_stereo.values()}
+        bond_stereo = {s.__class__(tuple([color_dict[a] for a in s.atoms]),
+                                   s.parity)
+                                   for s in self.bond_stereo.values()}
+        return hash((frozenset(connectivity_hash),
+                     frozenset(atom_stereo),
+                     frozenset(bond_stereo)))
 
     @property
     def stereo(self) -> Mapping[AtomId | Bond, AtomStereo | BondStereo]:
@@ -268,7 +282,8 @@ class StereoMolGraph(MolGraph):
         
 
     @classmethod
-    def from_rdmol(cls, rdmol:Chem.Mol, use_atom_map_number:bool=False) -> Self:
+    def from_rdmol(cls, rdmol:Chem.Mol, use_atom_map_number:bool=False
+                   ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         All hydrogens have to be explicit.
@@ -280,8 +295,10 @@ class StereoMolGraph(MolGraph):
                                     instead of the atom index, Default: False
         :return: StereoMolGraph
         """
-        smg = stereo_mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
-        assert isinstance(smg, cls), "StereoMolGraph.from_rdmol did not return a StereoMolGraph"
+        smg = stereo_mol_graph_from_rdmol(cls, rdmol,
+                                          use_atom_map_number=use_atom_map_number)
+        assert isinstance(smg, cls), ("StereoMolGraph.from_rdmol did not"
+                                      " return a StereoMolGraph")
         return smg
 
     def _set_atom_stereo_from_geometry(self, geo: Geometry):
@@ -305,7 +322,8 @@ class StereoMolGraph(MolGraph):
                     if len(next_layer) != 4:
                         continue
 
-                    elif are_planar(geo.coords.take(tuple(next_layer), axis=0)):
+                    elif are_planar(geo.coords.take(tuple(next_layer),
+                                                    axis=0)):
                         bonded_to_atom = (
                             outer_atom
                             for outer_atom in next_layer
@@ -339,7 +357,8 @@ class StereoMolGraph(MolGraph):
                     stereo_atoms = (atom, *first_neighbors)
                     assert len(stereo_atoms) == 5
                     stereo_coords = geo.coords.take(stereo_atoms, axis=0)
-                    atoms_atom_stereo = Tetrahedral.from_coords(stereo_atoms, stereo_coords)
+                    atoms_atom_stereo = Tetrahedral.from_coords(stereo_atoms,
+                                                                stereo_coords)
 
                     self.set_atom_stereo(atoms_atom_stereo)
 
@@ -347,7 +366,8 @@ class StereoMolGraph(MolGraph):
                     stereo_atoms = (atom, *first_neighbors)
                     assert len(stereo_atoms) == 6
                     stereo_coords = geo.coords.take(stereo_atoms, axis=0)
-                    atoms_atom_stereo = TrigonalBipyramidal.from_coords(stereo_atoms, stereo_coords)
+                    atoms_atom_stereo = TrigonalBipyramidal.from_coords(
+                        stereo_atoms, stereo_coords)
                     self.set_atom_stereo(atoms_atom_stereo)
 
 
@@ -416,7 +436,7 @@ class StereoMolGraph(MolGraph):
         return vf2pp_all_isomorphisms(
             self,
             other,
-            color_refine=False, #TODO: implement color refinement
+            color_refine=True, #TODO: implement color refinement
             stereo=stereo,
             stereo_change=False,
             subgraph=False,

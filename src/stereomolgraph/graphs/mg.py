@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph.periodictable import PERIODIC_TABLE, Element
+from stereomolgraph import PERIODIC_TABLE, Element
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.algorithms.color_refine import color_refine_mg
@@ -647,12 +647,8 @@ class MolGraph:
         return NotImplemented
 
     def __hash__(self) -> int:
-        return self.color_refine_hash()
-
-    def color_refine_hash(self) -> int:
-        """TODO"""
         color_dict: dict[int, int] = color_refine_mg(self, )
-        return hash(tuple(sorted(Counter(color_dict.values()).items())))
+        return hash(frozenset(Counter(color_dict.values()).items()))
 
     def get_subgraph_isomorphic_mappings(
         self, other: Self,
@@ -690,7 +686,7 @@ class MolGraph:
         return vf2pp_all_isomorphisms(
             self,
             other,
-            color_refine=False, # TODO: implement color refinement
+            color_refine=True, # TODO: implement color refinement
             stereo=False,
             stereo_change=False,
             subgraph=False,

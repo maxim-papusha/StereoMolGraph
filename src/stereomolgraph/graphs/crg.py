@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from collections import Counter
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 
 if TYPE_CHECKING:
+    
+    # Self is included in typing from 3.11
 
     from collections.abc import Iterator
     from typing import Any, Self
@@ -18,20 +22,20 @@ if TYPE_CHECKING:
     from stereomolgraph.coords import Geometry
 
 
-class BondChange(Enum):
-    FORMED = 1
-    FLEETING = 0
-    BROKEN = -1
+class Change(Enum):
+    FORMED = "formed"
+    FLEETING = "fleeting"
+    BROKEN = "broken"
 
     def __repr__(self) -> str:
-        return str(self.name)
+        return self.name
 
 
 class CondensedReactionGraph(MolGraph):
     """
     Graph representing a reaction. Atoms are nodes and (potentially changing)
     bonds are edges. Every node has to have an attribute "atom_type" of type
-    Element. Edges can have an attribute "reaction" of type BondChange.
+    Element. Edges can have an attribute "reaction" of type Change.
     This is used to represent the change in connectivity during the reaction.
 
     Two graphs are equal, iff. they are isomporhic and of the same type.
@@ -41,6 +45,14 @@ class CondensedReactionGraph(MolGraph):
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
 
+    def __hash__(self) -> int:
+        r_color_dict = color_refine_mg(self.reactant())
+        p_color_dict = color_refine_mg(self.product())
+        ts_colors = color_refine_mg(self)
+        color_dict = {a: (r_color_dict[a], ts_colors[a], p_color_dict[a])
+                      for a in self.atoms}
+        return hash(frozenset(Counter(color_dict.values()).items()))
+
     def add_bond(self, atom1: int, atom2: int, **attr:Any):
         """
         Adds a bond between atom1 and atom2.
@@ -49,7 +61,7 @@ class CondensedReactionGraph(MolGraph):
         :param atom2:   id of atom2
         """
         if "reaction" in attr and not isinstance(
-            attr.get("reaction"), BondChange
+            attr.get("reaction"), Change
         ):
             raise TypeError("reaction bond has to have reaction attribute")
         super().add_bond(atom1, atom2, **attr)
@@ -65,7 +77,7 @@ class CondensedReactionGraph(MolGraph):
         :param attr: Attribute
         :param value: Value
         """
-        if attr == "reaction" and not isinstance(value, BondChange):
+        if attr == "reaction" and not isinstance(value, Change):
             raise ValueError("reaction bond has to have reaction attribute")
         super().set_bond_attribute(atom1, atom2, attr, value)
 
@@ -78,7 +90,7 @@ class CondensedReactionGraph(MolGraph):
         :param atom2: Atom2
         """
 
-        attr["reaction"] = BondChange.FORMED
+        attr["reaction"] = Change.FORMED
         if atom1 in self._atom_attrs and atom2 in self._atom_attrs:
             self.add_bond(atom1, atom2, **attr)
         else:
@@ -93,7 +105,7 @@ class CondensedReactionGraph(MolGraph):
         :param atom2: Atom2
         """
         if atom1 in self._atom_attrs and atom2 in self._atom_attrs:
-            self.add_bond(atom1, atom2, reaction=BondChange.BROKEN, **attr)
+            self.add_bond(atom1, atom2, reaction=Change.BROKEN, **attr)
         else:
             raise ValueError("Atoms have to be in the graph")
             
@@ -107,7 +119,7 @@ class CondensedReactionGraph(MolGraph):
         f_bonds: set[Bond] = set()
         for bond in self.bonds:
             atom1, atom2 = bond
-            if self.get_bond_attribute(atom1, atom2, "reaction") == BondChange.FORMED:
+            if self.get_bond_attribute(atom1, atom2, "reaction") == Change.FORMED:
                 f_bonds.add(bond)
         return f_bonds
 
@@ -120,7 +132,7 @@ class CondensedReactionGraph(MolGraph):
         b_bonds: set[Bond] = set()
         for bond in self.bonds:
             atom1, atom2 = bond
-            if self.get_bond_attribute(atom1, atom2, "reaction") == BondChange.BROKEN:
+            if self.get_bond_attribute(atom1, atom2, "reaction") == Change.BROKEN:
                 b_bonds.add(bond)
         return b_bonds
         
@@ -187,7 +199,7 @@ class CondensedReactionGraph(MolGraph):
         for bond in self.bonds:
             bond_reaction = self._bond_attrs[bond].get("reaction", None)
             if (
-                bond_reaction is None or bond_reaction == BondChange.BROKEN
+                bond_reaction is None or bond_reaction == Change.BROKEN
             ):
                 if keep_attributes is True:
                     attrs = self._bond_attrs[bond].copy()
@@ -219,7 +231,7 @@ class CondensedReactionGraph(MolGraph):
         for bond in self.bonds:
             bond_reaction = self._bond_attrs[bond].get("reaction", None)
             if (
-                bond_reaction is None or bond_reaction == BondChange.FORMED
+                bond_reaction is None or bond_reaction == Change.FORMED
             ):
                 if keep_attributes is True:
                     attrs = self._bond_attrs[bond].copy()
@@ -239,9 +251,9 @@ class CondensedReactionGraph(MolGraph):
         rev_reac = self.copy()
         for bond in self.bonds:
             bond_reaction = self._bond_attrs[bond].get("reaction", None)
-            if bond_reaction == BondChange.FORMED:
+            if bond_reaction == Change.FORMED:
                 rev_reac.add_broken_bond(*bond)
-            elif bond_reaction == BondChange.BROKEN:
+            elif bond_reaction == Change.BROKEN:
                 rev_reac.add_formed_bond(*bond)
 
         return rev_reac
@@ -291,9 +303,9 @@ class CondensedReactionGraph(MolGraph):
             ):
                 crg.add_bond(*bond)
             elif reactant_graph.has_bond(*bond):
-                crg.add_bond(*bond, reaction=BondChange.BROKEN)
+                crg.add_bond(*bond, reaction=Change.BROKEN)
             elif product_graph.has_bond(*bond):
-                crg.add_bond(*bond, reaction=BondChange.FORMED)
+                crg.add_bond(*bond, reaction=Change.FORMED)
         return crg
 
     @classmethod
@@ -337,7 +349,7 @@ class CondensedReactionGraph(MolGraph):
         return vf2pp_all_isomorphisms(
             self,
             other,
-            color_refine=False, # TODO: implement color refinement
+            color_refine=True, # TODO: implement color refinement
             stereo=False,
             stereo_change=False,
             subgraph=False,
