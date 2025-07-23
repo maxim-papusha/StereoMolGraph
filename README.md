@@ -9,6 +9,7 @@
 [![Test Examples](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml)
 [![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16360311.svg)](https://doi.org/10.5281/zenodo.16360311)
+[![PyPI Downloads](https://static.pepy.tech/badge/stereomolgraph)](https://pepy.tech/projects/stereomolgraph)
 
 Work in progress and a manuscript in preparation.
 More documentation and tutorials coming end of summer 2025
