@@ -72,11 +72,6 @@ dev = [{include-group = "docs"},
         # official module to add type hinting features used in future Python versions
 ]
 
-[[project.maintainers]]
-name = "Maxim Papusha"
-email = "chemtrayzer@ltt.rwth-aachen.de"
-
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
 # addopts = "--cov"
