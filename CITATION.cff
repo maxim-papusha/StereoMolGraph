@@ -12,8 +12,8 @@ keywords:
 - graphtheory
 - condensed reaction graph
 authors:
-- family-names: Papusha
-  given-names: Maxim
+- given-names: Maxim
+  family-names: Papusha
   orcid: https://orcid.org/0009-0000-8580-4777
 - given-names: Florian
   family-names: Solbach
