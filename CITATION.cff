@@ -20,7 +20,7 @@ authors:
   orcid: https://orcid.org/0000-0003-1923-3747
 identifiers:
 - type: doi
-  value: None  # general DOI for all version
+  value: https://doi.org/10.5281/zenodo.16360310 # general DOI for all versions
 license: MIT
 repository-code: https://github.com/maxim-papusha/StereoMolGraph
 contact:
