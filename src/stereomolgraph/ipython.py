@@ -30,7 +30,7 @@ class View2D(NamedTuple):
     :param width: Width of the SVG image in pixels
     :param show_atom_numbers: Whether to show atom numbers in the visualization
     :param show_h: Whether to show hydrogen atoms in the visualization
-    :param generate_bond_orders: Whether to generate bond orders for the 
+    :param generate_bond_orders: Whether to generate bond orders for the
         visualization using
         :func:`stereomolgraph.algorithms.bond_orders.connectivity2bond_orders`
     :param dummy_atoms: Whether to include dummy atoms in the visualization

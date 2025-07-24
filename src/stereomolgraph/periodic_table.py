@@ -159,10 +159,11 @@ _PERIODIC_TABLE.update({
     for sym in _ATOMIC_NRS})
 
 
-# use MappingProxyType to make the public table immutable
+#: Mapping of atomic numbers and symbols to Element objects.
 PERIODIC_TABLE: Mapping[str|int|Element, Element] = MappingProxyType(
                                                             _PERIODIC_TABLE)
 
+#: Covalent radii of elements in Angstrom.
 COVALENT_RADII: Mapping[Element, float] = MappingProxyType(
     {Element(sym, _ATOMIC_NRS[sym]): _ELEMENT_COVALENT_RADII[sym]
      for sym in _ELEMENT_COVALENT_RADII})
