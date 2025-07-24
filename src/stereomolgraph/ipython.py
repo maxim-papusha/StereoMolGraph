@@ -32,7 +32,7 @@ class View2D(NamedTuple):
     :param show_h: Whether to show hydrogen atoms in the visualization
     :param generate_bond_orders: Whether to generate bond orders for the
         visualization using
-        :func:`stereomolgraph.algorithms.bond_orders.connectivity2bond_orders`
+        :func:`~stereomolgraph.algorithms.bond_orders.connectivity2bond_orders`
     :param dummy_atoms: Whether to include dummy atoms in the visualization
     """
     height: int = 300
