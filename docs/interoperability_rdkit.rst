@@ -20,4 +20,4 @@ Not included Properties
 - Formal atomic charges
 - Unpaired electrons
 
-Those are required they can be calculated using :ref:`stereomolgraph.algorithms.bond_orders.connectivity2bond`_
+Those are required they can be calculated using :ref:`GenerateBondOrders stereomolgraph.algorithms.bond_orders.connectivity2bond`_
