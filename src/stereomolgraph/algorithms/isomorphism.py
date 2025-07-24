@@ -325,7 +325,6 @@ def vf2pp_all_isomorphisms(
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
     labels: Optional[Iterable[str]] = None,
-    bond_labels: Optional[Iterable[str]] = None,
     color_refine: bool | int = True,
     stereo: bool = False,
     stereo_change: bool = False,
@@ -335,7 +334,7 @@ def vf2pp_all_isomorphisms(
     """Find all isomorphisms between two graphs.
     Implementation of the isomorphism and subgraph isomorphism algorithms.
     Based of VF2++ from https://doi.org/10.1016/j.dam.2018.02.018"""
-    
+
     if params_state := _sanity_check_and_init(
         g1, g2, labels, color_refine, stereo, stereo_change, subgraph
     ):

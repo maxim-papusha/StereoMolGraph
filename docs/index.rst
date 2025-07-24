@@ -18,6 +18,12 @@ StereoMolGraph documentation
    reference/stereodescriptors
    reference/coords
    reference/algorithms
+   reference/graph2rdmol
+   reference/rdmol2graph
+   reference/ipython
+   reference/periodic_table
+   reference/coords
+   reference/experimental
 
 .. toctree::
    :maxdepth: 2

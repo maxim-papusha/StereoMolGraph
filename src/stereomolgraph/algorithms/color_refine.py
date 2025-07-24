@@ -59,44 +59,20 @@ def numpy_int_set_hash(): ...
 
 def label_hash(
     mg: MolGraph,
-    atom_labels: Optional[Iterable[str]] = ("atom_type",),
-    bond_labels: Optional[Iterable[str]] = None,
+    atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
-    if atom_labels == ("atom_type",) and bond_labels is None:
-        atom_hash = {
-            atom: hash(mg.get_atom_type(atom))
-            for atom in mg.atoms
+    atom_hash = {atom: hash(tuple(
+        mg.get_atom_attribute(atom, attr ) for attr in atom_labels))
+        for atom in mg.atoms
         }
-
-    elif atom_labels is None and bond_labels is None:
-        atom_hash = {atom: 0 for atom in mg.atoms}
-
-    elif atom_labels:
-        atom_labels = sorted(atom_labels)
-        atom_labels.append("atom_type")
-        bond_labels = sorted(bond_labels) if bond_labels else []
-        bond_labels.append("reaction")
-        atom_hash = {atom:
-              hash((
-            tuple([(atom_label, label_dict.get(atom_label, None))
-                   for atom_label in atom_labels]),
-            tuple(sorted([(tuple(sorted(
-                mg.get_bond_attributes(atom, nbr, bond_labels).items()))
-                           for nbr in mg.bonded_to(atom))])),
-            ))
-              for atom, label_dict in mg.atoms_with_attributes.items()
-        }
-    else:
-        raise ValueError("Invalid combination of atom and bond labels.")
     return atom_hash
 
 def color_refine_mg(
     mg: MolGraph,
     max_iter: Optional[int] = None,
-    atom_labels: Optional[Iterable[str]] = ("atom_type",),
-    bond_labels: Optional[Iterable[str]] = None,
+    atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
-    atom_label_hash = label_hash(mg, atom_labels, bond_labels)
+    atom_label_hash = label_hash(mg, atom_labels)
 
     atom_hash: np.ndarray = np.array(
         [atom_label_hash[atom] for atom in mg.atoms], dtype=np.int64
