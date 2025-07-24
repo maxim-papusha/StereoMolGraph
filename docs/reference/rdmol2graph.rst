@@ -1,4 +1,4 @@
-RDMol 2 Graph
+RDMol2Graph
 ==================
 
 .. automodule:: stereomolgraph.rdmol2graph
