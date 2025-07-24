@@ -13,4 +13,4 @@ Included Properties
 
 
 
-Bond orders, Atomic charges and number of unpaired electrons can be calculated using :ref:`GenerateBondOrders stereomolgraph.algorithms.bond_orders.connectivity2bond`_
+Bond orders, Atomic charges and number of unpaired electrons can be calculated using :ref:`GenerateBondOrders <reference/stereomolgraph.algorithms.bond_orders.connectivity2bond>` algorithm.
