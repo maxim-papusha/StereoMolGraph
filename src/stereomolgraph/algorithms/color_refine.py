@@ -8,7 +8,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Literal, Optional, TypeVar
+    from typing import Literal, TypeVar
 
     from stereomolgraph.graphs.mg import (
         AtomId,
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
-    out: Optional[np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]]] = None,
+    out: None|np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]] = None,
 ) -> np.ndarray:
     """
     Mimics the python SipHash hashing function for tuples of integers
@@ -69,7 +69,7 @@ def label_hash(
 
 def color_refine_mg(
     mg: MolGraph,
-    max_iter: Optional[int] = None,
+    max_iter: None|int = None,
     atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
     atom_label_hash = label_hash(mg, atom_labels)
