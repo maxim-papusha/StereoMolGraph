@@ -23,6 +23,7 @@ StereoMolGraph documentation
    :caption: Example Notebooks:
    
    examples/compare_molecules.ipynb
-   examples/visualization.ipynb
-   examples/phosgenation.ipynb
+   examples/inchi_fail.ipynb
    examples/werner.ipynb
+   examples/phosgenation.ipynb
+   

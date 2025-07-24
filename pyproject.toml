@@ -16,7 +16,6 @@ keywords = [
     "molecule",
     "transition state",
 ]
-
 maintainers = [
   {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"}
 ]
@@ -48,7 +47,7 @@ classifiers = [
 
 dependencies = [
   "numpy>=1.20,<3",
-  "rdkit>=2022.9.1,<=2025",
+  "rdkit>=2022.9.1",
 ]
 
 [dependency-groups]
