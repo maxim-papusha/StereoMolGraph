@@ -1,10 +1,10 @@
 Algorithms
 ==================
 
-.. automodule:: stereomolgraph.algorithms.color_refine
+.. automodule:: stereomolgraph.algorithms.isomorphism
     :members:
 
-.. automodule:: stereomolgraph.algorithms.isomorphism
+.. automodule:: stereomolgraph.algorithms.color_refine
     :members:
 
 .. automodule:: stereomolgraph.algorithms.bond_orders

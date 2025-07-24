@@ -179,11 +179,10 @@ def pairwise_distances(
 
 
 class Geometry:
-    """
-    Represents a molecular geometry, i.e. the coordinates and atom types.
+    """Represents a molecular geometry, i.e. the coordinates and atom types.
 
     :param atom_types: tuple of Element objects
-    :param coords: nAtomsx3 numpy array with cartesian coordinates
+    :param coords: Cartesian coordinates of atoms in Angstrom
     """
 
     atom_types: tuple[Element, ...]
@@ -283,9 +282,7 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
         self.default_func = default_func
 
     def __missing__(self, key: tuple[Element, Element]) -> float:
-        if len(key) != 2:
-            raise KeyError(f"Key {key} must be a tuple of two elements.")
-        elif (ret := self.get((key[1], key[0]), None)) is not None:
+        if (ret := self.get((key[1], key[0]), None)) is not None:
             pass
         else:
             ret = self.default_func(key)

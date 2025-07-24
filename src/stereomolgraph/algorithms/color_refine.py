@@ -80,7 +80,7 @@ def color_refine_mg(
     """Color refinement algorithm for MolGraph.
     
     This algorithm refines the atom coloring based on their connectivity.
-    Identical to the Weisfeiler-Lehman algorithm.
+    Identical to the Weisfeiler-Lehman (1-WL) algorithm.
 
     :param mg: MolGraph object containing the atoms and their connectivity.
     :param max_iter: Maximum number of iterations for refinement.
