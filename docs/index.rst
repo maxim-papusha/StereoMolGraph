@@ -4,7 +4,8 @@ StereoMolGraph documentation
 
 .. toctree::
    :maxdepth: 2
-   :titlesonly:
+   :caption: Quickstart:
+
    installation.rst
    theory.md
    interoperability_rdkit.rst
