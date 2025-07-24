@@ -10,11 +10,6 @@ if TYPE_CHECKING:
     from stereomolgraph.graphs.smg import StereoMolGraph
     from stereomolgraph.graphs.crg import CondensedReactionGraph
     from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
-    from stereomolgraph.periodictable import (
-        Element,
-        PERIODIC_TABLE,
-        COVALENT_RADII,
-    )
 
 
 def __getattr__(name: str):
@@ -43,19 +38,7 @@ def __getattr__(name: str):
             from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
 
             return StereoCondensedReactionGraph
-
-        case "Element":
-            from stereomolgraph.periodictable import Element
-
-            return Element
-        case "PERIODIC_TABLE":
-            from stereomolgraph.periodictable import PERIODIC_TABLE
-
-            return PERIODIC_TABLE
-        case "COVALENT_RADII":
-            from stereomolgraph.periodictable import COVALENT_RADII
-
-            return COVALENT_RADII
+        
         case "__version__":
             from importlib.metadata import version
 

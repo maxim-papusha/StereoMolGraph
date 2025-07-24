@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import rdkit.Chem  # type: ignore
 
-from stereomolgraph import PERIODIC_TABLE as PTOE
+from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 from stereomolgraph import (Bond,
                             MolGraph,
                             StereoMolGraph,
