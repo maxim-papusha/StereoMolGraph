@@ -65,11 +65,7 @@ def connectivity2bond_orders(
 
     Bond orders can be assigned automatically using the algorithm from
     
-    [Yeonjoon Kim and Woo Youn Kim
-    "Universal Structure Conversion Method for Organic Molecules:
-    From Atomic Connectivity to Three-Dimensional Geometry"
-    Bull. Korean Chem. Soc.
-    2015, Vol. 36, 1769-1777](https://doi.org/10.1002/bkcs.10334)
+    [Yeonjoon Kim and Woo Youn Kim "Universal Structure Conversion Method for Organic Molecules: From Atomic Connectivity to Three-Dimensional Geometry" Bull. Korean Chem. Soc. 2015, Vol. 36, 1769-1777](https://doi.org/10.1002/bkcs.10334)
 
     :param atom_types: atom types in same order as connectivity_matrix.
     :param connectivity_matrix: Connectivity matrix

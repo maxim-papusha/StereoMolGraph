@@ -334,8 +334,7 @@ def vf2pp_all_isomorphisms(
     """Find all isomorphisms between two graphs.
 
     Algorithms are based of VF2++.
-    [VF2++ is a fast algorithm for subgraph isomorphism]
-    (https://doi.org/10.1016/j.dam.2018.02.018)"""
+    [VF2++ is a fast algorithm for subgraph isomorphism](https://doi.org/10.1016/j.dam.2018.02.018)"""
 
     if params_state := _sanity_check_and_init(
         g1, g2, labels, color_refine, stereo, stereo_change, subgraph
