@@ -2,7 +2,7 @@ RDKit Interoperability
 =======================
 
 StereoMolGraph is designed to work seamlessly with `RDKit <https://www.rdkit.org/>`_, a popular cheminformatics toolkit.  
-:doc:`graph2rdmol </reference/graph2rdmol>` and :doc:`rdmol2graph </reference/rdmol2graph>` functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's :ref:`RDMol` objects.
+:doc:`graph2rdmol </reference/graph2rdmol>` and :doc:`rdmol2graph </reference/rdmol2graph>` functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's `Mol` objects.
 Only supports **explicit Hydrogens**!
 
 
@@ -13,4 +13,4 @@ Included Properties
 
 
 
-Bond orders, Atomic charges and number of unpaired electrons can be calculated using :ref:`GenerateBondOrders <reference/stereomolgraph.algorithms.bond_orders.connectivity2bond>` algorithm.
+Bond orders, Atomic charges and number of unpaired electrons can be calculated using :func:`~stereomolgraph.algorithms.bond_orders.connectivity2bond_orders` algorithm.
