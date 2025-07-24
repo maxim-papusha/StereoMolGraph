@@ -332,8 +332,10 @@ def vf2pp_all_isomorphisms(
 ) -> Iterator[dict[AtomId, AtomId]]:
     
     """Find all isomorphisms between two graphs.
-    Implementation of the isomorphism and subgraph isomorphism algorithms.
-    Based of VF2++ from https://doi.org/10.1016/j.dam.2018.02.018"""
+
+    Algorithms are based of VF2++.
+    [VF2++ is a fast algorithm for subgraph isomorphism]
+    (https://doi.org/10.1016/j.dam.2018.02.018)"""
 
     if params_state := _sanity_check_and_init(
         g1, g2, labels, color_refine, stereo, stereo_change, subgraph
