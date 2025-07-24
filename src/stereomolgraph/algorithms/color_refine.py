@@ -85,6 +85,7 @@ def color_refine_mg(
     :param mg: MolGraph object containing the atoms and their connectivity.
     :param max_iter: Maximum number of iterations for refinement.
         Default is None, which means it will run until convergence."""
+    
     atom_label_hash = label_hash(mg, atom_labels)
 
     atom_hash: np.ndarray = np.array(
