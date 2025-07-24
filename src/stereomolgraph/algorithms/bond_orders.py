@@ -1,10 +1,7 @@
 # This is a derived work from https://github.com/jensengroup/xyz2mol
-# Jensen Group
 # Jan H. Jensen Research Group of the Department of Chemistry,
 # University of Copenhagen
 # License: MIT License (see at end of file)
-#
-
 
 from __future__ import annotations
 

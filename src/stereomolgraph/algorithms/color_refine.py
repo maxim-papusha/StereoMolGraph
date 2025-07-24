@@ -61,6 +61,11 @@ def label_hash(
     mg: MolGraph,
     atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
+    """Generates a hash for each atom based on its attributes.
+    
+    :param mg: MolGraph object containing the atoms.
+    :param atom_labels: Iterable of attribute names to use for hashing.
+    """
     atom_hash = {atom: hash(tuple(
         mg.get_atom_attribute(atom, attr ) for attr in atom_labels))
         for atom in mg.atoms
@@ -72,6 +77,14 @@ def color_refine_mg(
     max_iter: None|int = None,
     atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
+    """Color refinement algorithm for MolGraph.
+    
+    This algorithm refines the atom coloring based on their connectivity.
+    Identical to the Weisfeiler-Lehman algorithm.
+
+    :param mg: MolGraph object containing the atoms and their connectivity.
+    :param max_iter: Maximum number of iterations for refinement.
+        Default is None, which means it will run until convergence."""
     atom_label_hash = label_hash(mg, atom_labels)
 
     atom_hash: np.ndarray = np.array(
