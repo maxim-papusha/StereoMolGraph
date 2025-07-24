@@ -22,7 +22,6 @@ StereoMolGraph documentation
    reference/rdmol2graph
    reference/ipython
    reference/periodic_table
-   reference/coords
    reference/experimental
 
 .. toctree::

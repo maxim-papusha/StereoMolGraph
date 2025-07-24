@@ -1,2 +1,6 @@
 Coords
-______
+==================
+
+.. automodule:: stereomolgraph.cooords
+    :members:
+
