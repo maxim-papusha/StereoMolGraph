@@ -7,7 +7,6 @@ StereoMolGraph documentation
    :caption: Quickstart:
 
    installation.rst
-   theory.md
    interoperability_rdkit.rst
 
 .. toctree::
