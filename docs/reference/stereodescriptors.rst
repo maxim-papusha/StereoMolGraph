@@ -93,16 +93,3 @@ When using stereodescriptors, remember they encode *local* configuration. Global
     :member-order: alphabetical
     :inherited-members:
     :show-inheritance: 
-
-
-.. autoclass:: stereomolgraph.stereodescriptors._StereoMixin
-    :members:
-    :member-order: alphabetical
-
-.. autoclass:: stereomolgraph.stereodescriptors._AchiralStereoMixin
-    :members:
-    :member-order: alphabetical
-
-.. autoclass:: stereomolgraph.stereodescriptors._ChiralStereoMixin
-    :members:
-    :member-order: alphabetical
