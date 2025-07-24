@@ -2,7 +2,7 @@ RDKit Interoperability
 =======================
 
 StereoMolGraph is designed to work seamlessly with `RDKit <https://www.rdkit.org/>`_, a popular cheminformatics toolkit.  
-`rdmol2graph`_ and `graph2rdmol`_ functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's `Mol` objects.
+`reference\rdmol2graph`_ and `reference\graph2rdmol`_ functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's `Mol` objects.
 
 
 Included Properties
