@@ -2,7 +2,7 @@ RDKit Interoperability
 =======================
 
 StereoMolGraph is designed to work seamlessly with `RDKit <https://www.rdkit.org/>`_, a popular cheminformatics toolkit.  
-:doc:`Graph2RDMol </graph2rdmol>`_ and :ref:`RDMol2Graph RDMol2Graph`_ functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's :ref:`RDMol` objects.
+:doc:`Graph2RDMol </reference/graph2rdmol>` and :ref:`RDMol2Graph RDMol2Graph`_ functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's :ref:`RDMol` objects.
 only **Explicit Hydrogens**: StereoMolGraph uses only explicit hydrogens! 
 
 
