@@ -2,12 +2,12 @@ RDKit Interoperability
 =======================
 
 StereoMolGraph is designed to work seamlessly with `RDKit <https://www.rdkit.org/>`_, a popular cheminformatics toolkit.  
-`rdmol2graph` and `graph2rdmol` functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's `Mol` objects.
+`rdmol2graph`_ and `graph2rdmol`_ functions allow for easy conversion between StereoMolGraph's graph representations and RDKit's `Mol` objects.
 
 
 Included Properties
 --------------------
-- Atomic connectivity (atom indices and bonds).  
+- Atomic connectivity (atoms and bonds).  
 - Local stereochemistry (e.g., tetrahedral chirality).
   - only **Explicit Hydrogens**: StereoMolGraph uses only explicit hydrogens! : Hydrogen atoms are always treated as explicit and must be added if required for RDKit interoperability.  
 
