@@ -15,8 +15,6 @@ if TYPE_CHECKING:
         MolGraph,
     )
 
-    N = TypeVar("N", bound=int)
-
 def numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
     out: None|np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]] = None,
@@ -55,8 +53,6 @@ def numpy_int_tuple_hash(
         output += 97531
         return output
 
-def numpy_int_set_hash(): ...
-
 def label_hash(
     mg: MolGraph,
     atom_labels: Iterable[str] = ("atom_type",),
@@ -85,65 +81,68 @@ def color_refine_mg(
     :param mg: MolGraph object containing the atoms and their connectivity.
     :param max_iter: Maximum number of iterations for refinement.
         Default is None, which means it will run until convergence."""
+    # np.uint32: chronological id of atom in order
+    # np.int64: hash of atom label
     
     atom_label_hash = label_hash(mg, atom_labels)
 
     atom_hash: np.ndarray = np.array(
         [atom_label_hash[atom] for atom in mg.atoms], dtype=np.int64
     )
-
+    
     n_atoms = np.int64(mg.n_atoms)
-    id_arr = {atom: a_id for a_id, atom in enumerate(mg.atoms)}
+
+
+    id_arr = {atom: np.uint32(a_id) for a_id, atom in enumerate(mg.atoms)}
     d = {
-        id_arr[atom]: {id_arr[nbr] for nbr in mg.bonded_to(atom)}
+        id_arr[atom]: np.array([id_arr[nbr] for nbr in mg.bonded_to(atom)])
         for atom in mg.atoms
     }
 
-    grouped: defaultdict[int, dict[int, set[int]]] = defaultdict(dict)
-    for key, value in d.items():
-        grouped[len(value)][key] = value
+    grouped: defaultdict[int, dict[np.uint32, np.ndarray[tuple[int],
+                                                        np.dtype[np.uint32]]]]
+    grouped = defaultdict(dict)
 
-    masks: list[np.ndarray] = []
-    data: list[np.ndarray] = []
-    t_arrs: list[np.ndarray] = []
-    t_hashs: list[np.ndarray] = []
-    a_hashs: list[np.ndarray] = []
+    for atom, neighbors in d.items():
+        grouped[len(neighbors)][atom] = neighbors
 
-    for group in list(grouped.values()):
+    # one item per group
+    masks: list[np.ndarray[tuple[int], np.dtype[np.bool_]]] = []
+    nbrs_id_arrs: list[np.ndarray[tuple[int, int], np.dtype[np.uint32]]] = []
+    nbrs_hash_arrs: list[np.ndarray[tuple[int, int], np.dtype[np.int64]]] = []
+
+    # groups with atoms of same number of neighbors
+    for _n_nbrs, group in grouped.items():
+        nbrs_id_arr = np.array([nbrs_id for nbrs_id in group.values()], dtype=np.uint32)
+        nbrs_id_arrs.append(nbrs_id_arr)
+        nbrs_hash_arrs.append(np.empty_like(nbrs_id_arr, dtype=np.int64))
+
         mask = np.zeros_like(atom_hash, dtype=np.bool_)
-        k = [int(i) for i in group.keys()]
-        mask[k] = True
-        group_values = [(k, *v) for k, v in group.items()]  # rename me
-
-        n_neigh = len(group_values[0])
-        perm = itertools.permutations(range(1, n_neigh))
-
-        perm_with_zero = [(0,) + p for p in perm]
-
-        g = np.array(group_values, dtype=np.int64)[:, perm_with_zero]
-
+        
+        #raise Exception(np.fromiter(group.keys(), dtype=np.int32))
+        mask[[int(i) for i in group.keys()]] = True
+        raise Exception(mask)
         masks.append(mask)
-        data.append(g)
-        t_arrs.append(np.empty_like(g, dtype=np.int64))
-        t_hashs.append(np.empty(shape=t_arrs[-1].shape[:-1], dtype=np.int64))
-        a_hashs.append(np.empty(shape=t_hashs[-1].shape[:-1], dtype=np.int64))
+        assert mask.shape == atom_hash.shape
+        assert nbrs_id_arr.shape == (mask.sum(), _n_nbrs)
+        assert nbrs_hash_arrs[-1].shape == (mask.sum(), _n_nbrs)
 
-    n_atom_classes = None
+
+    n_atom_classes: int = 0
+    n = 0
     counter = itertools.repeat(None) if max_iter is None else range(max_iter)
     new_atom_hash = np.empty_like(atom_hash, dtype=np.int64)
-    
     for _ in counter:
-        for d, m, t_arr, t_hash, a_hash in zip(
-            data, masks, t_arrs, t_hashs, a_hashs
+        n = -1
+        for nbrs_id_arr, nbrs_hash_arr, mask in zip(
+           nbrs_id_arrs, nbrs_hash_arrs, masks
         ):
-            t_arr[:] = atom_hash[d]
-            t_hash = numpy_int_tuple_hash(t_arr, out=t_hash)
-            t_hash.sort(axis=-1) # defaults to quicksort
-            a_hash = numpy_int_tuple_hash(t_hash, out=a_hash)
-            new_atom_hash[m] = a_hash
+            nbrs_hash_arr[:] = atom_hash[nbrs_id_arr]
+            nbrs_hash_arr.sort(axis=-1)
+            new_atom_hash[mask] = numpy_int_tuple_hash(nbrs_hash_arr, out=new_atom_hash[mask])
 
         new_n_classes = np.unique(new_atom_hash).shape[0]
-
+        n = new_n_classes
         if new_n_classes == n_atom_classes:
             break
         elif new_n_classes == n_atoms:

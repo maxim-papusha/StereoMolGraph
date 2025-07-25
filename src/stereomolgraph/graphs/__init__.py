@@ -15,14 +15,7 @@ if TYPE_CHECKING:
 
 def __getattr__(name: str):
     match name:
-        case "AtomId":
-            from stereomolgraph.graphs.mg import AtomId
 
-            return AtomId
-        case "Bond":
-            from stereomolgraph.graphs.mg import Bond
-
-            return Bond
         case "MolGraph":
             from stereomolgraph.graphs.mg import MolGraph
 
@@ -39,6 +32,20 @@ def __getattr__(name: str):
             from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
 
             return StereoCondensedReactionGraph
+    
+        case "AtomId":
+            from stereomolgraph.graphs.mg import AtomId
+
+            return AtomId
+        
+        case "Bond":
+            from stereomolgraph.graphs.mg import Bond
+
+            return Bond
+        case "Change":
+            from stereomolgraph.graphs.crg import Change
+
+            return Change
 
         case _:
             raise AttributeError(f"module has no attribute {name}")
