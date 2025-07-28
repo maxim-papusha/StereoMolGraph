@@ -167,3 +167,6 @@ PERIODIC_TABLE: Mapping[str|int|Element, Element] = MappingProxyType(
 COVALENT_RADII: Mapping[Element, float] = MappingProxyType(
     {Element(sym, _ATOMIC_NRS[sym]): _ELEMENT_COVALENT_RADII[sym]
      for sym in _ELEMENT_COVALENT_RADII})
+
+
+assert PERIODIC_TABLE["C"] in PERIODIC_TABLE.keys()
