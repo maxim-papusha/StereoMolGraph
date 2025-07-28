@@ -333,6 +333,8 @@ class BondsFromDistance:
         coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.floating]],
         atom_types: Sequence[ElementLike],
     ) -> np.ndarray[tuple[N, N], np.dtype[np.integer]]:
+        for atom in atom_types:
+            assert atom in PERIODIC_TABLE, (f"{hash(atom)}")
         elements = [PERIODIC_TABLE[atom] for atom in atom_types]
         return np.where(
             pairwise_distances(coords)
