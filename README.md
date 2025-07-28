@@ -8,7 +8,7 @@
 [![Type Check](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml)
 [![Test Examples](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml)
 [![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16360311.svg)](https://doi.org/10.5281/zenodo.16360311)
+[![DOI](https://zenodo.org/badge/999259345.svg)](https://doi.org/10.5281/zenodo.16360310)
 [![PyPI Downloads](https://static.pepy.tech/badge/stereomolgraph)](https://pepy.tech/projects/stereomolgraph)
 
 Work in progress and a manuscript in preparation.
