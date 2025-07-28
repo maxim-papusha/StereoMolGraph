@@ -479,28 +479,7 @@ class PlanarBond(
     ):
         super().__init__(atoms, parity)
 
-    @classmethod
-    def from_coords(
-        cls,
-        atoms: tuple[int, int, int, int, int, int],
-        coords: np.ndarray[
-            tuple[Literal[6], Literal[3]], np.dtype[np.float64]
-        ],
-    ) -> PlanarBond:
-        a = (coords[0] - coords[1]) / np.linalg.norm(coords[0] - coords[1])
-        b = (coords[4] - coords[5]) / np.linalg.norm(coords[4] - coords[5])
-        result = int(np.sign(np.dot(a, b)))
 
-        if result == -1:
-            new_atoms = tuple(atoms[i] for i in (1, 0, 2, 3, 4, 5))
-        elif result == 1:
-            new_atoms = atoms
-        elif result == 0:
-            raise ValueError("atoms are tetrahedral")
-        else:
-            raise ValueError("something went wrong")
-        assert len(new_atoms) == 6
-        return cls(new_atoms, 0)
 
 
 class AtropBond(

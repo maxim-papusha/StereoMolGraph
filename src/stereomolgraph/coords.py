@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from os import PathLike
     from typing import Literal, TypeVar
 
+    ElementLike = Element | str | int
     NP_FLOAT = TypeVar(
         "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
     )
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     FOUR = Literal[4]
 
 def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
-               threshold: float = 0.5
+               threshold: float = 1.0
                ) -> np.bool_:
     """Checks if all atoms are in one plane
 
@@ -69,7 +70,8 @@ def are_planar_volume(
             "are_planar_volume is not implemented for more than 4 points"
         )
         #for comb in combinations(range(coords.shape[-2]), 4):
-        #    if not are_planar_volume(coords[..., list(comb), :], threshold=threshold):
+        #    if not are_planar_volume(coords[..., list(comb), :],
+        #                               threshold=threshold):
         #        return np.array([False], dtype=np.bool_)
         #    else:
         #        return np.array([True], dtype=np.bool_)
@@ -282,6 +284,7 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
         self.default_func = default_func
 
     def __missing__(self, key: tuple[Element, Element]) -> float:
+        
         if (ret := self.get((key[1], key[0]), None)) is not None:
             pass
         else:
@@ -315,21 +318,25 @@ class BondsFromDistance:
         )
 
     def __call__(
-        self, distance: float, atom_types: tuple[Element, Element]
+        self, distance: float, atom_types: tuple[ElementLike, ElementLike]
     ) -> Literal[0, 1]:
+        elements = (PERIODIC_TABLE[atom_types[0]],
+            PERIODIC_TABLE[atom_types[1]],
+        )
         if distance < 0:
             raise ValueError("distance can not be negative")
         else:
-            return 1 if distance < self.connectivity_cutoff[atom_types] else 0
+            return 1 if distance < self.connectivity_cutoff[elements] else 0
 
     def array(
         self,
-        coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
-        atom_types: Sequence[Element],
-    ) -> np.ndarray:
+        coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.floating]],
+        atom_types: Sequence[ElementLike],
+    ) -> np.ndarray[tuple[N, N], np.dtype[np.integer]]:
+        elements = [PERIODIC_TABLE[atom] for atom in atom_types]
         return np.where(
             pairwise_distances(coords)
-            < self.connectivity_cutoff.array(atom_types),
+            < self.connectivity_cutoff.array(elements),
             1,
             0,
         )

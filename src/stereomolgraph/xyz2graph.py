@@ -5,10 +5,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph.coords import angle_from_coords, are_planar, handedness
+from stereomolgraph.coords import (
+    BondsFromDistance,
+    angle_from_coords,
+    are_planar,
+    handedness,
+)
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     Octahedral,
+    PlanarBond,
     SquarePlanar,
     Tetrahedral,
     TrigonalBipyramidal,
@@ -23,6 +29,11 @@ if TYPE_CHECKING:
     N = TypeVar("N", bound=int, covariant=True)
     MG = TypeVar("MG", bound=MolGraph, covariant=True)
     SMG = TypeVar("SMG", bound=StereoMolGraph, covariant=True)
+    NP_FLOAT = TypeVar(
+        "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
+    )
+
+    THREE = Literal[3]
 
 
 def connectivity_from_geometry(
@@ -50,12 +61,41 @@ def connectivity_from_geometry(
 def stero_from_geometry(
     smg: SMG,
     geo: Geometry,
-) -> SMG: ...
+) -> SMG:
+    for atom in range(geo.n_atoms):
+        first_nbrs = smg.bonded_to(atom)
+        atom_stereo_tup = (atom, *first_nbrs)
+        atom_stereo = atom_stereo_from_coords(
+            atom_stereo_tup, geo.coords.take(atom_stereo_tup, axis=0)
+        )
+
+        if atom_stereo is not None:
+            smg.set_atom_stereo(atom_stereo)
+
+        if len(first_nbrs) != 3:
+            continue
+
+        for nbr in first_nbrs:
+            second_neighbors = smg.bonded_to(nbr).difference({atom})
+
+            if len(second_neighbors) != 2:
+                continue
+
+            first_nbrs_reduced = first_nbrs.difference({nbr})
+            stereo_atoms = (*first_nbrs_reduced, atom, nbr, *second_neighbors)
+            assert len(stereo_atoms) == 6
+            planar_bond = _planar_bond_from_coords(
+                stereo_atoms, geo.coords.take(stereo_atoms, axis=0)
+            )
+            if planar_bond is not None:
+                smg.set_bond_stereo(planar_bond)
+
+    return smg
 
 
 def atom_stereo_from_coords(
     atoms: tuple[int, ...],
-    coords: np.ndarray[tuple[N, Literal[3]], np.dtype[np.floating]],
+    coords: np.ndarray[tuple[N, THREE], NP_FLOAT],
 ) -> None | AtomStereo:
     assert len(atoms) == coords.shape[0]
     assert coords.shape[1] == 3
@@ -79,7 +119,7 @@ def atom_stereo_from_coords(
 
 def _tetrahedral_from_coords(
     atoms: tuple[int, int, int, int, int],
-    coords: np.ndarray[tuple[Literal[5], Literal[3]], np.dtype[np.float64]],
+    coords: np.ndarray[tuple[Literal[5], THREE], NP_FLOAT],
 ) -> Tetrahedral:
     """
     Creates the representation of a Tetrahedral Stereochemistry
@@ -100,7 +140,7 @@ def _tetrahedral_from_coords(
 
 def _square_planar_from_coords(
     atoms: tuple[int, int, int, int, int],
-    coords: np.ndarray[tuple[Literal[5], Literal[3]], np.dtype[np.floating]],
+    coords: np.ndarray[tuple[Literal[5], THREE], NP_FLOAT],
 ) -> None | SquarePlanar:
     if not are_planar(coords[[1, 2, 3, 4]]):
         return None
@@ -131,7 +171,7 @@ def _square_planar_from_coords(
 
 def _trigonal_bipyramidal_from_coords(
     atoms: tuple[int, int, int, int, int, int],
-    coords: np.ndarray[tuple[Literal[6], Literal[3]], np.dtype[np.floating]],
+    coords: np.ndarray[tuple[Literal[6], THREE], NP_FLOAT],
 ) -> None | TrigonalBipyramidal:
     """
     calculates the distance of the atom 5 from the plane defined by the
@@ -168,7 +208,7 @@ def _trigonal_bipyramidal_from_coords(
 
 def _octahedral_from_coords(
     atoms: tuple[int, int, int, int, int, int, int],
-    coords: np.ndarray[tuple[Literal[7], Literal[3]], np.dtype[np.floating]],
+    coords: np.ndarray[tuple[Literal[7], THREE], NP_FLOAT],
 ) -> None | Octahedral:
     indeces = (1, 2, 3, 4, 5, 6)
     planar_groups: list[set[int]] = []
@@ -179,7 +219,7 @@ def _octahedral_from_coords(
 
     if not len(planar_groups) == 3:
         return None
-    
+
     trans_atoms = planar_groups[0].intersection(planar_groups[1])
 
     cis_atoms0 = planar_groups[0].difference(trans_atoms)
@@ -197,3 +237,26 @@ def _octahedral_from_coords(
     parity = int(handedness(coords[[a1, a3, a5, a4]]))
     assert parity == 1 or parity == -1
     return Octahedral((atoms[0], a1, a2, a3, a4, a5, a6), parity)
+
+
+def _planar_bond_from_coords(
+    atoms: tuple[int, int, int, int, int, int],
+    coords: np.ndarray[tuple[Literal[6], Literal[3]], np.dtype[np.floating]],
+) -> None | PlanarBond:
+    if not are_planar(coords):
+        return None
+
+    a = (coords[0] - coords[1]) / np.linalg.norm(coords[0] - coords[1])
+    b = (coords[4] - coords[5]) / np.linalg.norm(coords[4] - coords[5])
+    result = int(np.sign(np.dot(a, b)))
+
+    if result == -1:
+        new_atoms = tuple(atoms[i] for i in (1, 0, 2, 3, 4, 5))
+    elif result == 1:
+        new_atoms = atoms
+    elif result == 0:
+        raise ValueError("atoms are tetrahedral")
+    else:
+        raise ValueError("something went wrong")
+    assert len(new_atoms) == 6
+    return PlanarBond(new_atoms, 0)
