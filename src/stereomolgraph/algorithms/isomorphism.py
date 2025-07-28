@@ -1,6 +1,3 @@
-"""Implementation of the isomorphism and subgraph isomorphism algorithms.
-Based of VF2++ from https://doi.org/10.1016/j.dam.2018.02.018"""
-
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -83,14 +80,14 @@ class _State(NamedTuple):
     external2: set[int]  # atoms not in mapping and not in frontier2
 
 
-def group_keys_by_value(many_to_one: dict[KT, VT]) -> dict[VT, set[KT]]:
+def _group_keys_by_value(many_to_one: dict[KT, VT]) -> dict[VT, set[KT]]:
     """Inverts a many-to-one mapping to create a one-to-many mapping.
 
     Converts a dictionary where multiple keys may point to the same value
     into a dictionary where each original value maps to a set of all original
     keys.
 
-    >>> group_keys_by_value({"a": 1, "b": 1, "c": 2, "d": 3, "e": 3})
+    >>> _group_keys_by_value({"a": 1, "b": 1, "c": 2, "d": 3, "e": 3})
     {1: {'a', 'b'}, 2: {'c'}, 3: {'e', 'd'}}
 
     :param many_to_one: Dictionary to invert
@@ -102,7 +99,7 @@ def group_keys_by_value(many_to_one: dict[KT, VT]) -> dict[VT, set[KT]]:
     return dict(inverted)
 
 
-def bfs_layers(
+def _bfs_layers(
     neighbor_dict: Mapping[AtomId, Iterable[AtomId]],
     sources: Iterable[AtomId] | AtomId,
 ) -> Iterator[list[AtomId]]:
@@ -294,10 +291,10 @@ def _sanity_check_and_init(
         g2_nbrhd,
         g1_labels,
         g2_labels,
-        group_keys_by_value(g1_labels),
-        group_keys_by_value(g2_labels),
+        _group_keys_by_value(g1_labels),
+        _group_keys_by_value(g2_labels),
         g1_degree,
-        group_keys_by_value(g2_degree),
+        _group_keys_by_value(g2_degree),
         g1_stereo,
         g2_stereo,
         g1_stereo_changes,
@@ -328,12 +325,17 @@ def vf2pp_all_isomorphisms(
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
     labels: Optional[Iterable[str]] = None,
-    bond_labels: Optional[Iterable[str]] = None,
     color_refine: bool | int = True,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
+    
+    """Find all isomorphisms between two graphs.
+
+    Algorithms are based of VF2++.
+    [VF2++ is a fast algorithm for subgraph isomorphism](https://doi.org/10.1016/j.dam.2018.02.018)"""
+
     if params_state := _sanity_check_and_init(
         g1, g2, labels, color_refine, stereo, stereo_change, subgraph
     ):
@@ -552,7 +554,7 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
         ]
         max_node: AtomId = max(rarest_nodes, key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get,) # type: ignore
         assert isinstance(max_node, int)
-        for dlevel_nodes in bfs_layers(g1_nbrhd, max_node):
+        for dlevel_nodes in _bfs_layers(g1_nbrhd, max_node):
             nodes_to_add = dlevel_nodes.copy()
             while nodes_to_add:
                 max_used_degree = max(used_degrees[n] for n in nodes_to_add)

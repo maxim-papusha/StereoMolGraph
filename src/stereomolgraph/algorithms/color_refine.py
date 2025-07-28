@@ -8,7 +8,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Literal, Optional, TypeVar
+    from typing import Literal, TypeVar
 
     from stereomolgraph.graphs.mg import (
         AtomId,
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
-    out: Optional[np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]]] = None,
+    out: None|np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]] = None,
 ) -> np.ndarray:
     """
     Mimics the python SipHash hashing function for tuples of integers
@@ -59,44 +59,34 @@ def numpy_int_set_hash(): ...
 
 def label_hash(
     mg: MolGraph,
-    atom_labels: Optional[Iterable[str]] = ("atom_type",),
-    bond_labels: Optional[Iterable[str]] = None,
+    atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
-    if atom_labels == ("atom_type",) and bond_labels is None:
-        atom_hash = {
-            atom: hash(mg.get_atom_type(atom))
-            for atom in mg.atoms
+    """Generates a hash for each atom based on its attributes.
+    
+    :param mg: MolGraph object containing the atoms.
+    :param atom_labels: Iterable of attribute names to use for hashing.
+    """
+    atom_hash = {atom: hash(tuple(
+        mg.get_atom_attribute(atom, attr ) for attr in atom_labels))
+        for atom in mg.atoms
         }
-
-    elif atom_labels is None and bond_labels is None:
-        atom_hash = {atom: 0 for atom in mg.atoms}
-
-    elif atom_labels:
-        atom_labels = sorted(atom_labels)
-        atom_labels.append("atom_type")
-        bond_labels = sorted(bond_labels) if bond_labels else []
-        bond_labels.append("reaction")
-        atom_hash = {atom:
-              hash((
-            tuple([(atom_label, label_dict.get(atom_label, None))
-                   for atom_label in atom_labels]),
-            tuple(sorted([(tuple(sorted(
-                mg.get_bond_attributes(atom, nbr, bond_labels).items()))
-                           for nbr in mg.bonded_to(atom))])),
-            ))
-              for atom, label_dict in mg.atoms_with_attributes.items()
-        }
-    else:
-        raise ValueError("Invalid combination of atom and bond labels.")
     return atom_hash
 
 def color_refine_mg(
     mg: MolGraph,
-    max_iter: Optional[int] = None,
-    atom_labels: Optional[Iterable[str]] = ("atom_type",),
-    bond_labels: Optional[Iterable[str]] = None,
+    max_iter: None|int = None,
+    atom_labels: Iterable[str] = ("atom_type",),
 ) -> dict[AtomId, int]:
-    atom_label_hash = label_hash(mg, atom_labels, bond_labels)
+    """Color refinement algorithm for MolGraph.
+    
+    This algorithm refines the atom coloring based on their connectivity.
+    Identical to the Weisfeiler-Lehman (1-WL) algorithm.
+
+    :param mg: MolGraph object containing the atoms and their connectivity.
+    :param max_iter: Maximum number of iterations for refinement.
+        Default is None, which means it will run until convergence."""
+    
+    atom_label_hash = label_hash(mg, atom_labels)
 
     atom_hash: np.ndarray = np.array(
         [atom_label_hash[atom] for atom in mg.atoms], dtype=np.int64

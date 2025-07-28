@@ -9,16 +9,17 @@ import numpy as np
 
 from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.coords import are_planar
+from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
-    PlanarBond,
-    Tetrahedral,
-    TrigonalBipyramidal,
+)
+from stereomolgraph.xyz2graph import (
+    connectivity_from_geometry,
+    stero_from_geometry,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from rdkit import Chem
 
     from stereomolgraph.coords import Geometry
+
     A = TypeVar("A", bound=tuple[int, ...], covariant=True)
     P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
 
@@ -40,6 +42,7 @@ class StereoMolGraph(MolGraph):
     Two graphs compare equal, if they are isomorphic and have the same
     stereochemistry.
     """
+
     __slots__ = ("_atom_stereo", "_bond_stereo")
 
     _atom_stereo: dict[int, AtomStereo]
@@ -55,17 +58,25 @@ class StereoMolGraph(MolGraph):
             self._bond_stereo = {}
 
     def __hash__(self) -> int:
-        color_dict: dict[AtomId, int] = color_refine_mg(self, )
+        color_dict: dict[AtomId, int] = color_refine_mg(
+            self,
+        )
         connectivity_hash = set(Counter(color_dict.values()).items())
-        atom_stereo = {s.__class__( tuple([color_dict[a] for a in s.atoms]),
-                                   s.parity)
-                                   for s in self.atom_stereo.values()}
-        bond_stereo = {s.__class__(tuple([color_dict[a] for a in s.atoms]),
-                                   s.parity)
-                                   for s in self.bond_stereo.values()}
-        return hash((frozenset(connectivity_hash),
-                     frozenset(atom_stereo),
-                     frozenset(bond_stereo)))
+        atom_stereo = {
+            s.__class__(tuple([color_dict[a] for a in s.atoms]), s.parity)
+            for s in self.atom_stereo.values()
+        }
+        bond_stereo = {
+            s.__class__(tuple([color_dict[a] for a in s.atoms]), s.parity)
+            for s in self.bond_stereo.values()
+        }
+        return hash(
+            (
+                frozenset(connectivity_hash),
+                frozenset(atom_stereo),
+                frozenset(bond_stereo),
+            )
+        )
 
     @property
     def stereo(self) -> Mapping[AtomId | Bond, AtomStereo | BondStereo]:
@@ -79,9 +90,7 @@ class StereoMolGraph(MolGraph):
     def bond_stereo(self) -> Mapping[Bond, BondStereo]:
         return MappingProxyType(self._bond_stereo)
 
-    def get_atom_stereo(
-        self, atom: AtomId
-    ) -> None | AtomStereo:
+    def get_atom_stereo(self, atom: AtomId) -> None | AtomStereo:
         """Returns the stereo information of the atom if it exists else None.
         Raises a ValueError if the atom is not in the graph.
 
@@ -95,7 +104,7 @@ class StereoMolGraph(MolGraph):
                 return s
             else:
                 return None
-                #return NoStereo(atoms=(atom, *list(self.bonded_to(atom))))
+                # return NoStereo(atoms=(atom, *list(self.bonded_to(atom))))
         else:
             raise ValueError(f"Atom {atom} is not in the graph")
 
@@ -119,9 +128,7 @@ class StereoMolGraph(MolGraph):
         """
         del self._atom_stereo[atom]
 
-    def get_bond_stereo(
-        self, bond: Iterable[int]
-    ) -> None | BondStereo:
+    def get_bond_stereo(self, bond: Iterable[int]) -> None | BondStereo:
         """Gets the stereo information of the bond or None
         if it does not exist.
         Raises a ValueError if the bond s not in the graph.
@@ -138,9 +145,7 @@ class StereoMolGraph(MolGraph):
         else:
             raise ValueError(f"Bond {bond} is not in the graph")
 
-    def set_bond_stereo(
-        self, bond_stereo: BondStereo
-    ):
+    def set_bond_stereo(self, bond_stereo: BondStereo):
         """Stets the stereo information of the bond
 
         :param bond: Bond
@@ -265,9 +270,9 @@ class StereoMolGraph(MolGraph):
 
     def _to_rdmol(
         self,
-        generate_bond_orders:bool=False,
-        allow_charged_fragments:bool=False,
-        charge:int=0
+        generate_bond_orders: bool = False,
+        allow_charged_fragments: bool = False,
+        charge: int = 0,
     ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
         """
         Creates a RDKit mol object using the connectivity of the mol graph.
@@ -275,15 +280,17 @@ class StereoMolGraph(MolGraph):
 
         :return: RDKit molecule
         """
-        return stereo_mol_graph_to_rdmol(self,
-                                          generate_bond_orders=generate_bond_orders,
-                                          allow_charged_fragments=allow_charged_fragments,
-                                          charge=charge)
-        
+        return stereo_mol_graph_to_rdmol(
+            self,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
 
     @classmethod
-    def from_rdmol(cls, rdmol:Chem.Mol, use_atom_map_number:bool=False
-                   ) -> Self:
+    def from_rdmol(
+        cls, rdmol: Chem.Mol, use_atom_map_number: bool = False
+    ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         All hydrogens have to be explicit.
@@ -295,86 +302,18 @@ class StereoMolGraph(MolGraph):
                                     instead of the atom index, Default: False
         :return: StereoMolGraph
         """
-        smg = stereo_mol_graph_from_rdmol(cls, rdmol,
-                                          use_atom_map_number=use_atom_map_number)
-        assert isinstance(smg, cls), ("StereoMolGraph.from_rdmol did not"
-                                      " return a StereoMolGraph")
+        smg = stereo_mol_graph_from_rdmol(
+            cls, rdmol, use_atom_map_number=use_atom_map_number
+        )
+        assert isinstance(smg, cls), (
+            "StereoMolGraph.from_rdmol did not return a StereoMolGraph"
+        )
         return smg
-
-    def _set_atom_stereo_from_geometry(self, geo: Geometry):
-        for atom in range(geo.n_atoms):
-            first_neighbors = list(self.bonded_to(atom))
-
-            # extends the first layer of neighbors to the second layer
-            # (if planar)
-            # needed to find double bonds
-            if len(first_neighbors) < 3:
-                pass
-            elif (len(first_neighbors) == 3
-                  and are_planar(geo.coords[[atom, *first_neighbors]])):
-                for neighbor in first_neighbors:
-                    next_layer = set(self.bonded_to(neighbor))
-
-                    for i in first_neighbors:
-                        next_layer.add(i)
-                    next_layer -= set((neighbor, atom))
-
-                    if len(next_layer) != 4:
-                        continue
-
-                    elif are_planar(geo.coords.take(tuple(next_layer),
-                                                    axis=0)):
-                        bonded_to_atom = (
-                            outer_atom
-                            for outer_atom in next_layer
-                            if self.has_bond(atom, outer_atom)
-                        )
-                        bonded_to_neighbor = (
-                            outer_atom
-                            for outer_atom in next_layer
-                            if self.has_bond(neighbor, outer_atom)
-                        )
-                        atom_ids = (
-                            *bonded_to_atom,
-                            atom,
-                            neighbor,
-                            *bonded_to_neighbor,
-                        )
-                        assert len(atom_ids) == 6
-                        double_bond = PlanarBond.from_coords(
-                            atom_ids, geo.coords.take(atom_ids, axis=0))
-                        
-                        self.set_bond_stereo(double_bond)
-
-            elif len(first_neighbors) == 3:
-                pass
-            else:
-                first_neighbors_coords = geo.coords[first_neighbors]
-                if are_planar(first_neighbors_coords):
-                    pass
-
-                elif len(first_neighbors) == 4:
-                    stereo_atoms = (atom, *first_neighbors)
-                    assert len(stereo_atoms) == 5
-                    stereo_coords = geo.coords.take(stereo_atoms, axis=0)
-                    atoms_atom_stereo = Tetrahedral.from_coords(stereo_atoms,
-                                                                stereo_coords)
-
-                    self.set_atom_stereo(atoms_atom_stereo)
-
-                elif len(first_neighbors) == 5:
-                    stereo_atoms = (atom, *first_neighbors)
-                    assert len(stereo_atoms) == 6
-                    stereo_coords = geo.coords.take(stereo_atoms, axis=0)
-                    atoms_atom_stereo = TrigonalBipyramidal.from_coords(
-                        stereo_atoms, stereo_coords)
-                    self.set_atom_stereo(atoms_atom_stereo)
-
 
     @classmethod
     def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """Creates a MolGraph object from a list of MolGraph objects.
-        
+
         Duplicate nodes or edges are overwritten, such that the resulting
         graph only contains one node or edge with that name. Duplicate
         attributes of duplicate nodes, edges and the stereochemistry are also
@@ -416,11 +355,32 @@ class StereoMolGraph(MolGraph):
             include_bond_order=include_bond_order,
         )
         graph = cls(mol_graph)
-        graph._set_atom_stereo_from_geometry(geo)
+        graph = stero_from_geometry(graph, geo)
         return graph
 
+    @classmethod
+    def from_geometry(
+        cls,
+        geo: Geometry,
+        switching_function: BondsFromDistance = BondsFromDistance(),
+    ) -> Self:
+        """
+        Creates a StereoMolGraph object from a Geometry and a switching
+        function. Uses the Default switching function if none are given.
+
+        :param geo: Geometry
+        :param switching_function: Function to determine if two atoms are
+            connected
+        :return: StereoMolGraph of molecule
+        """
+        mol_graph = connectivity_from_geometry(cls, geo, switching_function)
+        assert mol_graph is not None
+        stereo_mol_graph = stero_from_geometry(mol_graph, geo)
+        assert stereo_mol_graph is not None
+        return stereo_mol_graph
+
     def get_isomorphic_mappings(
-        self, other: MolGraph, stereo:bool=True
+        self, other: MolGraph, stereo: bool = True
     ) -> Iterator[dict[int, int]]:
         """Isomorphic mappings between "self" and "other".
 
@@ -436,12 +396,11 @@ class StereoMolGraph(MolGraph):
         return vf2pp_all_isomorphisms(
             self,
             other,
-            color_refine=True, #TODO: implement color refinement
+            color_refine=True,  # TODO: implement color refinement
             stereo=stereo,
             stereo_change=False,
             subgraph=False,
         )
-        
 
     def get_subgraph_isomorphic_mappings(
         self, other: MolGraph, stereo: bool = True
@@ -461,7 +420,7 @@ class StereoMolGraph(MolGraph):
         if other.__class__ is not self.__class__:
             return
             yield
-        
+
         return vf2pp_all_isomorphisms(
             self,
             other,
@@ -496,4 +455,3 @@ class StereoMolGraph(MolGraph):
             if not self.has_bond(stereo.atoms[5], stereo.atoms[3]):
                 return False
         return True
-

@@ -3,7 +3,7 @@ message: If you use this software, please cite it using these metadata.
 type: software
 title: StereoMolGraph
 abstract: Graph Library for Molecules and Transition States with Stereochemistry.
-version: 0.0.0b0
+version: 0.0.0b6
 keywords:
 - reaction mechanism
 - chemistry

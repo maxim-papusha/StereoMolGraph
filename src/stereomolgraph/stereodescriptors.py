@@ -281,28 +281,6 @@ class Tetrahedral(
             self.__class__(atoms=self.atoms, parity=-1),
         }
 
-    @classmethod
-    def from_coords(
-        cls,
-        atoms: tuple[int, int, int, int, int],
-        coords: np.ndarray[
-            tuple[Literal[5], Literal[3]], np.dtype[np.float64]
-        ],
-    ) -> Self:
-        """
-        Creates the representation of a Tetrahedral Stereochemistry
-        from the coordinates of the atoms.
-
-        :param atoms: Atoms of the stereochemistry
-        :param coords: nAtomsx3 numpy array with cartesian coordinates
-        """
-        orientation = handedness(coords.take((1, 2, 3, 4), axis=0))
-        int_orientation = int(orientation)
-        assert int_orientation in (1, -1), (
-            f"Orientation {orientation} is not valid for Tetrahedral "
-            "stereochemistry.")
-        return cls(atoms, int_orientation)
-
 
 class SquarePlanar(
     _AchiralStereoMixin[tuple[int, int, int, int, int]],
@@ -395,47 +373,7 @@ class TrigonalBipyramidal(
             if len(atoms := (self.atoms[0], *perm)) == 6
         }
 
-    @classmethod
-    def from_coords(
-        cls: type[TrigonalBipyramidal],
-        atoms: tuple[int, int, int, int, int, int],
-        coords: np.ndarray[
-            tuple[Literal[6], Literal[3]], np.dtype[np.float64]
-        ],
-    ) -> TrigonalBipyramidal:
-        """
-        calculates the distance of the atom 5 from the plane defined by the
-        first three atoms in Angstrom. The sign of the distance is determined
-        by the side of the plane that atom 5 is on.
-        """
-
-        # coords_dict
-        _index_central_atom = 0
-        indices = (1, 2, 3, 4, 5)
-
-        if np.any(are_planar(coords[[1,2,3,4,5]])):
-            raise ValueError("Four atoms are planar!")
-        
-        lst = np.array([[i, 0, j] for i, j
-                        in itertools.combinations(indices, 2)], dtype=np.int8)
-
-        # The atoms with the largest angle are the axial atoms
-        angles = angle_from_coords(coords[lst])
-        i, j = lst[angles.argmax()][[0, 2]] # axial atoms
-        
-        equatorial = [a for a in indices if a not in (i, j)]
-        i_rotation = handedness(coords.take( [*equatorial, i], axis=0))
-        j_rotation = -1 * handedness(coords.take([*equatorial, j], axis=0))
-
-        assert int(i_rotation) == int(j_rotation)
-
-        atoms_in_new_order = (i, j, *equatorial)
-        orientation = int(i_rotation)
-        tb_atoms = (atoms[0], *atoms_in_new_order)
-        assert len(tb_atoms) == 6
-        assert orientation in (1, -1)
-        return TrigonalBipyramidal(tb_atoms, orientation)
-        
+ 
 class Octahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
     AtomStereo[
@@ -541,28 +479,7 @@ class PlanarBond(
     ):
         super().__init__(atoms, parity)
 
-    @classmethod
-    def from_coords(
-        cls,
-        atoms: tuple[int, int, int, int, int, int],
-        coords: np.ndarray[
-            tuple[Literal[6], Literal[3]], np.dtype[np.float64]
-        ],
-    ) -> PlanarBond:
-        a = (coords[0] - coords[1]) / np.linalg.norm(coords[0] - coords[1])
-        b = (coords[4] - coords[5]) / np.linalg.norm(coords[4] - coords[5])
-        result = int(np.sign(np.dot(a, b)))
 
-        if result == -1:
-            new_atoms = tuple(atoms[i] for i in (1, 0, 2, 3, 4, 5))
-        elif result == 1:
-            new_atoms = atoms
-        elif result == 0:
-            raise ValueError("atoms are tetrahedral")
-        else:
-            raise ValueError("something went wrong")
-        assert len(new_atoms) == 6
-        return cls(new_atoms, 0)
 
 
 class AtropBond(

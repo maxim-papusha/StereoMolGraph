@@ -98,11 +98,7 @@ _ATOMIC_NRS = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7,
                'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117,
                'Og': 118}
 
-#    covalent radius in (Pekka Pyykkö and Michiko
-#       Atsumi. Molecular Double-Bond Covalent Radii for Elements Li-E112.
-#       Chemistry - A European Journal, 15(46):12770–12779, nov 2009.
-#       URL: http://doi.wiley.com/10.1002/chem.200901472,
-#       doi:10.1002/chem.200901472.)
+
 
 _ELEMENT_COVALENT_RADII = {'H': 0.32, 'He': 0.46, 'Li': 1.33, 'Be': 1.02,
                            'B': 0.85, 'C': 0.75, 'N': 0.71, 'O': 0.63,
@@ -159,10 +155,15 @@ _PERIODIC_TABLE.update({
     for sym in _ATOMIC_NRS})
 
 
-# use MappingProxyType to make the public table immutable
+#: Mapping of atomic numbers and symbols to Element objects.
 PERIODIC_TABLE: Mapping[str|int|Element, Element] = MappingProxyType(
                                                             _PERIODIC_TABLE)
 
+#: Covalent radii of elements in Angstrom.
+#: (Pekka Pyykkö and Michiko Atsumi.
+#: Molecular Double-Bond Covalent Radii for Elements Li-E112.
+#: Chemistry - A European Journal, 15(46):12770–12779, nov 2009.
+#: doi:10.1002/chem.200901472.)
 COVALENT_RADII: Mapping[Element, float] = MappingProxyType(
     {Element(sym, _ATOMIC_NRS[sym]): _ELEMENT_COVALENT_RADII[sym]
      for sym in _ELEMENT_COVALENT_RADII})

@@ -14,6 +14,10 @@ from stereomolgraph.graph2rdmol import set_crg_bond_orders
 from stereomolgraph.graphs.crg import CondensedReactionGraph, Change
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
+from stereomolgraph.xyz2graph import (
+    connectivity_from_geometry,
+    stero_from_geometry,
+)
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
@@ -623,7 +627,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         )
 
         ts_atom_stereo_graph = StereoMolGraph(crg)
-        ts_atom_stereo_graph._set_atom_stereo_from_geometry(ts_geo)
+        ts_atom_stereo_graph = stero_from_geometry(ts_atom_stereo_graph, ts_geo)
+
         reactant_atom_stereo_graph = StereoMolGraph.from_geometry(
             geo=reactant_geo, switching_function=switching_function
         )

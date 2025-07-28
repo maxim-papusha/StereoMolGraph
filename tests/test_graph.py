@@ -15,11 +15,13 @@ from stereomolgraph import (Bond,
 from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
+from stereomolgraph.xyz2graph import atom_stereo_from_coords
 
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
     PlanarBond,
+    SquarePlanar,
     Tetrahedral,
     TrigonalBipyramidal,
 )
@@ -82,6 +84,7 @@ class TestMolGraph:
         return self._TestClass.from_geometry(chiral_reactant_geo)
 
     def test_len(self, enantiomer_graph1):
+        assert enantiomer_graph1 is not None
         assert len(enantiomer_graph1) == 8
 
     def test_add_atom(self, empty_mol_graph, *args, **kwargs):
@@ -595,14 +598,15 @@ class TestTetrahedral:
         coords2 = enantiomer_geos[1].coords
         atoms = (3, 0, 1, 2, 4)
 
-        stereo1 = Tetrahedral.from_coords(atoms, coords1.take(atoms, axis=0))
-        stereo2 = Tetrahedral.from_coords(atoms, coords2.take(atoms, axis=0))
+        stereo1 = atom_stereo_from_coords(atoms, coords1.take(atoms, axis=0))
+        stereo2 = atom_stereo_from_coords(atoms, coords2.take(atoms, axis=0))
+        assert stereo1 is not None and stereo2 is not None
         assert stereo1.parity == 1
         assert stereo2.parity == -1
 
     def test_from_permuted_coords(self, enantiomer_geos):
         coords = enantiomer_geos[0].coords
-        different_perms = {Tetrahedral.from_coords(atoms:=(3, *perm),
+        different_perms = {atom_stereo_from_coords(atoms:=(3, *perm),
                                                    coords.take(atoms, axis=0))
                     for perm in permutations((0, 1, 2, 4))}
         assert len(different_perms) == 1
@@ -629,9 +633,10 @@ class TestTetrahedral:
 class TestTrigonalBipyramidal:
     def test_from_coords(self, data_path):
         pcl5 = Geometry.from_xyz_file(data_path / "PCl5.xyz")
-        result = TrigonalBipyramidal.from_coords(
+        result = atom_stereo_from_coords(
             (0, 1, 2, 3, 4, 5), pcl5.coords.take((0, 1, 2, 3, 4, 5), axis=0)
         )
+        assert result is not None
         assert result.parity == 1
         assert set(result.atoms) == {3, 4, 0, 1, 2, 5}
 
@@ -1576,6 +1581,8 @@ class TestStereoCondensedReactionGraph(
             Change.BROKEN: Tetrahedral(
                 (0, 1, 2, 3, 4), 1
             ),
+            Change.FLEETING: SquarePlanar(
+                (0, 4, 2, 3, 1), 0),
             Change.FORMED: Tetrahedral(
                 (0, 1, 2, 3, 4), -1
             ),
@@ -1589,6 +1596,8 @@ class TestStereoCondensedReactionGraph(
             Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
+            Change.FLEETING: SquarePlanar(
+                (11, 40, 20, 30, 10), 0),
             Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),
@@ -1604,6 +1613,8 @@ class TestStereoCondensedReactionGraph(
             Change.BROKEN: Tetrahedral(
                 (11, 10, 20, 30, 40), 1
             ),
+            Change.FLEETING: SquarePlanar(
+                (11, 40, 20, 30, 10), 0),
             Change.FORMED: Tetrahedral(
                 (11, 10, 20, 30, 40), -1
             ),

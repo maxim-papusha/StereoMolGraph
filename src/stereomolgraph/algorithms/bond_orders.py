@@ -1,15 +1,7 @@
 # This is a derived work from https://github.com/jensengroup/xyz2mol
-# Jensen Group
 # Jan H. Jensen Research Group of the Department of Chemistry,
 # University of Copenhagen
 # License: MIT License (see at end of file)
-#
-# This code is based on the work of DOI: 10.1002/bkcs.10334
-# Yeonjoon Kim and Woo Youn Kim
-# "Universal Structure Conversion Method for Organic Molecules:
-# From Atomic Connectivity to Three-Dimensional Geometry"
-# Bull. Korean Chem. Soc.
-# 2015, Vol. 36, 1769-1777
 
 from __future__ import annotations
 
@@ -69,24 +61,16 @@ def connectivity2bond_orders(
 ) -> tuple[np.ndarray[tuple[N, N], np.dtype[np.int8]],
            list[int],
            list[int]]:
-    """
-    Calculates Bond orders from atom connectivity.
-    Bond orders can be assigned automatically using the algorithm from
-    DOI: 10.1002/bkcs.10334
-    Yeonjoon Kim and Woo Youn Kim
-    "Universal Structure Conversion Method for Organic Molecules:
-    From Atomic Connectivity to Three-Dimensional Geometry"
-    Bull. Korean Chem. Soc.
-    2015, Vol. 36, 1769-1777
+    """Calculates Bond orders from atom connectivity. 
 
-    :param atom_types: list of atom types
-    :param connectivity_matrix: Adjacency matrix. Has to be symmetric square
-                                matrix. Behaveour is not defined for values
-                                other than 1 and 0.
+    Bond orders can be assigned automatically using the algorithm from
+    
+    [Yeonjoon Kim and Woo Youn Kim "Universal Structure Conversion Method for Organic Molecules: From Atomic Connectivity to Three-Dimensional Geometry" Bull. Korean Chem. Soc. 2015, Vol. 36, 1769-1777](https://doi.org/10.1002/bkcs.10334)
+
+    :param atom_types: atom types in same order as connectivity_matrix.
+    :param connectivity_matrix: Connectivity matrix
     :param allow_charged_fragments: If false radicals are formed and if True
-                                ions are preferred, defaults to False.
-                                bond_orders has to be set to true to be able to
-                                assign charges to fragments.
+                                ions are preferred.
     :param charge: charge of the whole molecule, defaults to 0.
     :return: bond_order_matrix, atomic_charges, atomic_valence_electrons
     """
