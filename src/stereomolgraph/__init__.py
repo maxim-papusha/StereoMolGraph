@@ -4,13 +4,18 @@ CondensedReactionGraph and StereoCondensedReactionGraph"""
 
 from __future__ import annotations
 
+from importlib import import_module
 from importlib.metadata import version
 
-from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-from stereomolgraph.graphs.smg import StereoMolGraph
-from stereomolgraph.graphs.crg import CondensedReactionGraph
-from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
+def __getattr__(name):
+    """Lazy import submodules on first access (Python 3.7+)"""
+    if name in {'sub1', 'sub2'}:
+        return import_module(f'.{name}', __name__)
+    if name == "__version__":
+        return version("stereomolgraph")
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
         
-__version__ = version('stereomolgraph')
+
 
 
