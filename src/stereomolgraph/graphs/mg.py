@@ -617,29 +617,7 @@ class MolGraph:
         )
         return new_mol_graph
 
-    @classmethod
-    def from_geometry(
-        cls,
-        geo: Geometry,
-        switching_function: BondsFromDistance = BondsFromDistance(),
-    ) -> Self:
-        """
-        Creates a graph of a molecule from a Geometry and a switching Function.
-        Uses the Default switching function if none are given.
 
-        :param geo: Geometry
-        :param switching_function: Function to determine if two atoms are
-            connected
-        :return: graph of molecule
-        """
-
-        connectivity_matrix = switching_function.array(
-            geo.coords, geo.atom_types
-        )
-        return cls.from_geometry_and_bond_order_matrix(
-            geo,
-            connectivity_matrix,
-        )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):

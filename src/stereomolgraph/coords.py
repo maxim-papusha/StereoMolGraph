@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     THREE = Literal[3]
     FOUR = Literal[4]
 
-def are_planar(points: np.ndarray[tuple[int, Literal[3]], np.dtype[np.float64]],
+def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
                threshold: float = 0.5
                ) -> np.bool_:
     """Checks if all atoms are in one plane
