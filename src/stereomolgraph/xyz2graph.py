@@ -177,24 +177,23 @@ def _octahedral_from_coords(
         if are_planar(coords[points]):
             planar_groups.append(set(points))
 
-    if len(planar_groups) == 3:
-        trans_atoms = planar_groups[0].intersection(planar_groups[1])
-
-        cis_atoms0 = planar_groups[0].difference(trans_atoms)
-
-        cis_atoms1 = planar_groups[1].difference(trans_atoms)
-
-        assert len(trans_atoms) == 2
-        assert len(cis_atoms0) == 2
-        assert len(cis_atoms1) == 2
-        assert cis_atoms0 | cis_atoms1 == planar_groups[2]
-
-        a1, a2 = trans_atoms
-        a3, a5 = cis_atoms0
-        a4, a6 = cis_atoms1
-
-        parity = int(handedness(coords[[a1, a3, a5, a4]]))
-        assert parity == 1 or parity == -1
-        return Octahedral((atoms[0], a1, a2, a3, a4, a5, a6), parity)
-    else:
+    if not len(planar_groups) == 3:
         return None
+    
+    trans_atoms = planar_groups[0].intersection(planar_groups[1])
+
+    cis_atoms0 = planar_groups[0].difference(trans_atoms)
+
+    cis_atoms1 = planar_groups[1].difference(trans_atoms)
+    assert len(trans_atoms) == 2
+    assert len(cis_atoms0) == 2
+    assert len(cis_atoms1) == 2
+    assert cis_atoms0 | cis_atoms1 == planar_groups[2]
+
+    a1, a2 = trans_atoms
+    a3, a5 = cis_atoms0
+    a4, a6 = cis_atoms1
+
+    parity = int(handedness(coords[[a1, a3, a5, a4]]))
+    assert parity == 1 or parity == -1
+    return Octahedral((atoms[0], a1, a2, a3, a4, a5, a6), parity)
