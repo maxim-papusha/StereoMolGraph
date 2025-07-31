@@ -1,16 +1,13 @@
 from __future__ import annotations
-import sys
+
 import itertools
+import sys
 from abc import ABC, abstractmethod
 from collections import Counter
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
-import numpy as np
-
-from stereomolgraph.coords import are_planar, handedness, angle_from_coords
-
 if TYPE_CHECKING:
-    from collections.abc import Generator, Set
+    from collections.abc import Generator, Set, Collection
 
     from typing_extensions import Self
 
@@ -22,12 +19,15 @@ else:
     from typing_extensions import TypeVar
 
 
-A = TypeVar("A", bound=tuple[int, ...],
-            covariant=True,
-            default=tuple[int, ...])
-P = TypeVar("P", bound=None | Literal[1, 0, -1],
-            covariant=True,
-            default=None | Literal[1, 0, -1])
+A = TypeVar(
+    "A", bound=tuple[int, ...], covariant=True, default=tuple[int, ...]
+)
+P = TypeVar(
+    "P",
+    bound=None | Literal[1, 0, -1],
+    covariant=True,
+    default=None | Literal[1, 0, -1],
+)
 
 
 class Stereo(ABC, Generic[A, P]):
@@ -48,7 +48,7 @@ class Stereo(ABC, Generic[A, P]):
     If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
     """
 
-    PERMUTATION_GROUP: frozenset[A]
+    PERMUTATION_GROUP: Collection[A]
     """Defines all allowed permutations defined by the symmetry group under
     which the stereochemistry is invariant."""
 
@@ -373,7 +373,7 @@ class TrigonalBipyramidal(
             if len(atoms := (self.atoms[0], *perm)) == 6
         }
 
- 
+
 class Octahedral(
     _ChiralStereoMixin[tuple[int, int, int, int, int, int, int]],
     AtomStereo[
@@ -478,8 +478,6 @@ class PlanarBond(
         parity: None | Literal[0] = None,
     ):
         super().__init__(atoms, parity)
-
-
 
 
 class AtropBond(
