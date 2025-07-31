@@ -185,16 +185,16 @@ def ext_symmetry_number(g: StereoMolGraph) -> int:
     for a1, a2 in g.bonds:
         if (nbrs1 := g.bonded_to(a1)) and (nbrs2 := g.bonded_to(a2)):
             
-            bond_dehidrals = {}
+            bond_dehidrals = {} # only for this bond. also add a "state per dehedral"
 
             for a0, a3 in itertools.product(nbrs1, nbrs2):
                 color = (colors[a0], colors[a1], colors[a2], colors[a3])
                 color_rev = (colors[a3], colors[a2], colors[a1], colors[a0])
 
                 if color >= color_rev:
-                    dehidrals[(a0, a1, a2, a3)] = color
+                    dehidrals[color][(a0, a1, a2, a3)] = "state"
                 else:
-                    dehidrals[(a3, a2, a1, a0)] = color_rev
+                    ...
 
     assert result != 0
     return result
