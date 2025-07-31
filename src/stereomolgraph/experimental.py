@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import itertools
-from collections import deque
+from collections import defaultdict, deque
 from typing import TYPE_CHECKING
 
 from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
+from stereomolgraph.algorithms.isomorphism import color_refine_mg
 from stereomolgraph.graphs.scrg import Change
 
 if TYPE_CHECKING:
@@ -167,3 +168,33 @@ def topological_symmetry_number(graph: StereoMolGraph) -> int:
 
     mappings = graph.get_isomorphic_mappings(graph)
     return deque(enumerate(mappings, 1), maxlen=1)[0][0]
+
+
+def ext_symmetry_number(g: StereoMolGraph) -> int:
+    result = 0
+    colors = color_refine_mg(g)
+
+    dehidrals: dict[
+        tuple[AtomId, AtomId, AtomId, AtomId], tuple[int, int, int, int]
+    ] = {}
+    col_ang_state: dict[
+        tuple[AtomId, AtomId, AtomId, AtomId],
+        dict[tuple[int, int, int, int], tuple[int, int, int, int]],
+    ] = defaultdict(dict)
+
+    for a1, a2 in g.bonds:
+        if (nbrs1 := g.bonded_to(a1)) and (nbrs2 := g.bonded_to(a2)):
+            
+            bond_dehidrals = {}
+
+            for a0, a3 in itertools.product(nbrs1, nbrs2):
+                color = (colors[a0], colors[a1], colors[a2], colors[a3])
+                color_rev = (colors[a3], colors[a2], colors[a1], colors[a0])
+
+                if color >= color_rev:
+                    dehidrals[(a0, a1, a2, a3)] = color
+                else:
+                    dehidrals[(a3, a2, a1, a0)] = color_rev
+
+    assert result != 0
+    return result
