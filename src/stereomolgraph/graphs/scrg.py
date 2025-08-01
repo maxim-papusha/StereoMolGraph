@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import sys
-
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
@@ -11,18 +10,17 @@ from stereomolgraph.algorithms.color_refine import color_refine_mg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import set_crg_bond_orders
-from stereomolgraph.graphs.crg import CondensedReactionGraph, Change
+from stereomolgraph.graphs.crg import Change, CondensedReactionGraph
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
-from stereomolgraph.xyz2graph import (
-    connectivity_from_geometry,
-    stero_from_geometry,
-)
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
     Stereo,
     Tetrahedral,
+)
+from stereomolgraph.xyz2graph import (
+    stero_from_geometry,
 )
 
 if TYPE_CHECKING:
