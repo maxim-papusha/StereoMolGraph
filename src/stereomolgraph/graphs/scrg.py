@@ -21,7 +21,6 @@ from stereomolgraph.xyz2graph import (
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
-    Stereo,
     Tetrahedral,
 )
 
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
 
     import sys
     from collections.abc import Iterable, Iterator, Mapping
-    from typing import Optional
+    from typing import Optional, Any
     
     from rdkit import Chem
 
@@ -41,7 +40,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self, TypeVar
 
-S = TypeVar("S", bound="Stereo", contravariant=True)
+S = TypeVar("S", bound=Any, contravariant=True)
 
 
 class ChangeDict(dict[Change, None | S], Generic[S]):

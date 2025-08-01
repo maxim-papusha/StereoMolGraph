@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import inf
 import itertools
 from collections import defaultdict, deque
 from typing import TYPE_CHECKING
@@ -7,6 +8,7 @@ from typing import TYPE_CHECKING
 from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
 from stereomolgraph.algorithms.isomorphism import color_refine_mg
 from stereomolgraph.graphs.scrg import Change
+from stereomolgraph.stereodescriptors import Tetrahedral
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable
@@ -187,14 +189,32 @@ def ext_symmetry_number(g: StereoMolGraph) -> int:
             
             bond_dehidrals = {} # only for this bond. also add a "state per dehedral"
 
+            best: tuple[int, int, int, int] = (0, 0, 0, 0)
+            best_color: tuple[float, float, float, float
+                              ] = (- inf, - inf, - inf, - inf)
             for a0, a3 in itertools.product(nbrs1, nbrs2):
                 color = (colors[a0], colors[a1], colors[a2], colors[a3])
+                if color > best_color:
+                    best_color = color
+                    best = (a0, a1, a2, a3)
                 color_rev = (colors[a3], colors[a2], colors[a1], colors[a0])
+                if color_rev > best_color:
+                    best_color = color_rev
+                    best = (a3, a2, a1, a0)
+            
+            stereo1 = g.get_atom_stereo(best[1])
+            stereo2 = g.get_atom_stereo(best[2])
 
-                if color >= color_rev:
-                    dehidrals[color][(a0, a1, a2, a3)] = "state"
-                else:
-                    ...
+            if isinstance(stereo1, Tetrahedral) and stereo2 is None:
+                other_nbrs = g.bonded_to(best[2]).difference({best[3]})
+                assert len(other_nbrs) == 1
+                other_nbr = next(iter(other_nbrs))
+                ...
+
+            elif stereo1 is None and isinstance(stereo2, Tetrahedral):
+                ...
+            elif isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
+                ...
 
     assert result != 0
     return result
