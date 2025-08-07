@@ -48,6 +48,7 @@ classifiers = [
 dependencies = [
   "numpy>=1.20,<3",
   "rdkit>=2022.9.1",
+  "numba",
 ]
 
 [dependency-groups]

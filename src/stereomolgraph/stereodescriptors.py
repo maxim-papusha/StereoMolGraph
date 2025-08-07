@@ -26,8 +26,6 @@ if TYPE_CHECKING:
     from stereomolgraph.graphs.mg import AtomId, Bond
 
 
-
-
 A = TypeVar(
     "A", bound=tuple[int, ...], covariant=True, default=tuple[int, ...]
 )
@@ -62,11 +60,8 @@ class Stereo(Protocol, Generic[A, P]):
     which the stereochemistry is invariant."""
 
     def __init__(self, atoms: A, parity: P = None): ...
-
     def __eq__(self, other: Any) -> bool: ...
-
     def __hash__(self) -> int: ...
-
     def invert(self) -> Self:
         """Inverts the stereo. If the stereo is achiral, it returns itself."""
         ...
@@ -121,7 +116,7 @@ class _StereoMixin(Generic[A, P]):
             return self
         new_parity = -self.parity
         assert new_parity in (1, -1)
-        return self.__class__(self.atoms, new_parity) # type: ignore[return-value]
+        return self.__class__(self.atoms, new_parity)  # type: ignore[return-value]
 
     def _inverted_atoms(self) -> A:
         if self.inversion is None:
