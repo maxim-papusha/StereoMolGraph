@@ -1,0 +1,58 @@
+Metadata-Version: 2.4
+Name: StereoMolGraph
+Version: 0.0.0b8
+Summary: A graph library for chiral molecules, reactions and transition states
+Author-email: Maxim Papusha <maxim.papusha@ltt.rwth-aachen.de>, Florian Solbach <florian.solbach@ltt.rwth-aachen.de>
+Maintainer-email: Maxim Papusha <maxim.papusha@ltt.rwth-aachen.de>
+Project-URL: Documentation, https://stereomolgraph.readthedocs.io/
+Project-URL: Repository, https://github.com/maxim-papusha/StereoMolGraph.git
+Project-URL: PyPi, https://pypi.org/project/StereoMolGraph/
+Project-URL: Zenodo, https://doi.org/10.5281/zenodo.16360310
+Keywords: chemistry,reaction,graph,molecule,transition state
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Chemistry
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy<3,>=1.20
+Requires-Dist: rdkit>=2022.9.1
+Dynamic: license-file
+
+# StereoMolGraph #
+[![View Documentation](https://img.shields.io/badge/📖-Documentation-8CA1AF)](https://stereomolgraph.readthedocs.io)
+[![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13-blue?logo=python)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
+![PyPI - Version](https://img.shields.io/pypi/v/StereoMolGraph?link=https%3A%2F%2Fpypi.org%2Fproject%2FStereoMolGraph)
+[![Documentation Status](https://readthedocs.org/projects/stereomolgraph/badge/?version=dev)](https://stereomolgraph.readthedocs.io/en/latest/?badge=dev)
+[![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?logo=github)](https://github.com/maxim-papusha/StereoMolGraph)
+[![Type Check](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_type_check.yaml)
+[![Test Examples](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml)
+[![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
+[![DOI](https://zenodo.org/badge/999259345.svg)](https://doi.org/10.5281/zenodo.16360310)
+[![PyPI Downloads](https://static.pepy.tech/badge/stereomolgraph)](https://pepy.tech/projects/stereomolgraph)
+
+Work in progress and a manuscript in preparation.
+More documentation and tutorials coming end of summer 2025
+
+A lightweitht Python library for **Molecules** and **Transition States** with **Stereochemistry**.
+The object oriendet structure abstracts aways the mathematical complexety of the regirous grouptheorethical threatment of stereochemistry.
+Provides algorithmically fast and robust implementations of **hashing** based on the Weisfeiler-Leman algorithm and **equality** based on the VF2++ isomorphism algorithm.
+
+## Documentation ##
+
+## Installation ##
+
+## Citation ##
+
+## Contact ##
+
