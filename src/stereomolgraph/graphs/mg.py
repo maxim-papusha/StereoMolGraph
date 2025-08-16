@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from copy import deepcopy
+from pprint import pformat
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,7 @@ from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 from stereomolgraph.xyz2graph import connectivity_from_geometry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping, Sequence
+    from collections.abc import Iterable, Iterator, Mapping, Sequence, Collection
     from typing import Any, Optional, Self, TypeAlias, TypeVar
 
     from rdkit import Chem  # type: ignore
@@ -57,7 +58,7 @@ class MolGraph:
     @property
     def atoms(
         self,
-    ) -> Iterable[AtomId]:
+    ) -> Collection[AtomId]:
         """
         :return: Returns all atoms of the molecule
         """
@@ -349,13 +350,14 @@ class MolGraph:
 
         :return: Connectivity matrix as list of lists
         """
-        matrix = [[0] * self.n_atoms for _ in self.atoms]
+        n = len(self.atoms)
+        matrix = np.zeros((n, n), dtype=np.int8)
         atomid_index_dict = {id: index for index, id in enumerate(self.atoms)}
 
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
-        return np.array(matrix, dtype=np.int8)
+        return matrix
 
     def _to_rdmol(
         self,
@@ -694,14 +696,20 @@ class MolGraph:
         :return: True if isomorphic
         """
         return any(self.get_isomorphic_mappings(other))
-
-    def __repr__(self) -> str:
-        a_list = [
+    
+    def __str__(self) -> str:
+        a_list = sorted(
             (a, a_type.symbol)
-            for a, a_type in zip(self.atoms, self.atom_types)
-        ]
-        b_list = [tuple(sorted(bond)) for bond in self.bonds]
-        return f"{self.__class__.__name__}\nAtoms: {a_list}\nBonds: {b_list}\n"
+            for a, a_type in zip(self.atoms, self.atom_types))
+        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
+
+        pretty_str = pformat(
+                   [
+                    ["Atoms", a_list],
+                    ["Bonds", b_list]],
+                    indent=0, width=120, compact=True, sort_dicts=True)
+        return (f"{self.__class__.__name__}\n{pretty_str}"
+                .translate(str.maketrans('', '', ',"\'[]')))
 
     def _ipython_display_(self) -> None:
         print(self.__repr__())

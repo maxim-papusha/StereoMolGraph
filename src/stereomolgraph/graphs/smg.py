@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import deepcopy
+from pprint import pformat
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeVar
 
@@ -77,6 +78,25 @@ class StereoMolGraph(MolGraph):
                 frozenset(bond_stereo),
             )
         )
+
+    def __str__(self) -> str:
+        a_list = sorted(
+            (a, a_type.symbol)
+            for a, a_type in zip(self.atoms, self.atom_types))
+        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
+        repr_atom_stereo = self._atom_stereo
+        repr_bond_stereo = {tuple(sorted(bond)):bond_stereo
+                            for bond, bond_stereo in self._bond_stereo.items()}
+
+        pretty_str = pformat(
+                   [
+                    ["Atoms", a_list],
+                    ["Bonds", b_list],
+                    ["Atom Stereo", repr_atom_stereo],
+                    ["Bond Stereo",repr_bond_stereo,]],
+                    indent=0, width=120, compact=True, sort_dicts=True)
+        return (f"{self.__class__.__name__}\n{pretty_str}"
+                .translate(str.maketrans('', '', ',"\'[]')))
 
     @property
     def stereo(self) -> Mapping[AtomId | Bond, AtomStereo | BondStereo]:

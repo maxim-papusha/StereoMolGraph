@@ -8,28 +8,47 @@ from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
 from stereomolgraph.graphs.scrg import Change
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable
+    from collections.abc import Collection, Iterable, Generator
     from typing import Optional
 
     from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
 
+def unique_generator(input_generator):
+    """
+    A generator that yields unique objects from another generator.
+    
+    Args:
+        input_generator: A generator yielding hashable objects
+        
+    Yields:
+        Only the first occurrence of each unique object from the input generator
+    """
+    seen = set()
+    for item in input_generator:
+        if item not in seen:
+            seen.add(item)
+            yield item
 
 def generate_stereoisomers(
     graph: StereoMolGraph,
     enantiomers: bool = True,
     atoms: Optional[Iterable[AtomId]] = None,
     bonds: Optional[Iterable[Bond]] = None,
-) -> Collection[StereoMolGraph]:
-    """Generates all stereoisomers of a StereoMolGraph by generation of
-    all combinations of parities. Only includes stereocenter which have a
+) -> Generator[StereoMolGraph, None, None]:
+    """Generates all unique stereoisomers of a StereoMolGraph by generation of
+    all combinations of parities. Only includes stereocenters which have a
     parity of None. If a parity is set, it is not changed.
 
     If include_enantiomers is True, both enantiomers of a stereoisomer are
     included, if it is False, only one enantiomer is included.
 
-    :param enantiomers: If True, both enantiomers are included,
-    :param: sets if both enantiomers should be included, default: Ture
-    :return: All possible stereoisomers
+    Args:
+        enantiomers: If True, both enantiomers are included
+        atoms: Optional subset of atoms to consider for stereoisomerism
+        bonds: Optional subset of bonds to consider for stereoisomerism
+        
+    Yields:
+        StereoMolGraph: Each unique stereoisomer (and enantiomer if requested)
     """
     if atoms is None:
         atom_stereos = (
@@ -57,8 +76,8 @@ def generate_stereoisomers(
             if (stereo := graph.get_bond_stereo(b)) is not None
         )
 
-    isomers: set[StereoMolGraph] = set()
-    enantiomers_set: set[StereoMolGraph] = set()
+    seen = set()
+    enantiomers_seen = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -69,27 +88,39 @@ def generate_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo(b_stereo)
 
-        if stereoisomer not in enantiomers_set:
-            isomers.add(stereoisomer)
+        if stereoisomer not in seen:
+            seen.add(stereoisomer)
+            yield stereoisomer
 
             if not enantiomers:
-                enantiomers_set.add(stereoisomer.enantiomer())
-
-    return isomers
-
+                enantiomer = stereoisomer.enantiomer()
+                if enantiomer not in enantiomers_seen:
+                    enantiomers_seen.add(enantiomer)
+                    yield enantiomer
 
 def generate_fleeting_stereoisomers(
     graph: StereoCondensedReactionGraph,
     enantiomers: bool = True,
     atoms: Optional[Iterable[AtomId]] = None,
     bonds: Optional[Iterable[Bond]] = None,
-) -> Collection[StereoCondensedReactionGraph]:
-    # TODO: extend to more than fleeting stereochemistry
-    # add checks if fleeting stereochemistry is valid relative to formed
-    # and broken
+) -> Generator[StereoCondensedReactionGraph, None, None]:
+    """Generates all unique fleeting stereoisomers of a StereoCondensedReactionGraph.
+    
+    Only includes stereocenters which have a parity of None for the fleeting change.
+    If a parity is set, it is not changed.
 
+    Args:
+        graph: The reaction graph to generate isomers from
+        enantiomers: If True, both enantiomers are included (default: True)
+        atoms: Optional subset of atoms to consider for stereoisomerism
+        bonds: Optional subset of bonds to consider for stereoisomerism
+        
+    Yields:
+        StereoCondensedReactionGraph: Each unique fleeting stereoisomer
+    """
+    # Get atom stereoisomers
     if atoms is None:
-        atom_stereos = [
+        atom_stereos = (
             stereo.get_isomers()
             for a in graph.atoms
             if (
@@ -97,9 +128,9 @@ def generate_fleeting_stereoisomers(
                 and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
-        ]
+        )
     else:
-        atom_stereos = [
+        atom_stereos = (
             stereo.get_isomers()
             for a in atoms
             if (
@@ -107,10 +138,11 @@ def generate_fleeting_stereoisomers(
                 and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
-        ]
+        )
 
+    # Get bond stereoisomers
     if bonds is None:
-        bond_stereos = [
+        bond_stereos = (
             stereo.get_isomers()
             for b in graph.bonds
             if (
@@ -118,9 +150,9 @@ def generate_fleeting_stereoisomers(
                 and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
-        ]
+        )
     else:
-        bond_stereos = [
+        bond_stereos = (
             stereo.get_isomers()
             for b in bonds
             if (
@@ -128,10 +160,10 @@ def generate_fleeting_stereoisomers(
                 and (stereo := stereo_change_dict[Change.FLEETING])
             )
             and stereo.parity is None
-        ]
+        )
 
-    isomers: list[StereoCondensedReactionGraph] = []
-    enantiomers_set: set[StereoCondensedReactionGraph] = set()
+    seen_isomers = set()
+    seen_enantiomers = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -142,13 +174,15 @@ def generate_fleeting_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
 
-        if stereoisomer not in enantiomers_set:
-            isomers.append(stereoisomer)
+        if stereoisomer not in seen_isomers:
+            seen_isomers.add(stereoisomer)
+            yield stereoisomer
 
             if not enantiomers:
-                enantiomers_set.add(stereoisomer.enantiomer())
-
-    return isomers
+                enantiomer = stereoisomer.enantiomer()
+                if enantiomer not in seen_enantiomers:
+                    seen_enantiomers.add(enantiomer)
+                    yield enantiomer
 
 
 def topological_symmetry_number(graph: StereoMolGraph) -> int:
