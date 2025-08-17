@@ -17,7 +17,12 @@ from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 from stereomolgraph.xyz2graph import connectivity_from_geometry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping, Sequence, Collection
+    from collections.abc import (
+        Collection,
+        Iterable,
+        Mapping,
+        Sequence,
+    )
     from typing import Any, Optional, Self, TypeAlias, TypeVar
 
     from rdkit import Chem  # type: ignore
@@ -634,82 +639,57 @@ class MolGraph:
     ) -> Self:
         return connectivity_from_geometry(cls, geo, switching_function)
 
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, self.__class__):
-            return self.is_isomorphic(other)
-        return NotImplemented
+    def color_refine(self) -> Mapping[AtomId, int]:
+        """
+        Color refines the graph by assigning a color to each atom based on its
+        type and connectivity. The color is a unique integer for each unique
+        atom type and connectivity pattern.
+
+        :return: A dictionary mapping atom ids to their color labels.
+        """
+        return color_refine_mg(self)
 
     def __hash__(self) -> int:
-        color_dict: dict[int, int] = color_refine_mg(
-            self,
-        )
-        return hash(frozenset(Counter(color_dict.values()).items()))
+        return hash(frozenset(Counter(self.color_refine().values()).items()))
 
-    def get_subgraph_isomorphic_mappings(
-        self,
-        other: Self,
-    ) -> Iterator[dict[int, int]]:
-        """Subgraph isomorphic mappings from "other" onto "self".
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            other_atom_labels = other.color_refine()
+            self_atom_labels = self.color_refine()
 
-        Generates all node-iduced subgraph isomorphic mappings.
-        All atoms of "other" have to be present in "self".
-        The bonds of "other" have to be the subset of the bonds of "self"
-        relating to the nodes of "other".
-
-        :param other: Other Graph to compare with
-        :return: Mappings from the atoms of self onto the atoms of other
-        """
-        return vf2pp_all_isomorphisms(
-            self,
-            other,
-            color_refine=False,
-            stereo=False,
-            stereo_change=False,
-            subgraph=True,
-        )
-
-    def get_isomorphic_mappings(self, other: Self) -> Iterator[dict[int, int]]:
-        """Isomorphic mappings between "self" and "other".
-
-        Generates all isomorphic mappings between "other" and "self".
-        All atoms and bonds have to be present in both graphs.
-
-        :param other: Other Graph to compare with
-        :return: Mappings from the atoms of self onto the atoms of other
-        :raises TypeError: Not defined for objects different types
-        """
-
-        return vf2pp_all_isomorphisms(
-            self,
-            other,
-            color_refine=True,  # TODO: implement color refinement
-            stereo=False,
-            stereo_change=False,
-            subgraph=False,
-        )
+            return any(
+                vf2pp_all_isomorphisms(
+                    self,
+                    other,
+                    atom_labels=(self_atom_labels, other_atom_labels),
+                    stereo=False,
+                    stereo_change=False,
+                    subgraph=False,
+                )
+            )
+        else:
+            return NotImplemented
 
     def is_isomorphic(self, other: Self) -> bool:
-        """
-        Checks if the graph is isomorphic to another graph.
+        return self == other
 
-        :param other: other graph
-        :return: True if isomorphic
-        """
-        return any(self.get_isomorphic_mappings(other))
-    
     def __str__(self) -> str:
         a_list = sorted(
             (a, a_type.symbol)
-            for a, a_type in zip(self.atoms, self.atom_types))
+            for a, a_type in zip(self.atoms, self.atom_types)
+        )
         b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
 
         pretty_str = pformat(
-                   [
-                    ["Atoms", a_list],
-                    ["Bonds", b_list]],
-                    indent=0, width=120, compact=True, sort_dicts=True)
-        return (f"{self.__class__.__name__}\n{pretty_str}"
-                .translate(str.maketrans('', '', ',"\'[]')))
+            [["Atoms", a_list], ["Bonds", b_list]],
+            indent=0,
+            width=120,
+            compact=True,
+            sort_dicts=True,
+        )
+        return f"{self.__class__.__name__}\n{pretty_str}".translate(
+            str.maketrans("", "", ",\"'[]")
+        )
 
     def _ipython_display_(self) -> None:
         print(self.__repr__())

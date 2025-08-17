@@ -8,7 +8,7 @@ from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
 from stereomolgraph.graphs.scrg import Change
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Generator
+    from collections.abc import Iterable, Iterator
     from typing import Optional
 
     from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
@@ -34,7 +34,7 @@ def generate_stereoisomers(
     enantiomers: bool = True,
     atoms: Optional[Iterable[AtomId]] = None,
     bonds: Optional[Iterable[Bond]] = None,
-) -> Generator[StereoMolGraph, None, None]:
+) -> Iterator[StereoMolGraph]:
     """Generates all unique stereoisomers of a StereoMolGraph by generation of
     all combinations of parities. Only includes stereocenters which have a
     parity of None. If a parity is set, it is not changed.
@@ -103,7 +103,7 @@ def generate_fleeting_stereoisomers(
     enantiomers: bool = True,
     atoms: Optional[Iterable[AtomId]] = None,
     bonds: Optional[Iterable[Bond]] = None,
-) -> Generator[StereoCondensedReactionGraph, None, None]:
+) -> Iterator[StereoCondensedReactionGraph]:
     """Generates all unique fleeting stereoisomers of a StereoCondensedReactionGraph.
     
     Only includes stereocenters which have a parity of None for the fleeting change.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Generator, Iterable, Mapping
+    from collections.abc import Collection, Mapping
     from typing import Literal, TypeVar
 
     from stereomolgraph.graphs import (
@@ -104,7 +104,7 @@ def label_hash(
 
 def color_refine_mg(
     mg: MolGraph,
-    iterations: None | int = None,
+    iter: None | int = None,
     atom_labels: None | Mapping[AtomId, int] = None,
 ) -> Mapping[AtomId, int]:
     """Color refinement algorithm for MolGraph.
@@ -123,7 +123,7 @@ def color_refine_mg(
     initial_atom_label_hash = (
         label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    if iterations == 0:
+    if iter == 0:
         return initial_atom_label_hash
 
     atom_hash = np.array(
@@ -155,7 +155,7 @@ def color_refine_mg(
 
     n_atom_classes = np.unique(atom_hash, sorted=False).shape[0]
     counter = (
-        itertools.count(1, 1) if iterations is None else range(iterations + 1)
+        itertools.count(1, 1) if iter is None else range(iter + 1)
     )
     new_atom_hashes = np.empty_like(atom_hash, dtype=np.int64)
 
@@ -178,7 +178,7 @@ def color_refine_mg(
 
 def color_refine_smg(
     smg: StereoMolGraph,
-    iterations: None | int = None,
+    iter: None | int = None,
     atom_labels: None | Mapping[AtomId, int] = None,
 ) -> Mapping[AtomId, int]:
     """
@@ -193,7 +193,7 @@ def color_refine_smg(
     initial_atom_label_hash = (
         label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    if iterations == 0:
+    if iter == 0:
         return initial_atom_label_hash
 
     arr_id_dict, id_arr_dict = {}, {}
@@ -342,7 +342,7 @@ def color_refine_smg(
             )
             # by reference
 
-    counter = itertools.count(0) if iterations is None else range(iterations)
+    counter = itertools.count(0) if iter is None else range(iter)
 
     i_atoms_with_n_stereo = []  # atoms, i_stereo, group
 
@@ -366,7 +366,7 @@ def color_refine_smg(
 
     n_atom_classes = None
     counter = (
-        itertools.count(1, 1) if iterations is None else range(iterations + 1)
+        itertools.count(1, 1) if iter is None else range(iter + 1)
     )
 
     for count in counter:
@@ -396,7 +396,7 @@ def color_refine_smg(
 
             atom_hash[atoms] = numpy_int_multiset_hash(i_stereo)
 
-        if count % 2 == 0 and iterations is None:
+        if count % 2 == 0 and iter is None:
             new_n_classes = np.unique(atom_hash).shape[0]
             if new_n_classes == n_atom_classes:
                 break
