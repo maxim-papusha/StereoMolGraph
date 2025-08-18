@@ -324,8 +324,9 @@ def stereo_mol_graph_to_rdmol(
         new_a2 = idx_map_num_dict[rd_bond.GetEndAtomIdx()]
 
         assert {a1, a2} == {new_a1, new_a2}
-
+        print(b_stereo)
         if isinstance(b_stereo, PlanarBond):
+            
             mol.GetAtomWithIdx(rd_a1).SetHybridization(
                 Chem.HybridizationType.SP2
             )
@@ -368,6 +369,7 @@ def stereo_mol_graph_to_rdmol(
         #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
         elif isinstance(b_stereo, AtropBond):
+            print(b_stereo)
             if (a1, a2) == (new_a1, new_a2):
                 rd_bond.SetStereoAtoms(
                     map_num_idx_dict[b_stereo.atoms[0]],
