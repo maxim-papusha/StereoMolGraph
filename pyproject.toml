@@ -61,6 +61,7 @@ docs = [{include-group = "notebook"},
        "sphinx-copybutton"]
 
 dev = [{include-group = "docs"},
+        "hypothesis",
         "line_profiler",
        "pytest>=7.1.2,<8",
        "pytest-cov>=6,<7",

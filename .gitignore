@@ -1,8 +1,9 @@
 # Python related files
 __pycache__/
+*__pycache__/
 *.py[cod]
 *$py.class
-*__pycache__/
+
 # created when installing CTY in developer mode
 *.egg-info
 
