@@ -20,7 +20,7 @@ doc/source/about/credits.rst
 #pylint options
 .pylintrc
 .coverage
-
+.hypothesis
 #tmpdir
 .tmpdir
 .idea

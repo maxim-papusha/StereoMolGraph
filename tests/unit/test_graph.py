@@ -191,7 +191,6 @@ class TestMolGraph:
         assert all(atom in new_graph.atoms for atom in mapping.values())
         assert all(atom not in new_graph.atoms for atom in mapping.keys())
 
-    # @pytest.mark.skip("Not Implemented")
     def test_connected_components(self, mol_graph):
         assert [i for i in mol_graph.connected_components()] == [{0, 1}, {2}]
 

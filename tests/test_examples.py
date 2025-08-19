@@ -14,6 +14,7 @@ NOTEBOOKS = [
     "visualization.ipynb",
 ]
 
+@pytest.mark.filterwarnings
 @pytest.mark.example
 @pytest.mark.parametrize("notebook", NOTEBOOKS)
 def test_notebook(notebook):

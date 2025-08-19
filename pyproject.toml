@@ -77,6 +77,15 @@ dev = [{include-group = "docs"},
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning",
+    ]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "example: marks testing of examples folder (deselect with '-m \"not example\"')",
+    "hypothesis: marks property based testing with hypothesis (deselect with '-m \"not hypothesis\"')",
+]
 
 [tool.pyright]
 include = ["src"]
