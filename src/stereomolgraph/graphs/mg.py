@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from stereomolgraph.coords import Geometry
 
-    N = TypeVar("N", bound=int)
+    N = TypeVar("N", bound=int,)
 
 AtomId: TypeAlias = int
 
@@ -347,7 +347,7 @@ class MolGraph:
 
     def connectivity_matrix(
         self,
-    ) -> np.ndarray[tuple[N, N], np.dtype[np.int8]]:
+    ) -> np.ndarray[tuple[int, int], np.dtype[np.int8]]:
         """
         Returns a connectivity matrix of the graph as a list of lists.
         Order is the same as in self.atoms()
