@@ -153,7 +153,7 @@ def color_refine_mg(
         nbrs = np.array(nbrs_lists, dtype=np.int16)
         id_nbrs_tuple_list.append((ids, nbrs))
 
-    n_atom_classes = np.unique(atom_hash, sorted=False).shape[0]
+    n_atom_classes = np.unique(atom_hash).shape[0]
     counter = (
         itertools.count(1, 1) if iter is None else range(iter + 1)
     )
@@ -164,7 +164,7 @@ def color_refine_mg(
             # Compute the new hash for each atom based on its neighbors
             new_atom_hashes[ids] = numpy_int_multiset_hash(atom_hash[nbrs])
 
-        new_n_classes = np.unique(atom_hash, sorted=False).shape[0]
+        new_n_classes = np.unique(atom_hash).shape[0]
         if new_n_classes == n_atom_classes:
             break
         elif new_n_classes == n_atoms:
