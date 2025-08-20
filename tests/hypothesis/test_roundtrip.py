@@ -10,7 +10,7 @@ from stereomolgraph.periodic_table import PERIODIC_TABLE
 from stereomolgraph import MolGraph
 
 
-class MolGraphModifier(RuleBasedStateMachine):
+class MolGraphStateMachiene(RuleBasedStateMachine):
     _TestClass = MolGraph
 
     def __init__(self):
@@ -32,13 +32,14 @@ class MolGraphModifier(RuleBasedStateMachine):
         self.g.add_bond(atom_id1, atom_id2)
 
 
-class StereoMolGraphModifier(MolGraphModifier):
+class StereoMolGraphStateMachiene(MolGraphStateMachiene):
     _TestClass = MolGraph
 
 
-class HashCollisionTester(MolGraphModifier):
+class HashTester(MolGraphStateMachiene):
+
     @invariant()
-    def do_nothing(self):
+    def order_independent_hash(self):
 
         other_g = self._TestClass()
         id_type_list = list(zip(self.g.atoms, self.g.atom_types))
@@ -54,4 +55,4 @@ class HashCollisionTester(MolGraphModifier):
             assert hash(self.g) == hash(other_g)
 
 
-HashTest = HashCollisionTester.TestCase
+HashTest = HashTester.TestCase
