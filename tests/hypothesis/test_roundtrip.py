@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 import shelve
 
@@ -9,18 +10,12 @@ from stereomolgraph.periodic_table import PERIODIC_TABLE
 from stereomolgraph import MolGraph
 
 
-class GraphModifier(RuleBasedStateMachine):
+class MolGraphModifier(RuleBasedStateMachine):
+    _TestClass = MolGraph
+
     def __init__(self):
         super().__init__()
-        self.g = MolGraph()
-        #self._visited_path = Path("test_shelve")
-        #self.visited = shelve.open(str(self._visited_path))
-
-    #def teardown(self):
-    #    self.visited.close()
-    #    if self._visited_path.exists():
-    #        self._visited_path.unlink()
-
+        self.g = self._TestClass()
 
     @rule(atom_id=st.integers(),
           atom_type=st.sampled_from(list(PERIODIC_TABLE.values())))
@@ -36,8 +31,27 @@ class GraphModifier(RuleBasedStateMachine):
         assume(atom_id1 != atom_id2)
         self.g.add_bond(atom_id1, atom_id2)
 
+
+class StereoMolGraphModifier(MolGraphModifier):
+    _TestClass = MolGraph
+
+
+class HashCollisionTester(MolGraphModifier):
     @invariant()
     def do_nothing(self):
-        assert True
 
-GraphTest = GraphModifier.TestCase
+        other_g = self._TestClass()
+        id_type_list = list(zip(self.g.atoms, self.g.atom_types))
+        bond_list = list(self.g.bonds)
+        for _ in range(10):
+            random.shuffle(id_type_list)
+            random.shuffle(bond_list)
+            for a, a_type in id_type_list:
+                other_g.add_atom(a, a_type)
+            for bond in bond_list:
+                other_g.add_bond(*bond)
+
+            assert hash(self.g) == hash(other_g)
+
+
+HashTest = HashCollisionTester.TestCase
