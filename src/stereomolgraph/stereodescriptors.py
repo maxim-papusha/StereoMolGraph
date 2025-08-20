@@ -56,10 +56,11 @@ class Stereo(Protocol, Generic[A, P]):
         If 0 the orientation is defined and part of a achiral stereochemistry.
         If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
         """
-
-    PERMUTATION_GROUP: Iterable[A]
-    """Defines all allowed permutations defined by the symmetry group under
-    which the stereochemistry is invariant."""
+    @property
+    def PERMUTATION_GROUP(self,) -> Iterable[A]:
+        """Defines all allowed permutations defined by the symmetry group under
+        which the stereochemistry is invariant."""
+        ...
 
     def __init__(self, atoms: A, parity: P = None): ...
 
