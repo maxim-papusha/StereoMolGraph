@@ -61,19 +61,33 @@ docs = [{include-group = "notebook"},
        "sphinx-copybutton"]
 
 dev = [{include-group = "docs"},
-        "line_profiler",
-       "pytest>=7.1.2,<8",
-       "pytest-cov>=6,<7",
-       
-       "ruff>=0.6.0",
 
+       "line_profiler",
+
+       "pytest>=7.1.2,<8",
+       "pytest-xdist[psutil]", 
+       "pytest-cov>=6,<7",
+       "hypothesis",
+
+       "ruff>=0.6.0",
        "pyright",
+
        "typing-extensions>=4.12;python_version<'3.13'",
         # official module to add type hinting features used in future Python versions
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "-n logical"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning",
+    ]
+markers = [
+    "unit: marks unit tests (deselect with '-m \"not unit\"')",
+    "example: marks testing of examples folder (deselect with '-m \"not example\"')",
+    "hypothesis: marks property based testing with hypothesis (deselect with '-m \"not hypothesis\"')",
+]
 
 [tool.pyright]
 include = ["src"]

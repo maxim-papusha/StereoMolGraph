@@ -15,6 +15,7 @@ NOTEBOOKS = [
 ]
 
 @pytest.mark.example
+@pytest.mark.filterwarnings
 @pytest.mark.parametrize("notebook", NOTEBOOKS)
 def test_notebook(notebook):
     notebook_path = EXAMPLES_FOLDER / notebook

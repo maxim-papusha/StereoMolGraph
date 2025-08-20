@@ -143,12 +143,16 @@ def color_refine_mg(
     bonded_lst.sort(key=lambda x: len(x[1]))
 
     id_nbrs_tuple_list = []
-    for _key, group in itertools.groupby(bonded_lst, key=lambda x: len(x[1])):
+    for n_nbrs, group in itertools.groupby(bonded_lst, key=lambda x: len(x[1])):
+        if n_nbrs == 0:
+            continue # Skip aggregation if no neighbors
+
         group = list(group)
         ids_lst, nbrs_lists = [], []
         for id, nbrs in group:
             ids_lst.append(id)
             nbrs_lists.append(nbrs)
+            
         ids = np.array(ids_lst, dtype=np.int16)
         nbrs = np.array(nbrs_lists, dtype=np.int16)
         id_nbrs_tuple_list.append((ids, nbrs))
@@ -157,7 +161,7 @@ def color_refine_mg(
     counter = (
         itertools.count(1, 1) if iter is None else range(iter + 1)
     )
-    new_atom_hashes = np.empty_like(atom_hash, dtype=np.int64)
+    new_atom_hashes = np.copy(atom_hash)
 
     for _ in counter:
         for ids, nbrs in id_nbrs_tuple_list:
