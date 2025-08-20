@@ -10,7 +10,7 @@ from stereomolgraph import (
         CondensedReactionGraph,
         StereoMolGraph,
         StereoCondensedReactionGraph)
-from stereomolgraph.stereodescriptors import AtropBond, PlanarBond
+from stereomolgraph.stereodescriptors import PlanarBond
 
 def default_repr_svg(graph):
     return View2D().svg(graph)
@@ -87,7 +87,7 @@ class View2D(NamedTuple):
         if not self.show_h:
             mol = Chem.RemoveHs(mol, implicitOnly=False, sanitize=False)
 
-        if isinstance(graph, StereoMolGraph):
+        if isinstance(graph, StereoMolGraph) and not self.generate_bond_orders:
             for db in graph.bond_stereo.values():
                 if isinstance(db, PlanarBond):
                     a1 = map_num_idx_dict[db.atoms[2]]

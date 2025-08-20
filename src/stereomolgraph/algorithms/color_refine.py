@@ -240,9 +240,9 @@ def color_refine_smg(
             nbr_atoms = (
                 stereo.atoms
                 if stereo.parity != -1
-                else stereo._inverted_atoms()
+                else stereo._inverted_atoms() # type: ignore
             )
-            grouped_atom_stereo[stereo.__class__.PERMUTATION_GROUP].append(
+            grouped_atom_stereo[stereo.PERMUTATION_GROUP].append(
                 (atom, nbr_atoms)
             )
 
@@ -253,9 +253,9 @@ def color_refine_smg(
             nbr_atoms = (
                 stereo.atoms
                 if stereo.parity != -1
-                else stereo._inverted_atoms()
+                else stereo._inverted_atoms() # type: ignore
             )
-            grouped_bond_stereo[stereo.__class__.PERMUTATION_GROUP].append(
+            grouped_bond_stereo[stereo.PERMUTATION_GROUP].append(
                 (bond, nbr_atoms)
             )
 

@@ -19,7 +19,7 @@ else:
     from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Set
+    from collections.abc import Collection, Generator, Set
 
     from typing_extensions import Self
 
@@ -57,7 +57,7 @@ class Stereo(Protocol, Generic[A, P]):
         If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
         """
 
-    PERMUTATION_GROUP: Iterable[A]
+    PERMUTATION_GROUP: Collection[A]
     """Defines all allowed permutations defined by the symmetry group under
     which the stereochemistry is invariant."""
 
@@ -90,7 +90,7 @@ class BondStereo(Stereo[A, P], Protocol, Generic[A, P]):
 
 
 class _StereoMixin(Generic[A, P]):
-    PERMUTATION_GROUP: Iterable[A]
+    PERMUTATION_GROUP: Collection[A]
     inversion: None | A
     atoms: A
     parity: P
