@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import deepcopy
+from pprint import pformat
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 
-from stereomolgraph.algorithms.color_refine import color_refine_mg
+from stereomolgraph.algorithms.color_refine import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
@@ -23,7 +24,7 @@ from stereomolgraph.xyz2graph import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Iterable, Mapping
     from typing import Self
 
     from rdkit import Chem
@@ -57,25 +58,59 @@ class StereoMolGraph(MolGraph):
             self._atom_stereo = {}
             self._bond_stereo = {}
 
+    def color_refine(self) -> Mapping[AtomId, AtomId]:
+        return color_refine_smg(self)
+
     def __hash__(self) -> int:
-        color_dict: dict[AtomId, int] = color_refine_mg(
-            self,
-        )
-        connectivity_hash = set(Counter(color_dict.values()).items())
-        atom_stereo = {
-            s.__class__(tuple([color_dict[a] for a in s.atoms]), s.parity)
-            for s in self.atom_stereo.values()
-        }
-        bond_stereo = {
-            s.__class__(tuple([color_dict[a] for a in s.atoms]), s.parity)
-            for s in self.bond_stereo.values()
-        }
-        return hash(
-            (
-                frozenset(connectivity_hash),
-                frozenset(atom_stereo),
-                frozenset(bond_stereo),
+        return hash(frozenset(Counter(self.color_refine().values()).items()))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            other_atom_labels = color_refine_smg(other)
+            self_atom_labels = color_refine_smg(self)
+
+            return any(
+                vf2pp_all_isomorphisms(
+                    self,
+                    other,
+                    atom_labels=(self_atom_labels, other_atom_labels),
+                    stereo=True,
+                    stereo_change=False,
+                    subgraph=False,
+                )
             )
+        else:
+            return NotImplemented
+
+    def __str__(self) -> str:
+        a_list = sorted(
+            (a, a_type.symbol)
+            for a, a_type in zip(self.atoms, self.atom_types)
+        )
+        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
+        repr_atom_stereo = self._atom_stereo
+        repr_bond_stereo = {
+            tuple(sorted(bond)): bond_stereo
+            for bond, bond_stereo in self._bond_stereo.items()
+        }
+
+        pretty_str = pformat(
+            [
+                ["Atoms", a_list],
+                ["Bonds", b_list],
+                ["Atom Stereo", repr_atom_stereo],
+                [
+                    "Bond Stereo",
+                    repr_bond_stereo,
+                ],
+            ],
+            indent=0,
+            width=120,
+            compact=True,
+            sort_dicts=True,
+        )
+        return f"{self.__class__.__name__}\n{pretty_str}".translate(
+            str.maketrans("", "", ",\"'[]")
         )
 
     @property
@@ -378,57 +413,6 @@ class StereoMolGraph(MolGraph):
         stereo_mol_graph = stero_from_geometry(mol_graph, geo)
         assert stereo_mol_graph is not None
         return stereo_mol_graph
-
-    def get_isomorphic_mappings(
-        self, other: MolGraph, stereo: bool = True
-    ) -> Iterator[dict[int, int]]:
-        """Isomorphic mappings between "self" and "other".
-
-        Generates all isomorphic mappings between "other" and "self".
-        All atoms and bonds have to be present in both graphs.
-        The Stereochemistry is preserved in the mappings.
-
-        :param other: Other Graph to compare with
-        :return: Mappings from the atoms of self onto the atoms of other
-        :raises TypeError: Not defined for objects different types
-        """
-
-        return vf2pp_all_isomorphisms(
-            self,
-            other,
-            color_refine=True,  # TODO: implement color refinement
-            stereo=stereo,
-            stereo_change=False,
-            subgraph=False,
-        )
-
-    def get_subgraph_isomorphic_mappings(
-        self, other: MolGraph, stereo: bool = True
-    ) -> Iterator[dict[int, int]]:
-        """Subgraph isomorphic mappings from "self" onto "other".
-        Other can be of equal size or larger than "self".
-        Generates all node-iduced subgraph isomorphic mappings.
-        All atoms of "self" have to be present in "other".
-        The bonds of "self" have to be the subset of the bonds of "other"
-        relating to the nodes of "self".
-        The Stereochemistry is preserved in the mappings.
-
-        :param other: Other Graph to compare with
-        :return: Mappings from the atoms of self onto the atoms of other
-        :raises TypeError: Not defined for objects different types
-        """
-        if other.__class__ is not self.__class__:
-            return
-            yield
-
-        return vf2pp_all_isomorphisms(
-            self,
-            other,
-            color_refine=False,
-            stereo=stereo,
-            stereo_change=False,
-            subgraph=True,
-        )
 
     def is_stereo_valid(self) -> bool:
         """

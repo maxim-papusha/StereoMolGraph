@@ -10,12 +10,12 @@ EXAMPLES_FOLDER = Path(__file__).parent.parent / "examples"
 NOTEBOOKS = [
     "compare_molecules.ipynb",
     "phosgenation.ipynb",
-    #"werner.ipynb",
+    "werner.ipynb",
     "visualization.ipynb",
 ]
 
-
 @pytest.mark.example
+@pytest.mark.filterwarnings
 @pytest.mark.parametrize("notebook", NOTEBOOKS)
 def test_notebook(notebook):
     notebook_path = EXAMPLES_FOLDER / notebook

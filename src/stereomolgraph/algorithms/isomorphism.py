@@ -80,7 +80,7 @@ class _State(NamedTuple):
     external2: set[int]  # atoms not in mapping and not in frontier2
 
 
-def _group_keys_by_value(many_to_one: dict[KT, VT]) -> dict[VT, set[KT]]:
+def _group_keys_by_value(many_to_one: Mapping[KT, VT]) -> dict[VT, set[KT]]:
     """Inverts a many-to-one mapping to create a one-to-many mapping.
 
     Converts a dictionary where multiple keys may point to the same value
@@ -137,18 +137,14 @@ def _bfs_layers(
 def _sanity_check_and_init(
     g1: StereoMolGraph | MolGraph,
     g2: StereoMolGraph | MolGraph,
-    labels: Optional[Iterable[str]] = None,
-    color_refine: bool | int = False,
+    atom_labels: None| tuple[Mapping[AtomId, int],
+                             Mapping[AtomId, int]] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Optional[tuple[_Parameters, _State]]:
     if stereo_change and not stereo:
         raise ValueError("Stereo change is only available for stereo graphs.")
-    if subgraph and color_refine:
-        raise ValueError(
-            "Subgraph isomorphism is not compatible with color refinement."
-        )
 
     g1_nbrhd = g1.neighbors
     g2_nbrhd = g2.neighbors
@@ -178,45 +174,12 @@ def _sanity_check_and_init(
         ):
             return None
 
-    atom_labels = ("atom_type", *labels) if labels else ("atom_type",)
-
-    max_iter = color_refine
-    
-    if color_refine: # and not stereo and not stereo_change:
-        g1_labels = color_refine_mg(
-            g1, atom_labels=atom_labels, max_iter=max_iter
-        )
-        g2_labels = color_refine_mg(
-            g2, atom_labels=atom_labels, max_iter=max_iter
-        )
-
-    #elif color_refine and stereo and not stereo_change:
-    #
-        # TODO: Implement color refinement for stereo graphs
-        #g1_labels = color_refine_smg(
-        #    g1, atom_labels=atom_labels, max_iter=max_iter
-        #)
-        #g2_labels = color_refine_smg(
-        #    g2, atom_labels=atom_labels, max_iter=max_iter
-        #)
-
-    #elif color_refine and stereo and stereo_change:
-    #
-        #g1_labels = color_refine_scrg(
-        #    g1, atom_labels=atom_labels, max_iter=max_iter
-        #)
-        #g2_labels = color_refine_scrg(
-        ##    g2, atom_labels=atom_labels, max_iter=max_iter
-        #)
-
-    elif not color_refine:
-        g1_labels = label_hash(g1, atom_labels=atom_labels)
-        g2_labels = label_hash(g2, atom_labels=atom_labels)
-
+    if atom_labels is None:
+        g1_labels = label_hash(g1)
+        g2_labels = label_hash(g2)
     else:
-        raise ValueError("Invalid combination of parameters.")
-    
-    
+        g1_labels, g2_labels = atom_labels
+
     g1_labels_counter = Counter(g1_labels.values())
     g2_labels_counter = Counter(g2_labels.values())
 
@@ -324,8 +287,8 @@ def vf2pp_all_isomorphisms(
     | StereoMolGraph
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
-    labels: Optional[Iterable[str]] = None,
-    color_refine: bool | int = True,
+    atom_labels: None| tuple[Mapping[AtomId, int],
+                             Mapping[AtomId, int]] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
@@ -337,7 +300,7 @@ def vf2pp_all_isomorphisms(
     [VF2++ is a fast algorithm for subgraph isomorphism](https://doi.org/10.1016/j.dam.2018.02.018)"""
 
     if params_state := _sanity_check_and_init(
-        g1, g2, labels, color_refine, stereo, stereo_change, subgraph
+        g1, g2, atom_labels, stereo, stereo_change, subgraph
     ):
         params, state = params_state
     else:

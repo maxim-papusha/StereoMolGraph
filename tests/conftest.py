@@ -1,70 +1,25 @@
-import pathlib
-
+# tests/conftest.py
 import pytest
-from stereomolgraph.coords import Geometry
+from pathlib import Path
 
-@pytest.fixture(scope='session')
-def data_path() -> pathlib.Path:
-    return pathlib.Path(__file__).parent / "data"
-
-
-@pytest.fixture
-def ethanol_geo() -> Geometry:
-    return Geometry(
-        ["C", "C", "O"] + ["H"] * 6,
-        [
-            [0.00720, -0.56870, 0.00000],
-            [-1.28540, 0.24990, 0.00000],
-            [1.13040, 0.31470, 0.00000],
-            [0.03920, -1.19720, 0.89000],
-            [0.03920, -1.19720, -0.89000],
-            [-1.31750, 0.87840, 0.89000],
-            [-1.31750, 0.87840, -0.89000],
-            [-2.14220, -0.42390, 0.00000],
-            [1.98570, -0.13650, 0.00000],
-        ],
-    )
-
-
-@pytest.fixture
-def water_geo() -> Geometry:
-    return Geometry(
-        ["O", "H", "H"],
-        [
-            [0.00000, 0.00000, 0.30000],
-            [-0.63500, 0.63500, -0.33500],
-            [0.63500, -0.63500, -0.33500],
-        ],
-    )
-
-
-@pytest.fixture
-def enantiomer_geos() -> tuple[Geometry, Geometry]:
-    """two simple geometries which are different enantiomers of
-    amino(chloro)methanol with the same constitution
-    """
-    return Geometry(
-        ["Cl", "O", "N", "C", "H", "H", "H", "H"],
-        [
-            [0.20215206921517, -0.33273028014351, 1.97002503950738],
-            [0.25642063596328, -1.05177448528526, -0.58296548389721],
-            [0.57552636221082, 1.20962592684902, -0.24302611300820],
-            [-0.09555407894323, 0.04246462020039, 0.12264020622941],
-            [-1.17783589619661, 0.16261900028897, 0.06188163810262],
-            [1.58064819497851, 1.14666945622015, -0.12841837957560],
-            [0.22532213997704, 2.03416531974733, 0.22280171087650],
-            [1.21942057279503, -1.13653955787709, -0.62273861823491],
-        ],
-    ), Geometry(
-        ["Cl", "O", "N", "C", "H", "H", "H", "H"],
-        [
-            [-1.64142190090005, 0.04905451729693, -0.04759084488805],
-            [0.70929966639742, -1.13829518916840, -0.12542032573847],
-            [0.71353127963894, 1.16646750634379, -0.12928756109158],
-            [0.12911535073972, -0.02613369141535, 0.39569134295062],
-            [0.13572151887923, -0.14181296142034, 1.49090205302779],
-            [1.70346522473544, 1.20361377206680, 0.08593268564204],
-            [0.25662316915359, 1.99987549716371, 0.21614588207431],
-            [0.77976569135571, -1.03826945086714, -1.08617323197666],
-        ],
-    )
+def pytest_collection_modifyitems(items, config):
+    """Auto-mark tests based on their folder using pathlib"""
+    for item in items:
+        test_path = Path(item.fspath)
+        
+        # Get the parts of the path relative to tests directory
+        try:
+            # Try to get path relative to tests directory
+            rel_to_tests = test_path.relative_to(Path("tests"))
+            folder_name = rel_to_tests.parts[0]  # First directory under tests/
+            
+            if folder_name == "unit":
+                item.add_marker(pytest.mark.unit)
+            elif folder_name == "hypothesis":
+                item.add_marker(pytest.mark.hypothesis)
+            #elif folder_name == "examples":
+            #    item.add_marker(pytest.mark.examples)
+                
+        except ValueError:
+            # Test not under tests/ directory, skip marking
+            pass

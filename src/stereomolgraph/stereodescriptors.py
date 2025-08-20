@@ -57,7 +57,7 @@ class Stereo(Protocol, Generic[A, P]):
         If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
         """
 
-    PERMUTATION_GROUP: frozenset[A]
+    PERMUTATION_GROUP: Iterable[A]
     """Defines all allowed permutations defined by the symmetry group under
     which the stereochemistry is invariant."""
 
@@ -90,7 +90,7 @@ class BondStereo(Stereo[A, P], Protocol, Generic[A, P]):
 
 
 class _StereoMixin(Generic[A, P]):
-    PERMUTATION_GROUP: frozenset[A]
+    PERMUTATION_GROUP: Iterable[A]
     inversion: None | A
     atoms: A
     parity: P
@@ -236,8 +236,7 @@ class Tetrahedral(
     """
 
     inversion = (0, 2, 1, 3, 4)
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4),
             (0, 3, 1, 2, 4),
             (0, 2, 3, 1, 4),
@@ -250,7 +249,6 @@ class Tetrahedral(
             (0, 2, 4, 3, 1),
             (0, 3, 2, 4, 1),
             (0, 4, 3, 2, 1),
-        }
     )
 
     def __init__(
@@ -291,8 +289,7 @@ class SquarePlanar(
     """
 
     inversion = None
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4),
             (0, 2, 3, 4, 1),
             (0, 3, 4, 1, 2),
@@ -301,7 +298,6 @@ class SquarePlanar(
             (0, 3, 2, 1, 4),
             (0, 2, 1, 4, 3),
             (0, 1, 4, 3, 2),
-        }
     )
 
     def get_isomers(self) -> set[SquarePlanar]:
@@ -340,15 +336,13 @@ class TrigonalBipyramidal(
     """
 
     inversion = (0, 1, 2, 3, 5, 4)
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4, 5),
             (0, 1, 2, 5, 3, 4),
             (0, 1, 2, 4, 5, 3),
             (0, 2, 1, 3, 5, 4),
             (0, 2, 1, 5, 4, 3),
             (0, 2, 1, 4, 3, 5),
-        }
     )
 
     def get_isomers(self) -> set[Self]:
@@ -381,8 +375,7 @@ class Octahedral(
     """
 
     inversion = (0, 2, 1, 3, 4, 5, 6)
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4, 5, 6),
             (0, 1, 2, 6, 3, 4, 5),
             (0, 1, 2, 5, 6, 3, 4),
@@ -407,7 +400,6 @@ class Octahedral(
             (0, 6, 4, 2, 3, 1, 5),
             (0, 6, 4, 5, 2, 3, 1),
             (0, 6, 4, 1, 5, 2, 3),
-        }
     )
 
     def get_isomers(self) -> set[Octahedral]:
@@ -446,13 +438,11 @@ class PlanarBond(
     """
 
     inversion = None
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4, 5),
             (1, 0, 2, 3, 5, 4),
             (4, 5, 3, 2, 0, 1),
             (5, 4, 3, 2, 1, 0),
-        }
     )
 
     def get_isomers(self) -> set[PlanarBond]:
@@ -488,13 +478,11 @@ class AtropBond(
     """
 
     inversion = (1, 0, 2, 3, 4, 5)
-    PERMUTATION_GROUP = frozenset(
-        {
+    PERMUTATION_GROUP = (
             (0, 1, 2, 3, 4, 5),
             (1, 0, 2, 3, 5, 4),
             (4, 5, 3, 2, 1, 0),
             (5, 4, 3, 2, 0, 1),
-        }
     )
 
     def get_isomers(self) -> set[AtropBond]:
