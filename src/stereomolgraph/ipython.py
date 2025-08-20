@@ -10,7 +10,7 @@ from stereomolgraph import (
         CondensedReactionGraph,
         StereoMolGraph,
         StereoCondensedReactionGraph)
-from stereomolgraph.stereodescriptors import PlanarBond
+from stereomolgraph.stereodescriptors import AtropBond, PlanarBond
 
 def default_repr_svg(graph):
     return View2D().svg(graph)
@@ -89,7 +89,7 @@ class View2D(NamedTuple):
 
         if isinstance(graph, StereoMolGraph):
             for db in graph.bond_stereo.values():
-                if not isinstance(db, PlanarBond):
+                if isinstance(db, PlanarBond):
                     a1 = map_num_idx_dict[db.atoms[2]]
                     a2 = map_num_idx_dict[db.atoms[3]]
                     rd_bond = mol.GetBondBetweenAtoms(a1, a2)

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 bond_type_dict = {
     0.5: Chem.BondType.HYDROGEN,
-    # to be drawn as a dotted line
+    # Reactions to be drawn as a dotted line
     # (looks better than other options)
     0: Chem.BondType.UNSPECIFIED,
     1: Chem.BondType.SINGLE,
@@ -289,7 +289,7 @@ def stereo_mol_graph_to_rdmol(
 
         if not all(a in graph.atoms for a in b_stereo.atoms):
             raise NotImplementedError(
-                "Handling of missing atoms not supported yet"
+                "Handling of missing atoms not supported"
             )
             for mis_a in (a for a in b_stereo.atoms if a not in graph.atoms):
                 if mis_a not in map_num_idx_dict:
@@ -324,7 +324,7 @@ def stereo_mol_graph_to_rdmol(
         new_a2 = idx_map_num_dict[rd_bond.GetEndAtomIdx()]
 
         assert {a1, a2} == {new_a1, new_a2}
-        print(b_stereo)
+
         if isinstance(b_stereo, PlanarBond):
             
             mol.GetAtomWithIdx(rd_a1).SetHybridization(
@@ -369,7 +369,7 @@ def stereo_mol_graph_to_rdmol(
         #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
         elif isinstance(b_stereo, AtropBond):
-            print(b_stereo)
+
             if (a1, a2) == (new_a1, new_a2):
                 rd_bond.SetStereoAtoms(
                     map_num_idx_dict[b_stereo.atoms[0]],

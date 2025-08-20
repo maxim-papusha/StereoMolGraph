@@ -13,6 +13,7 @@ from stereomolgraph.stereodescriptors import (
     Octahedral,
     PlanarBond,
     AtomStereo,
+    AtropBond,
 )
 
 if TYPE_CHECKING:
@@ -272,7 +273,50 @@ def stereo_mol_graph_from_rdmol(
             Chem.BondStereo.STEREOATROPCW,
             Chem.BondStereo.STEREOATROPCCW,
         ):
-            raise NotImplementedError("Atropisomerism is not implemented yet. ")
+            if bond.GetStereo() == Chem.BondStereo.STEREOATROPCW:
+                atrop_parity = 1
+            elif bond.GetStereo() == Chem.BondStereo.STEREOATROPCCW:
+                atrop_parity = -1
+            else:
+                raise RuntimeError("Unknown Stereo")
+            stereo_atoms = [a for a in bond.GetStereoAtoms()]
+
+            if (
+                stereo_atoms[0] in neighbors_begin
+                and stereo_atoms[1] in neighbors_end
+                ):
+                bond_atoms_idx = (
+                        stereo_atoms[0],
+                        *[n for n in neighbors_begin if n != stereo_atoms[0]],
+                        begin_end_idx[0],
+                        begin_end_idx[1],
+                        stereo_atoms[1],
+                        *[n for n in neighbors_end if n != stereo_atoms[1]],
+                    )
+
+                bond_atoms = tuple([id_atom_map[a] for a in bond_atoms_idx])
+
+                    # raise Exception(bond_atoms_idx)
+
+            elif (
+                stereo_atoms[0] in neighbors_end
+                and stereo_atoms[1] in neighbors_begin
+                ):
+                    bond_atoms_idx = (
+                        stereo_atoms[0],
+                        *[n for n in neighbors_end if n != stereo_atoms[0]],
+                        begin_end_idx[1],
+                        begin_end_idx[0],
+                        stereo_atoms[1],
+                        *[n for n in neighbors_begin if n != stereo_atoms[1]],
+                    )
+
+                    bond_atoms = tuple([id_atom_map[a] for a in bond_atoms_idx])
+            else:
+                raise RuntimeError("Stereo Atoms not neighbors")
+
+            assert len(bond_atoms) == 6
+            stereo = AtropBond(bond_atoms, atrop_parity)
 
         elif (
             bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
