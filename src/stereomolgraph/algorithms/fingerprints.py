@@ -1,10 +1,23 @@
+
 from collections import Counter
-from collections.abc import Iterable,Hashable
+from collections.abc import Iterable, Hashable
+
+import numpy as np
+
 import math
+
+def jaccard_distance_np(a: np.ndarray, b: np.ndarray) -> float:
+    a = np.unique(a)
+    b = np.unique(b)
+    intersection = np.intersect1d(a, b).size
+    union = np.union1d(a, b).size
+    if union == 0:
+        return 1.0
+    return 1 - (intersection / union)
 
 def jaccard_distance(a: Iterable[Hashable]|Counter,
                      b: Iterable[Hashable]|Counter) -> float:
-    """Compute the Jaccard distance between two containers.
+    """Compute the Jaccard distance between two sets.
     Jaccard distance = 1 - (|A ∩ B| / |A ∪ B|)
     """
     a_counter = Counter(a)

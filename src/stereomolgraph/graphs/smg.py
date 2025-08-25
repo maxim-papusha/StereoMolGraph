@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from copy import deepcopy
 from pprint import pformat
 from types import MappingProxyType
@@ -8,7 +7,11 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 
-from stereomolgraph.algorithms.color_refine import color_refine_smg
+from stereomolgraph.algorithms.color_refine import (
+    chiral_morgan_algo,
+    label_hash,
+    numpy_int_multiset_hash
+)
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
@@ -58,29 +61,34 @@ class StereoMolGraph(MolGraph):
             self._atom_stereo = {}
             self._bond_stereo = {}
 
-    def color_refine(self) -> Mapping[AtomId, AtomId]:
-        return color_refine_smg(self)
-
     def __hash__(self) -> int:
-        return hash(frozenset(Counter(self.color_refine().values()).items()))
+        if self.n_atoms == 0:
+            return hash(self.__class__)
+        color_array = chiral_morgan_algo(self)
+        return int(numpy_int_multiset_hash(color_array))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, self.__class__):
-            other_atom_labels = color_refine_smg(other)
-            self_atom_labels = color_refine_smg(self)
+        if not isinstance(other, self.__class__):
+            return NotImplemented
 
-            return any(
+        o_labels = label_hash(other, atom_labels=("atom_type",))
+        s_labels = label_hash(self, atom_labels=("atom_type",))
+        o_color_array = chiral_morgan_algo(other, atom_labels=o_labels)
+        s_color_array = chiral_morgan_algo(self, atom_labels=s_labels)
+
+        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+
+        return any(
                 vf2pp_all_isomorphisms(
                     self,
                     other,
-                    atom_labels=(self_atom_labels, other_atom_labels),
+                    atom_labels=(s_colors, o_colors),
                     stereo=True,
                     stereo_change=False,
                     subgraph=False,
                 )
             )
-        else:
-            return NotImplemented
 
     def __str__(self) -> str:
         a_list = sorted(
