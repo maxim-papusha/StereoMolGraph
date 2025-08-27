@@ -77,36 +77,33 @@ def numpy_int_multiset_hash(
 def label_hash(
     mg: MolGraph,
     atom_labels: Collection[str] = ("atom_type",),
-) -> dict[AtomId, int]:
-    """Generates a hash for each atom based on its attributes.
+) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
+    """Generates a hash for each atom based on choosen attributes.
 
     :param mg: MolGraph object containing the atoms.
     :param atom_labels: Iterable of attribute names to use for hashing.
     """
     if len(atom_labels) == 1:
         atom_label = next(iter(atom_labels))
-        atom_hash = {
-            atom: hash(mg.get_atom_attribute(atom, atom_label))
-            for atom in mg.atoms
-        }
+        atom_hash = [hash(mg.get_atom_attribute(atom, atom_label))
+            for atom in mg.atoms]
     else:
-        atom_hash = {
-            atom: hash(
+        atom_hash = [hash(
                 frozenset(
                     (attr, mg.get_atom_attribute(atom, attr))
                     for attr in atom_labels
                 )
             )
             for atom in mg.atoms
-        }
-    return atom_hash
+        ]
+    return np.array(atom_hash, dtype=np.int64)
 
 
-def color_refine_mg(
+def morgan_algo(
     mg: MolGraph,
     iter: None | int = None,
-    atom_labels: None | Mapping[AtomId, int] = None,
-) -> Mapping[AtomId, int]:
+    atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
+) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     """Color refinement algorithm for MolGraph.
 
     This algorithm refines the atom coloring based on their connectivity.
@@ -116,19 +113,14 @@ def color_refine_mg(
     :param max_iter: Maximum number of iterations for refinement.
         Default is None, which means it will run until convergence."""
     n_atoms = len(mg.atoms)
-    if atom_labels:
+    if atom_labels is not None:
         assert len(atom_labels) == n_atoms
-        assert set(atom_labels.keys()) == set(mg.atoms)
 
-    initial_atom_label_hash = (
+    atom_hash = (
         label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    if iter == 0:
-        return initial_atom_label_hash
-
-    atom_hash = np.array(
-        [initial_atom_label_hash[atom] for atom in mg.atoms], dtype=np.int64
-    )
+    if iter == 0 or n_atoms == 0 or n_atoms == 1:
+        return atom_hash
 
     arr_id_dict, id_arr_dict = {}, {}
     for id, atom in enumerate(mg.atoms):
@@ -177,39 +169,35 @@ def color_refine_mg(
             n_atom_classes = new_n_classes
             atom_hash, new_atom_hashes = new_atom_hashes, atom_hash
 
-    return {id_arr_dict[arr_id]: int(h) for arr_id, h in enumerate(atom_hash)}
+    return atom_hash
 
-
-def color_refine_smg(
+def chiral_morgan_algo(
     smg: StereoMolGraph,
     iter: None | int = None,
-    atom_labels: None | Mapping[AtomId, int] = None,
-) -> Mapping[AtomId, int]:
-    """
-    Stereochemical color refinement.
-    Each atom Stereo is aggregated at each iteration.
-    Bond Stereo is aggregated at every second iteration."""
+    atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
+) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     n_atoms = len(smg.atoms)
-    # if atom_labels:
-    #    assert len(atom_labels) == n_atoms
-    #    assert set(atom_labels.keys()) == set(smg.atoms)
+    if atom_labels is not None:
+        assert len(atom_labels) == n_atoms
 
-    initial_atom_label_hash = (
+    atom_hash = (
         label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    if iter == 0:
-        return initial_atom_label_hash
+    
+    if (iter == 0
+        or n_atoms == 0
+        or n_atoms == 1
+        or all(len(c) == 1 for c in smg.connected_components())):
+        return atom_hash
+    
+    prev_atom_hash = np.zeros_like(atom_hash, dtype=np.int64)
 
     arr_id_dict, id_arr_dict = {}, {}
     stereo_hash_pointer = {}
-    initial_label_hash_list = []
     for id, atom in enumerate(smg.atoms):
         arr_id_dict[atom] = id
         id_arr_dict[id] = atom
         stereo_hash_pointer[id] = []  # arr_id: list[stereo_pointer]
-        initial_label_hash_list.append(initial_atom_label_hash[atom])
-
-    atom_hash = np.array(initial_label_hash_list, dtype=np.int64)
 
     grouped_atom_stereo: dict = defaultdict(list)
     atoms_with_atom_stereo: set[int] = set()
@@ -306,44 +294,45 @@ def color_refine_smg(
             # by reference
 
     # bond_stereo
-    for perm_group, atom_nbr_atoms_list_tup in grouped_bond_stereo.items():
-        atom_arr_ids = np.array(
+    if iter is not None and iter >= 2:
+        for perm_group, atom_nbr_atoms_list_tup in grouped_bond_stereo.items():
+            atom_arr_ids = np.array(
             [
                 [arr_id_dict[atom] for atom in bond]
                 for bond, _ in atom_nbr_atoms_list_tup
             ],
             dtype=np.uint16,
-        )
-        bs_atoms.append(atom_arr_ids)
+            )
+            bs_atoms.append(atom_arr_ids)
 
-        nbr_atoms = np.array(
+            nbr_atoms = np.array(
             [
                 [arr_id_dict[a] for a in nbr_lst]
                 for _atom, nbr_lst in atom_nbr_atoms_list_tup
             ],
             dtype=np.uint16,
-        )
+            )
 
-        bs_nbr_atoms.append(nbr_atoms)
-
-        perm_group = np.array(perm_group, dtype=np.uint8)
-        perm_atoms = nbr_atoms[..., perm_group]
-        bs_perm_atoms.append(perm_atoms)
+            bs_nbr_atoms.append(nbr_atoms)
+            arr_perm_group = np.array(perm_group, dtype=np.uint8)
+            perm_atoms = nbr_atoms[..., arr_perm_group]
+            bs_perm_atoms.append(perm_atoms)
 
         # intermediate arrays
-        b_perm_nbrs = np.zeros(perm_atoms.shape, dtype=np.int64)
-        i_b_perm_nbrs.append(b_perm_nbrs)
-        i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
-        i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_b.append(i_bond_stereo)
+            b_perm_nbrs = np.zeros(perm_atoms.shape, dtype=np.int64)
+            i_b_perm_nbrs.append(b_perm_nbrs)
+            i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
+            i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
+            i_bond_stereo.fill(hash(perm_group))
+            i_b.append(i_bond_stereo)
 
-        for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
-            stereo_hash_pointer[atom_arr_id1].append(
+            for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
+                stereo_hash_pointer[atom_arr_id1].append(
                 i_bond_stereo[stereo_id : stereo_id + 1]
-            )
-            stereo_hash_pointer[atom_arr_id2].append(
+                )
+                stereo_hash_pointer[atom_arr_id2].append(
                 i_bond_stereo[stereo_id : stereo_id + 1]
-            )
+                )
             # by reference
 
     counter = itertools.count(0) if iter is None else range(iter)
@@ -382,11 +371,11 @@ def color_refine_smg(
             numpy_int_multiset_hash(a_perm, out=a)
 
         # bond stereo
-        if count % 2 == 0 and count != 0:
+        if count != 0:
             for perm_atoms, b_perm_nbrs, b_perm, b in zip(
                 bs_perm_atoms, i_b_perm_nbrs, i_b_perm, i_b
-            ):
-                numpy_int_tuple_hash(atom_hash[perm_atoms], out=b_perm)
+                ):
+                numpy_int_tuple_hash(prev_atom_hash[perm_atoms], out=b_perm)
                 numpy_int_multiset_hash(b_perm, out=b)
 
         for (
@@ -394,13 +383,15 @@ def color_refine_smg(
             i_stereo,
             ptr_lsts,
         ) in i_atoms_with_n_stereo:  # atoms, i_stereo, group
+
+            prev_atom_hash[:] = atom_hash[:]
+
             i_stereo[:] = np.asarray(
                 [[ptr.item() for ptr in ptr_list] for ptr_list in ptr_lsts]
-            )
-
+                )
             atom_hash[atoms] = numpy_int_multiset_hash(i_stereo)
 
-        if count % 2 == 0 and iter is None:
+        if iter is None:
             new_n_classes = np.unique(atom_hash).shape[0]
             if new_n_classes == n_atom_classes:
                 break
@@ -409,4 +400,7 @@ def color_refine_smg(
             else:
                 n_atom_classes = new_n_classes
 
-    return {id_arr_dict[arr_id]: int(h) for arr_id, h in enumerate(atom_hash)}
+    return atom_hash
+
+
+

@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from stereomolgraph.algorithms.color_refine import color_refine_mg
+import numpy as np
+
+from stereomolgraph.algorithms.color_refine import (
+    numpy_int_multiset_hash,
+    label_hash,
+    morgan_algo,
+    numpy_int_tuple_hash,
+)
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
@@ -41,15 +48,39 @@ class CondensedReactionGraph(MolGraph):
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
 
-    def color_refine(self) -> Mapping[int, int]:
-        r_color_dict = color_refine_mg(self.reactant())
-        p_color_dict = color_refine_mg(self.product())
-        ts_colors = color_refine_mg(self)
-        color_dict = {
-            a: hash((r_color_dict[a], ts_colors[a], p_color_dict[a]))
-            for a in self.atoms
-        }
-        return color_dict
+    def __hash__(self):
+        if self.n_atoms == 0:
+            return hash(self.__class__)
+        r_color_dict = morgan_algo(self.reactant())
+        p_color_dict = morgan_algo(self.product())
+        ts_colors = morgan_algo(self)
+        
+        stacked = np.stack((r_color_dict, p_color_dict, ts_colors), axis=-1, dtype=np.int64)
+        ts_colors[:] = numpy_int_tuple_hash(stacked)
+        return int(numpy_int_multiset_hash(ts_colors))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
+        o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
+        s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        o_color_array = morgan_algo(other, atom_labels=o_labels)
+        s_color_array = morgan_algo(self, atom_labels=s_labels)
+
+        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+
+        return any(
+                vf2pp_all_isomorphisms(
+                    self,
+                    other,
+                    atom_labels=(s_colors, o_colors),
+                    stereo=False,
+                    stereo_change=False,
+                    subgraph=False,
+                )
+            )
 
     def add_bond(self, atom1: int, atom2: int, **attr: Any):
         """

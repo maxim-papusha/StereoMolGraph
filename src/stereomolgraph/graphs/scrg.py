@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Mapping
 from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
-from stereomolgraph.algorithms.color_refine import color_refine_smg
+import numpy as np
+
+from stereomolgraph.algorithms.color_refine import (
+    chiral_morgan_algo,
+    label_hash,
+    numpy_int_multiset_hash,
+    numpy_int_tuple_hash,
+)
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import set_crg_bond_orders
@@ -69,43 +76,41 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
             self._bond_stereo_change.update(mol_graph._bond_stereo_change)
 
-    def color_refine(self) -> Mapping[int, int]:
-        r_color_dict = color_refine_smg(self.reactant())
-        p_color_dict = color_refine_smg(self.product())
-        ts_colors = color_refine_smg(self)
-        color_dict = {
-            a: hash((r_color_dict[a], ts_colors[a], p_color_dict[a]))
-            for a in self.atoms
-        }
-        return color_dict
+    def __hash__(self):
+        if self.n_atoms == 0:
+            return hash(self.__class__)
+        r_colors = chiral_morgan_algo(self.reactant())
+        p_colors = chiral_morgan_algo(self.product())
+        ts_colors = chiral_morgan_algo(self._ts())
+        
+        stacked = np.stack((r_colors, p_colors, ts_colors),
+                           axis=-1,
+                           dtype=np.int64)
+        ts_colors[:] = numpy_int_tuple_hash(stacked)
+        return int(numpy_int_multiset_hash(ts_colors))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, self.__class__):
-            other_atom_labels = other.color_refine()
-            self_atom_labels = self.color_refine()
+        if not isinstance(other, self.__class__):
+            return NotImplemented
 
-            return any(
+        o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
+        s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        o_color_array = chiral_morgan_algo(other, atom_labels=o_labels)
+        s_color_array = chiral_morgan_algo(self, atom_labels=s_labels)
+
+        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+
+        return any(
                 vf2pp_all_isomorphisms(
                     self,
                     other,
-                    atom_labels=(self_atom_labels, other_atom_labels),
+                    atom_labels=(s_colors, o_colors),
                     stereo=True,
                     stereo_change=True,
                     subgraph=False,
                 )
             )
-        else:
-            return NotImplemented
-
-    def __hash__(self) -> int:
-        r_color_dict = self.reactant().color_refine()
-        p_color_dict = self.product().color_refine()
-        ts_colors = self._ts().color_refine()
-        color_dict = {
-            a: hash((r_color_dict[a], ts_colors[a], p_color_dict[a]))
-            for a in self.atoms
-        }
-        return hash(frozenset(Counter(color_dict.values()).items()))
 
     @property
     def atom_stereo_changes(self) -> Mapping[AtomId, ChangeDict[AtomStereo]]:

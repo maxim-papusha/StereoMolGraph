@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, NamedTuple
 
-from stereomolgraph.algorithms.color_refine import color_refine_mg, label_hash
+from stereomolgraph.algorithms.color_refine import label_hash
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
@@ -175,8 +175,8 @@ def _sanity_check_and_init(
             return None
 
     if atom_labels is None:
-        g1_labels = label_hash(g1)
-        g2_labels = label_hash(g2)
+        g1_labels = {a:h for a, h in zip(g1.atoms, label_hash(g1))}
+        g2_labels = {a:h for a, h in zip(g2.atoms, label_hash(g2))}
     else:
         g1_labels, g2_labels = atom_labels
 
