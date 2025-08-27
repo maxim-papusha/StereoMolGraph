@@ -183,8 +183,14 @@ def chiral_morgan_algo(
     atom_hash = (
         label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    if iter == 0 or n_atoms == 0 or n_atoms == 1:
+    
+    if (iter == 0
+        or n_atoms == 0
+        or n_atoms == 1
+        or all(len(c) == 1 for c in smg.connected_components())):
         return atom_hash
+    
+    prev_atom_hash = np.zeros_like(atom_hash, dtype=np.int64)
 
     arr_id_dict, id_arr_dict = {}, {}
     stereo_hash_pointer = {}
@@ -288,44 +294,45 @@ def chiral_morgan_algo(
             # by reference
 
     # bond_stereo
-    for perm_group, atom_nbr_atoms_list_tup in grouped_bond_stereo.items():
-        atom_arr_ids = np.array(
+    if iter is not None and iter >= 2:
+        for perm_group, atom_nbr_atoms_list_tup in grouped_bond_stereo.items():
+            atom_arr_ids = np.array(
             [
                 [arr_id_dict[atom] for atom in bond]
                 for bond, _ in atom_nbr_atoms_list_tup
             ],
             dtype=np.uint16,
-        )
-        bs_atoms.append(atom_arr_ids)
+            )
+            bs_atoms.append(atom_arr_ids)
 
-        nbr_atoms = np.array(
+            nbr_atoms = np.array(
             [
                 [arr_id_dict[a] for a in nbr_lst]
                 for _atom, nbr_lst in atom_nbr_atoms_list_tup
             ],
             dtype=np.uint16,
-        )
+            )
 
-        bs_nbr_atoms.append(nbr_atoms)
-
-        perm_group = np.array(perm_group, dtype=np.uint8)
-        perm_atoms = nbr_atoms[..., perm_group]
-        bs_perm_atoms.append(perm_atoms)
+            bs_nbr_atoms.append(nbr_atoms)
+            arr_perm_group = np.array(perm_group, dtype=np.uint8)
+            perm_atoms = nbr_atoms[..., arr_perm_group]
+            bs_perm_atoms.append(perm_atoms)
 
         # intermediate arrays
-        b_perm_nbrs = np.zeros(perm_atoms.shape, dtype=np.int64)
-        i_b_perm_nbrs.append(b_perm_nbrs)
-        i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
-        i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_b.append(i_bond_stereo)
+            b_perm_nbrs = np.zeros(perm_atoms.shape, dtype=np.int64)
+            i_b_perm_nbrs.append(b_perm_nbrs)
+            i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
+            i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
+            i_bond_stereo.fill(hash(perm_group))
+            i_b.append(i_bond_stereo)
 
-        for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
-            stereo_hash_pointer[atom_arr_id1].append(
+            for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
+                stereo_hash_pointer[atom_arr_id1].append(
                 i_bond_stereo[stereo_id : stereo_id + 1]
-            )
-            stereo_hash_pointer[atom_arr_id2].append(
+                )
+                stereo_hash_pointer[atom_arr_id2].append(
                 i_bond_stereo[stereo_id : stereo_id + 1]
-            )
+                )
             # by reference
 
     counter = itertools.count(0) if iter is None else range(iter)
@@ -364,11 +371,11 @@ def chiral_morgan_algo(
             numpy_int_multiset_hash(a_perm, out=a)
 
         # bond stereo
-        if count % 2 == 0 and count != 0:
+        if count != 0:
             for perm_atoms, b_perm_nbrs, b_perm, b in zip(
                 bs_perm_atoms, i_b_perm_nbrs, i_b_perm, i_b
-            ):
-                numpy_int_tuple_hash(atom_hash[perm_atoms], out=b_perm)
+                ):
+                numpy_int_tuple_hash(prev_atom_hash[perm_atoms], out=b_perm)
                 numpy_int_multiset_hash(b_perm, out=b)
 
         for (
@@ -376,13 +383,15 @@ def chiral_morgan_algo(
             i_stereo,
             ptr_lsts,
         ) in i_atoms_with_n_stereo:  # atoms, i_stereo, group
+
+            prev_atom_hash[:] = atom_hash[:]
+
             i_stereo[:] = np.asarray(
                 [[ptr.item() for ptr in ptr_list] for ptr_list in ptr_lsts]
-            )
-
+                )
             atom_hash[atoms] = numpy_int_multiset_hash(i_stereo)
 
-        if count % 2 == 0 and iter is None:
+        if iter is None:
             new_n_classes = np.unique(atom_hash).shape[0]
             if new_n_classes == n_atom_classes:
                 break
