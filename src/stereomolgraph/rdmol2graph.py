@@ -63,7 +63,10 @@ def mol_graph_from_rdmol(
 
 
 def stereo_mol_graph_from_rdmol(
-    cls: type[StereoMolGraph], rdmol: Chem.Mol, use_atom_map_number:bool=False
+    cls: type[StereoMolGraph],
+    rdmol: Chem.Mol,
+    use_atom_map_number:bool=False,
+    stereo_complete=False,
 ) -> StereoMolGraph:
     """
     Creates a StereoMolGraph from an RDKit Mol object.
@@ -110,14 +113,8 @@ def stereo_mol_graph_from_rdmol(
         atom_idx: int = atom.GetIdx()
 
         neighbors: tuple[int, ...] = tuple(
-            [
-                (
-                    {b.GetBeginAtomIdx(), b.GetEndAtomIdx()}
-                    - {
-                        atom_idx,
-                    }
-                ).pop()
-                for b in rdmol.GetAtomWithIdx(atom_idx).GetBonds()
+            [n.GetIdx()
+                for n in rdmol.GetAtomWithIdx(atom_idx).GetNeighbors()
             ]
         )
         neighbors: tuple[int, ...] = tuple(id_atom_map[b] for b in neighbors)
@@ -128,34 +125,43 @@ def stereo_mol_graph_from_rdmol(
         # rad_elec = atom.GetNumRadicalElectrons()
 
         if len(neighbors) == 4:
+            stereo_atoms = (id_atom_map[atom_idx], *neighbors)
             if chiral_tag in rd_tetrahedral:  #
                 atom_stereo: AtomStereo = Tetrahedral(
-                    (id_atom_map[atom_idx], *neighbors),
+                    stereo_atoms,
                     rd_tetrahedral[chiral_tag],
                 )
 
                 graph.set_atom_stereo(atom_stereo)
 
-            elif hybridization == Chem.HybridizationType.SP3:
-                atom_stereo = Tetrahedral((id_atom_map[atom_idx], *neighbors), None)
+
+
+            elif chiral_tag == Chem.ChiralType.CHI_SQUAREPLANAR:
+            
+                sp_order: tuple[int, int, int, int]
+                if atom.GetUnsignedProp("_chiralPermutation") == 1:
+                    sp_order = (0, 1, 2, 3)
+                elif atom.GetUnsignedProp("_chiralPermutation") == 2:
+                    sp_order = (0, 2, 1, 3)
+                elif atom.GetUnsignedProp("_chiralPermutation") == 3:
+                    sp_order = (0, 1, 3, 2)
+                else:
+                    raise RuntimeError("Unknown permutation for SquarePlanar")
+                ordered_neighbors = tuple([neighbors[i] for i in sp_order])
+                sp_atoms = (id_atom_map[atom_idx], *ordered_neighbors)
+                assert len(sp_atoms) == 5
+                atom_stereo = SquarePlanar(atoms=sp_atoms, parity=0)
                 graph.set_atom_stereo(atom_stereo)
 
-        if atom.GetChiralTag() == Chem.ChiralType.CHI_SQUAREPLANAR:
-            
-            sp_order: tuple[int, int, int, int]
-            if atom.GetUnsignedProp("_chiralPermutation") == 1:
-                sp_order = (0, 1, 2, 3)
-            elif atom.GetUnsignedProp("_chiralPermutation") == 2:
-                sp_order = (0, 2, 1, 3)
-            elif atom.GetUnsignedProp("_chiralPermutation") == 3:
-                sp_order = (0, 1, 3, 2)
-            else:
-                raise RuntimeError("Unknown permutation for SquarePlanar")
-            ordered_neighbors = tuple([neighbors[i] for i in sp_order])
-            sp_atoms = (id_atom_map[atom_idx], *ordered_neighbors)
-            assert len(sp_atoms) == 5
-            atom_stereo = SquarePlanar(atoms=sp_atoms, parity=0)
-            graph.set_atom_stereo(atom_stereo)
+            else: #hybridization == Chem.HybridizationType.SP3:
+                print(chiral_tag, id_atom_map[atom_idx])
+                if not stereo_complete:
+                    atom_stereo = Tetrahedral(stereo_atoms, None)
+                elif stereo_complete:
+                    atom_stereo = Tetrahedral(stereo_atoms, parity=1)
+                else:
+                    raise RuntimeError("This should never happen")
+                graph.set_atom_stereo(atom_stereo)
 
         if atom.GetChiralTag() == Chem.ChiralType.CHI_TRIGONALBIPYRAMIDAL:
             perm = atom.GetUnsignedProp("_chiralPermutation")
@@ -295,8 +301,6 @@ def stereo_mol_graph_from_rdmol(
                     )
 
                 bond_atoms = tuple([id_atom_map[a] for a in bond_atoms_idx])
-
-                    # raise Exception(bond_atoms_idx)
 
             elif (
                 stereo_atoms[0] in neighbors_end

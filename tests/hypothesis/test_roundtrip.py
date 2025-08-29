@@ -1,13 +1,16 @@
 import random
-from pathlib import Path
-import shelve
 
-from hypothesis import assume, given
+from hypothesis import assume
 import hypothesis.strategies as st
-from hypothesis.stateful import Bundle, RuleBasedStateMachine, initialize, rule, invariant, precondition
+from hypothesis.stateful import (
+    RuleBasedStateMachine,
+    rule,
+    invariant,
+    precondition,
+)
 
 from stereomolgraph.periodic_table import PERIODIC_TABLE
-from stereomolgraph import MolGraph
+from stereomolgraph import MolGraph, StereoMolGraph
 
 
 class MolGraphStateMachiene(RuleBasedStateMachine):
@@ -17,8 +20,10 @@ class MolGraphStateMachiene(RuleBasedStateMachine):
         super().__init__()
         self.g = self._TestClass()
 
-    @rule(atom_id=st.integers(),
-          atom_type=st.sampled_from(list(PERIODIC_TABLE.values())))
+    @rule(
+        atom_id=st.integers(),
+        atom_type=st.sampled_from(list(PERIODIC_TABLE.values())),
+    )
     def add_atom(self, atom_id, atom_type):
         assume(atom_id not in self.g.atoms)
         self.g.add_atom(atom_id, atom_type)
@@ -33,14 +38,12 @@ class MolGraphStateMachiene(RuleBasedStateMachine):
 
 
 class StereoMolGraphStateMachiene(MolGraphStateMachiene):
-    _TestClass = MolGraph
+    _TestClass = StereoMolGraph
 
 
-class HashTester(MolGraphStateMachiene):
-
+class HashRoundtripTester(MolGraphStateMachiene):
     @invariant()
     def order_independent_hash(self):
-
         other_g = self._TestClass()
         id_type_list = list(zip(self.g.atoms, self.g.atom_types))
         bond_list = list(self.g.bonds)
@@ -55,4 +58,4 @@ class HashTester(MolGraphStateMachiene):
             assert hash(self.g) == hash(other_g)
 
 
-HashTest = HashTester.TestCase
+TestHash = HashRoundtripTester.TestCase

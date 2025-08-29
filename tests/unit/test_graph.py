@@ -1,10 +1,12 @@
 from collections import defaultdict
 from copy import deepcopy
+from io import StringIO
 from itertools import permutations
 
 import numpy as np
 import pytest
 import rdkit.Chem  # type: ignore
+import rdkit.Chem.rdDistGeom  # type: ignore
 
 from stereomolgraph import (
     Bond,
@@ -17,6 +19,7 @@ from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
+from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
@@ -589,8 +592,8 @@ class TestTetrahedral:
         stereo1 = atom_stereo_from_coords(atoms, coords1.take(atoms, axis=0))
         stereo2 = atom_stereo_from_coords(atoms, coords2.take(atoms, axis=0))
         assert stereo1 is not None and stereo2 is not None
-        assert stereo1.parity == 1
-        assert stereo2.parity == -1
+        assert stereo1.parity == -1
+        assert stereo2.parity == 1
 
     def test_from_permuted_coords(self, enantiomer_geos):
         coords = enantiomer_geos[0].coords
@@ -680,10 +683,10 @@ class TestStereoMolGraph(TestMolGraph):
     def test_from_geometries1(self, chiral_reactant_graph):
         graph = chiral_reactant_graph
         expected_atom_stereo = {
-            1: Tetrahedral((1, 0, 2, 3, 9), 1),
-            0: Tetrahedral((0, 1, 2, 13, 14), -1),
-            9: Tetrahedral((9, 1, 10, 11, 12), -1),
-            5: Tetrahedral((5, 2, 6, 7, 8), -1),
+            1: Tetrahedral((1, 0, 2, 3, 9), -1),
+            0: Tetrahedral((0, 1, 2, 13, 14), 1),
+            9: Tetrahedral((9, 1, 10, 11, 12), 1),
+            5: Tetrahedral((5, 2, 6, 7, 8), 1),
         }
         expected_atom_types = [
             PTOE[atom]
@@ -734,9 +737,9 @@ class TestStereoMolGraph(TestMolGraph):
 
     def test_atom_stereo(self, chiral_product_graph1):
         expected = {
-            1: Tetrahedral((1, 0, 3, 9, 13), 1),
-            5: Tetrahedral((5, 2, 6, 7, 8), -1),
-            9: Tetrahedral((9, 1, 10, 11, 12), -1),
+            1: Tetrahedral((1, 0, 3, 9, 13), -1),
+            5: Tetrahedral((5, 2, 6, 7, 8), 1),
+            9: Tetrahedral((9, 1, 10, 11, 12), 1),
         }
         expected2 = {Bond((0, 2)): PlanarBond((1, 14, 0, 2, 4, 5), 0)}
         assert all(
@@ -805,23 +808,23 @@ class TestStereoMolGraph(TestMolGraph):
         g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), 1))
 
         mol, _ = g._to_rdmol()
-        chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW  # type: ignore
+        chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW  # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
 
         g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), -1))
         mol, _ = g._to_rdmol()
-        chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW  # type: ignore
+        chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW  # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
 
     @pytest.mark.parametrize(
         "inchi",
-        [
+        [   (r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"),
             (r"InChI=1S/CHBrClF/c2-1(3)4/h1H/t1-/m0/s1"),
             (r"InChI=1S/C2H2Cl2/c3-1-2-4/h1-2H/b2-1+"),
             (r"InChI=1S/C2H2Cl2/c3-1-2-4/h1-2H/b2-1-"),
             (r"InChI=1S/C4H6/c1-3-4-2/h3-4H,1-2H2"),
         ],
-        ids=[
+        ids=["alpha-D-gulopyranose",
             "(R)-Bromochlorofluoromethane",
             "Trans-1,2-Dichloroethylene",
             "Cis-1,2-Dichloroethylene",
@@ -833,7 +836,29 @@ class TestStereoMolGraph(TestMolGraph):
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         molgraph = self._TestClass.from_rdmol(rdmol)
         rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
-        assert inchi == rdkit.Chem.MolToInchi(rdmol2, treatWarningAsError=True)  # type: ignore
+        molblock = rdkit.Chem.MolToMolBlock(rdmol2)
+        assert inchi == rdkit.Chem.MolBlockToInchi(molblock)  # type: ignore
+
+    @pytest.mark.parametrize(
+        "inchi",
+        [   (r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"),
+         (r"InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H"),
+        ],
+        ids=["alpha-D-gulopyranose",
+        "benzene",
+        ],
+    )
+    def test_from_rdmol_eq_from_geometry(self, inchi):
+        rdmol = rdkit.Chem.MolFromInchi(inchi)
+        rdmol = rdkit.Chem.AddHs(rdmol, addCoords=True)
+        graph_mol = self._TestClass.from_rdmol(rdmol, stereo_complete=True)
+
+        rdkit.Chem.rdDistGeom.EmbedMolecule(rdmol)
+        xyz_str = rdkit.Chem.MolToXYZBlock(rdmol)
+        geo = Geometry.from_xyz_file(StringIO(xyz_str))
+        graph_geo = self._TestClass.from_geometry(geo)
+
+        assert graph_mol == graph_geo
 
     @pytest.mark.parametrize(
         "smiles",
@@ -1122,6 +1147,21 @@ class TestStereoMolGraph(TestMolGraph):
     def test_valid_stereo(self, chiral_product_graph1):
         assert chiral_product_graph1.is_stereo_valid()
 
+    def test_inchi_coords(self):
+        #glucose
+        g_inchi = "InChI=1S/C9H16O6/c1-9(2)14-7-5(12)6(4(11)3-10)13-8(7)15-9/h4-8,10-12H,3H2,1-2H3/t4-,5+,6-,7-,8-/m1/s1"
+        g_mol = rdkit.Chem.AddHs(rdkit.Chem.MolFromInchi(g_inchi))
+        rdkit.Chem.rdDistGeom.EmbedMolecule(g_mol)
+        g_xyz_str = rdkit.Chem.MolToXYZBlock(g_mol)
+        g_graph = stereo_mol_graph_from_rdmol(self._TestClass, g_mol, stereo_complete=True)
+
+        g_geo = Geometry.from_xyz_file(StringIO(g_xyz_str))
+
+        g_graph2 = self._TestClass.from_geometry(g_geo)
+        #raise Exception(set(g_graph.atom_stereo).symmetric_difference(set(g_graph2.atom_stereo)))
+        
+        #raise Exception(g_graph.__str__(), g_graph2.__str__())
+        assert g_graph.is_isomorphic(g_graph2)
 
 class TestStereoCondensedReactionGraph(
     TestStereoMolGraph, TestCondensedReactionGraph
@@ -1264,15 +1304,15 @@ class TestStereoCondensedReactionGraph(
             Bond((7, 9)): {},
             Bond((7, 8)): {},
         }
-        stereo = {7: Tetrahedral((7, 1, 8, 9, 10), -1)}
+        stereo = {7: Tetrahedral((7, 1, 8, 9, 10), 1)}
         atom_stereo_change = defaultdict(
             ChangeDict,
             {
                 1: ChangeDict(
-                    {Change.BROKEN: Tetrahedral((1, 0, 2, 3, 7), -1)}
+                    {Change.BROKEN: Tetrahedral((1, 0, 2, 3, 7), 1)}
                 ),
                 3: ChangeDict(
-                    {Change.BROKEN: Tetrahedral((3, 1, 4, 5, 6), -1)}
+                    {Change.BROKEN: Tetrahedral((3, 1, 4, 5, 6), 1)}
                 ),
             },
         )
@@ -1314,9 +1354,9 @@ class TestStereoCondensedReactionGraph(
     ):
         scrg = scrg_stereo_inversion
         assert scrg.get_atom_stereo_change(0) == {
-            Change.BROKEN: Tetrahedral((0, 1, 2, 3, 4), 1),
+            Change.BROKEN: Tetrahedral((0, 1, 2, 3, 4), -1),
             Change.FLEETING: SquarePlanar((0, 4, 2, 3, 1), 0),
-            Change.FORMED: Tetrahedral((0, 1, 2, 3, 4), -1),
+            Change.FORMED: Tetrahedral((0, 1, 2, 3, 4), 1),
         }
         assert scrg._bond_stereo_change == {}
 
@@ -1324,9 +1364,9 @@ class TestStereoCondensedReactionGraph(
         scrg = scrg_stereo_inversion
         scrg.relabel_atoms({0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=False)
         assert scrg.get_atom_stereo_change(11) == {
-            Change.BROKEN: Tetrahedral((11, 10, 20, 30, 40), 1),
+            Change.BROKEN: Tetrahedral((11, 10, 20, 30, 40), -1),
             Change.FLEETING: SquarePlanar((11, 40, 20, 30, 10), 0),
-            Change.FORMED: Tetrahedral((11, 10, 20, 30, 40), -1),
+            Change.FORMED: Tetrahedral((11, 10, 20, 30, 40), 1),
         }
         assert scrg._bond_stereo_change == {}
 
@@ -1336,9 +1376,9 @@ class TestStereoCondensedReactionGraph(
             {0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=True
         )
         assert new_scrg.get_atom_stereo_change(11) == {
-            Change.BROKEN: Tetrahedral((11, 10, 20, 30, 40), 1),
+            Change.BROKEN: Tetrahedral((11, 10, 20, 30, 40), -1),
             Change.FLEETING: SquarePlanar((11, 40, 20, 30, 10), 0),
-            Change.FORMED: Tetrahedral((11, 10, 20, 30, 40), -1),
+            Change.FORMED: Tetrahedral((11, 10, 20, 30, 40), 1),
         }
         assert scrg._bond_stereo_change == {}
 

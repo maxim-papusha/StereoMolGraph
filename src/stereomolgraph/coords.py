@@ -103,7 +103,7 @@ def handedness(
     vec2 = coords[..., 2, :] - coords[..., 3, :]
     vec3 = coords[..., 3, :] - coords[..., 1, :]
 
-    normal = np.cross(vec1, vec2, axis=-1)
+    normal = np.cross(vec2, vec1, axis=-1)
 
     # Normalize normal vectors (in-place operations)
     norm = np.linalg.norm(normal, axis=-1, keepdims=True)

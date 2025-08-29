@@ -155,11 +155,11 @@ class TestGeometryFunctions:
         """Test chirality calculation with single point set"""
         # Test R configuration
         result = handedness(self.CHIRAL_TETRAHEDRON)
-        assert result == -1
+        assert result == 1
         
         # Test S configuration
         result = handedness(self.CHIRAL_TETRAHEDRON_S)
-        assert result == 1
+        assert result == -1
         
         # Test planar case (should be 0)
         planar = np.vstack([self.PLANAR_POINTS[:3], [0.5, 0.5, 0]])
@@ -176,7 +176,7 @@ class TestGeometryFunctions:
         
         results = handedness(multiple_configs)
         assert results.shape == (3,)
-        assert np.array_equal(results, [-1, 1, 0])
+        assert np.array_equal(results, [1, -1, 0])
         
     def test_pairwise_distances_non_vectorized(self):
         """Test distance matrix calculation"""

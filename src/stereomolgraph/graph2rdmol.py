@@ -151,8 +151,8 @@ def stereo_mol_graph_to_rdmol(
     :rtype: Chem.rdchem.RWMol
     """
     rd_tetrahedral = {
-        1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW,
-        -1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
+        1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
+        -1: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW,
         None: Chem.rdchem.ChiralType.CHI_TETRAHEDRAL,
     }
     mol, idx_map_num_dict = mol_graph_to_rdmol(
@@ -209,29 +209,40 @@ def stereo_mol_graph_to_rdmol(
                 Chem.HybridizationType.SP3
             )
             assert len(a_stereo.atoms) == 5
-            rd_bonds = [
+            rd_nbrs = tuple([
                 idx_map_num_dict[a.GetIdx()]
                 for a in mol.GetAtomWithIdx(atom_idx).GetNeighbors()
-            ]
-            perm = [
-                p
-                for p in a_stereo._perm_atoms()
-                if p[1] == rd_bonds[0] and p[2] == rd_bonds[1]
-            ][0]
-
-            if (perm[3], perm[4]) == (rd_bonds[2], rd_bonds[3]):
-                mol.GetAtomWithIdx(atom_idx).SetChiralTag(
-                    rd_tetrahedral[a_stereo.parity]
-                )
-
-            elif (perm[3], perm[4]) == (rd_bonds[3], rd_bonds[2]):
-                mol.GetAtomWithIdx(atom_idx).SetChiralTag(
-                    rd_tetrahedral[a_stereo.parity]
-                )
+            ])
+            if a_stereo.parity is None:
+                rd_stereo = Chem.rdchem.ChiralType.CHI_TETRAHEDRAL
+            elif rd_nbrs in {perm[1:5] for perm in a_stereo._perm_atoms()}:
+                rd_stereo = rd_tetrahedral[a_stereo.parity]
             else:
-                raise RuntimeError(
-                    "Central atom was not bonded to all Stereo Atoms"
-                )
+                ia_stereo = Tetrahedral(a_stereo._inverted_atoms(), a_stereo.parity * -1)
+                if rd_nbrs in {perm[1:5] for perm in ia_stereo._perm_atoms()}:
+                    rd_stereo = rd_tetrahedral[a_stereo.parity * -1]
+                else:
+                    raise RuntimeError(rd_nbrs, a_stereo._inverted_atoms(), [perm for perm in ia_stereo._perm_atoms()])
+            mol.GetAtomWithIdx(atom_idx).SetChiralTag(rd_stereo)
+            #perm = [
+            #    p
+            #    for p in a_stereo._perm_atoms()
+            #    if p[1] == rd_bonds[0] and p[2] == rd_bonds[1]
+            #][0]
+
+            #if (perm[3], perm[4]) == (rd_bonds[2], rd_bonds[3]):
+            #    mol.GetAtomWithIdx(atom_idx).SetChiralTag(
+            #        rd_tetrahedral[a_stereo.parity]
+            #    )
+
+            #elif (perm[3], perm[4]) == (rd_bonds[3], rd_bonds[2]):
+            #    mol.GetAtomWithIdx(atom_idx).SetChiralTag(
+            #        rd_tetrahedral[a_stereo.parity]
+            #    )
+            #else:
+            #    raise RuntimeError(
+            #        "Central atom was not bonded to all Stereo Atoms"
+            #    )
 
         elif a_stereo is not None and isinstance(a_stereo, SquarePlanar):
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_SQUAREPLANAR)

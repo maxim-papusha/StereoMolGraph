@@ -193,8 +193,8 @@ def _trigonal_bipyramidal_from_coords(
     i, j = lst[angles.argmax()][[0, 2]]  # axial atoms
 
     equatorial = [a for a in indices if a not in (i, j)]
-    i_rotation = handedness(coords.take([*equatorial, i], axis=0))
-    j_rotation = -1 * handedness(coords.take([*equatorial, j], axis=0))
+    i_rotation = -1 * handedness(coords.take([*equatorial, i], axis=0))
+    j_rotation = handedness(coords.take([*equatorial, j], axis=0))
 
     assert int(i_rotation) == int(j_rotation)
 

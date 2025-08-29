@@ -332,7 +332,8 @@ class StereoMolGraph(MolGraph):
 
     @classmethod
     def from_rdmol(
-        cls, rdmol: Chem.Mol, use_atom_map_number: bool = False
+        cls, rdmol: Chem.Mol, use_atom_map_number: bool = False,
+        stereo_complete: bool = False,
     ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
@@ -343,10 +344,15 @@ class StereoMolGraph(MolGraph):
         :param rdmol: RDKit Mol object
         :param use_atom_map_number: If the atom map number should be used
                                     instead of the atom index, Default: False
+        :param stereo_complete: If True, we assume that the stereochemistry
+                                in the RDKit Mol is complete and all non chiral
+                                tetrahedral centers are set to an arbitrary
+                                configuration instead of None.
         :return: StereoMolGraph
         """
         smg = stereo_mol_graph_from_rdmol(
-            cls, rdmol, use_atom_map_number=use_atom_map_number
+            cls, rdmol, use_atom_map_number=use_atom_map_number,
+            stereo_complete=stereo_complete
         )
         assert isinstance(smg, cls), (
             "StereoMolGraph.from_rdmol did not return a StereoMolGraph"
