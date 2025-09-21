@@ -1,4 +1,4 @@
 
 .. autoclass:: stereomolgraph.MolGraph
    :members:
-   :member-order: groupwise
+   :member-order: bysource
