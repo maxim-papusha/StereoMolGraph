@@ -1,4 +1,4 @@
 
 .. autoclass:: stereomolgraph.MolGraph
-   :members:
+   :members: atoms, atom_types, bonds
    :member-order: bysource
