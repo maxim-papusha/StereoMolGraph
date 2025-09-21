@@ -7,13 +7,10 @@ from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
-import numpy as np
-
 from stereomolgraph.algorithms.color_refine import (
-    chiral_morgan_algo,
+    color_refine_scrg,
     label_hash,
     numpy_int_multiset_hash,
-    numpy_int_tuple_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -76,18 +73,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
             self._bond_stereo_change.update(mol_graph._bond_stereo_change)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        r_colors = chiral_morgan_algo(self.reactant())
-        p_colors = chiral_morgan_algo(self.product())
-        ts_colors = chiral_morgan_algo(self._ts())
-        
-        stacked = np.stack((r_colors, p_colors, ts_colors),
-                           axis=-1,
-                           dtype=np.int64)
-        ts_colors[:] = numpy_int_tuple_hash(stacked)
-        return int(numpy_int_multiset_hash(ts_colors))
+        color_array = color_refine_scrg(self)
+        return int(numpy_int_multiset_hash(color_array))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -95,8 +85,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
         s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
-        o_color_array = chiral_morgan_algo(other, atom_labels=o_labels)
-        s_color_array = chiral_morgan_algo(self, atom_labels=s_labels)
+        o_color_array = color_refine_scrg(other, atom_labels=o_labels)
+        s_color_array = color_refine_scrg(self, atom_labels=s_labels)
 
         o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}

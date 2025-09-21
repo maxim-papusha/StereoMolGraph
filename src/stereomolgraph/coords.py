@@ -9,21 +9,21 @@ import numpy as np
 from stereomolgraph.periodic_table import (
     COVALENT_RADII,
     PERIODIC_TABLE,
+    SYMBOLS,
     Element,
+    ElementLike,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
     from os import PathLike
     from typing import Literal, TypeVar
 
-    ElementLike = Element | str | int
     NP_FLOAT = TypeVar(
         "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
     )
     N = TypeVar("N", bound=int)
     ONE = Literal[1]
-    #TWO = Literal[2]
     THREE = Literal[3]
     FOUR = Literal[4]
 
@@ -199,7 +199,7 @@ class Geometry:
 
     def __init__(
         self,
-        atom_types: Iterable[int | str | Element] = tuple(),
+        atom_types: Sequence[ElementLike] = tuple(),
         coords: np.ndarray[tuple[int, int], NP_FLOAT] = np.empty(
             (0, 3), dtype=np.float64
         ),
@@ -246,9 +246,9 @@ class Geometry:
         else:
             xyz += "\n"
 
-        for type, coords in zip(self.atom_types, self.coords):
+        for atom_type, coords in zip(self.atom_types, self.coords):
             xyz += (
-                f"{type.symbol:s} {coords[0]:.8f} {coords[1]:.8f} "
+                f"{SYMBOLS[atom_type]:s} {coords[0]:.8f} {coords[1]:.8f} "
                 f"{coords[2]:.8f}\n"
             )
 
@@ -334,7 +334,7 @@ class BondsFromDistance:
         atom_types: Sequence[ElementLike],
     ) -> np.ndarray[tuple[N, N], np.dtype[np.integer]]:
         for atom in atom_types:
-            assert atom in PERIODIC_TABLE, (f"{hash}")
+            assert atom in PERIODIC_TABLE
         elements = [PERIODIC_TABLE[atom] for atom in atom_types]
         return np.where(
             pairwise_distances(coords)

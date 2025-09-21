@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
     from typing import Optional, TypeVar
 
+    import numpy as np
+
     from stereomolgraph.graphs import (
         AtomId,
         CondensedReactionGraph,
@@ -43,11 +45,11 @@ class _Parameters(NamedTuple):
     g1_nbrhd: Mapping[AtomId, set[AtomId]]
     g2_nbrhd: Mapping[AtomId, set[AtomId]]
     # atomid: label
-    g1_labels: Mapping[AtomId, int]
-    g2_labels: Mapping[AtomId, int]
+    g1_labels: np.ndarray[tuple[int], np.dtype[np.int64]]
+    g2_labels: np.ndarray[tuple[int], np.dtype[np.int64]]
     # label: set of atomids
-    nodes_of_g1Labels: Mapping[int, set[AtomId]]
-    nodes_of_g2Labels: Mapping[int, set[AtomId]]
+    nodes_of_g1Labels: Mapping[np.int64, set[AtomId]]
+    nodes_of_g2Labels: Mapping[np.int64, set[AtomId]]
     # degree: set of atomids
     g1_degree: Mapping[AtomId, int]
     g2_nodes_of_degree: Mapping[int, set[AtomId]]
@@ -205,9 +207,13 @@ def _sanity_check_and_init(
             for atom in s.atoms:
                 g2_stereo[atom].append(s)
 
-    g1_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
+    g1_stereo_changes: defaultdict[
+        AtomId, defaultdict[Change, list[Stereo]]
+    ] = defaultdict(lambda: defaultdict(list))  # type: ignore
 
-    g2_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = defaultdict(lambda: defaultdict(list)) # type: ignore
+    g2_stereo_changes: defaultdict[
+        AtomId, defaultdict[Change, list[Stereo]]
+    ] = defaultdict(lambda: defaultdict(list))  # type: ignore
 
     if stereo_change:
         if TYPE_CHECKING:
@@ -272,9 +278,11 @@ def _sanity_check_and_init(
 def _wrap_all(
     *funcs: Callable[[AtomId, AtomId, _State, _Parameters], bool],
 ) -> Callable[[AtomId, AtomId, _State, _Parameters], bool]:
-    def wrapper(a: AtomId, b: AtomId, state: _State, params: _Parameters) -> bool:
+    def wrapper(
+        a: AtomId, b: AtomId, state: _State, params: _Parameters
+    ) -> bool:
         return all(f(a, b, state, params) for f in funcs)
-    
+
     return wrapper
 
 
@@ -308,7 +316,9 @@ def vf2pp_all_isomorphisms(
 
     # setup helper function based on input parameters
 
-    feasibility_funcs: list[Callable[[AtomId, AtomId, _State, _Parameters], bool]] = []
+    feasibility_funcs: list[
+        Callable[[AtomId, AtomId, _State, _Parameters], bool]
+    ] = []
     if subgraph:
         feasibility_funcs.append(_subgraph_feasibility)
         if stereo:
@@ -515,7 +525,10 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
         rarest_nodes = [
             n for n in V1_unordered if label_rarity[g1_labels[n]] == max_rarity
         ]
-        max_node: AtomId = max(rarest_nodes, key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get,) # type: ignore
+        max_node: AtomId = max(
+            rarest_nodes,
+            key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get, # type: ignore
+        )
         assert isinstance(max_node, int)
         for dlevel_nodes in _bfs_layers(g1_nbrhd, max_node):
             nodes_to_add = dlevel_nodes.copy()

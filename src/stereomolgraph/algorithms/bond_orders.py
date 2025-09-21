@@ -80,7 +80,7 @@ def connectivity2bond_orders(
     assert len (atom_types) == np.shape(connectivity_matrix)[0], (
         "atom_types and connectivity_matrix have to be of the same length"
     )
-    atom_nrs = [elem.atomic_nr for elem in atom_types]
+    atom_nrs = atom_types
     charges = [0] * len(atom_nrs)
     unpaired_electrons = [0] * len(atom_nrs)
 

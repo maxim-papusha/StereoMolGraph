@@ -8,8 +8,7 @@ import numpy as np
 from stereomolgraph.algorithms.color_refine import (
     numpy_int_multiset_hash,
     label_hash,
-    morgan_algo,
-    numpy_int_tuple_hash,
+    color_refine_crg,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -48,16 +47,11 @@ class CondensedReactionGraph(MolGraph):
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        r_color_dict = morgan_algo(self.reactant())
-        p_color_dict = morgan_algo(self.product())
-        ts_colors = morgan_algo(self)
-        
-        stacked = np.stack((r_color_dict, p_color_dict, ts_colors), axis=-1, dtype=np.int64)
-        ts_colors[:] = numpy_int_tuple_hash(stacked)
-        return int(numpy_int_multiset_hash(ts_colors))
+        color_array = color_refine_crg(self)
+        return int(numpy_int_multiset_hash(color_array))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -65,8 +59,8 @@ class CondensedReactionGraph(MolGraph):
 
         o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
         s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
-        o_color_array = morgan_algo(other, atom_labels=o_labels)
-        s_color_array = morgan_algo(self, atom_labels=s_labels)
+        o_color_array = color_refine_crg(other, atom_labels=o_labels)
+        s_color_array = color_refine_crg(self, atom_labels=s_labels)
 
         o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
@@ -297,6 +291,9 @@ class CondensedReactionGraph(MolGraph):
                     attrs = {}
                 product.add_bond(*bond, **attrs)
         return product
+
+    def _ts(self, keep_attributes: bool = True) -> MolGraph:
+        return MolGraph(self)
 
     def reverse_reaction(self) -> Self:
         """Creates the reaction in the opposite direction.

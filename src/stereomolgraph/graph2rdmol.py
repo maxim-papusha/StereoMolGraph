@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import rdkit.Chem as Chem  # type: ignore
 
 from stereomolgraph.algorithms.bond_orders import connectivity2bond_orders
+from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
@@ -108,11 +109,11 @@ def mol_graph_to_rdmol(
         atom_type = graph.get_atom_attribute(atom, "atom_type")
         if atom_type is None:
             raise RuntimeError(atom, graph.atoms, graph.atom_types)
-        rd_atom = Chem.Atom(atom_type.symbol)
+        rd_atom = Chem.Atom(SYMBOLS[atom_type])
         rd_atom.SetNoImplicit(True)
         atom_index = mol.AddAtom(rd_atom)
         idx_map_num_dict[atom_index] = atom
-        atom_types_strings.append(atom_type.atomic_nr)
+        atom_types_strings.append(atom_type)
         try:
             mol.GetAtomWithIdx(atom_index).SetAtomMapNum(atom)
         except OverflowError as e:

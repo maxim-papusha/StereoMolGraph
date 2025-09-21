@@ -8,12 +8,13 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
-    chiral_morgan_algo,
+    color_refine_smg,
     label_hash,
     numpy_int_multiset_hash
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
+from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
@@ -64,7 +65,7 @@ class StereoMolGraph(MolGraph):
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = chiral_morgan_algo(self)
+        color_array = color_refine_smg(self)
         return int(numpy_int_multiset_hash(color_array))
 
     def __eq__(self, other: object) -> bool:
@@ -73,8 +74,8 @@ class StereoMolGraph(MolGraph):
 
         o_labels = label_hash(other, atom_labels=("atom_type",))
         s_labels = label_hash(self, atom_labels=("atom_type",))
-        o_color_array = chiral_morgan_algo(other, atom_labels=o_labels)
-        s_color_array = chiral_morgan_algo(self, atom_labels=s_labels)
+        o_color_array = color_refine_smg(other, atom_labels=o_labels)
+        s_color_array = color_refine_smg(self, atom_labels=s_labels)
 
         o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
@@ -92,7 +93,7 @@ class StereoMolGraph(MolGraph):
 
     def __str__(self) -> str:
         a_list = sorted(
-            (a, a_type.symbol)
+            (a, SYMBOLS[a_type])
             for a, a_type in zip(self.atoms, self.atom_types)
         )
         b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
@@ -107,10 +108,7 @@ class StereoMolGraph(MolGraph):
                 ["Atoms", a_list],
                 ["Bonds", b_list],
                 ["Atom Stereo", repr_atom_stereo],
-                [
-                    "Bond Stereo",
-                    repr_bond_stereo,
-                ],
+                ["Bond Stereo", repr_bond_stereo],
             ],
             indent=0,
             width=120,

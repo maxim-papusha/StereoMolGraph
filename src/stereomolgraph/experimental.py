@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
 from stereomolgraph.graphs.scrg import Change
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.algorithms.color_refine import color_refine_smg
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
     from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
 
-def unique_generator(input_generator):
+def unique_generator(input_generator: Iterator) -> Iterator:
     """
     A generator that yields unique objects from another generator.
     
@@ -199,6 +200,6 @@ def topological_symmetry_number(graph: StereoMolGraph) -> int:
             "all stereocenters have to be defined"
             " to calculate the symmetry number"
         )
-    colorings = graph.color_refine()
+    colorings = color_refine_smg(graph)
     mappings = vf2pp_all_isomorphisms(graph, graph, atom_labels=(colorings, colorings), stereo=True)
     return deque(enumerate(mappings, 1), maxlen=1)[0][0]

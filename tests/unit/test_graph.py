@@ -255,9 +255,9 @@ class TestMolGraph:
 
     def test_to_rdmol(self, water_graph):
         rdmol, _ = water_graph._to_rdmol()
-        assert [Atom.GetAtomicNum() for Atom in rdmol.GetAtoms()] == [
-            atom_type.atomic_nr for atom_type in water_graph.atom_types
-        ]
+        assert tuple([
+            Atom.GetAtomicNum() for Atom in rdmol.GetAtoms()
+        ]) == water_graph.atom_types
         assert {
             Bond((rd_b.GetBeginAtomIdx(), rd_b.GetEndAtomIdx()))
             for rd_b in rdmol.GetBonds()

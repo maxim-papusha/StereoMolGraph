@@ -154,7 +154,6 @@ def stereo_mol_graph_from_rdmol(
                 graph.set_atom_stereo(atom_stereo)
 
             else: #hybridization == Chem.HybridizationType.SP3:
-                print(chiral_tag, id_atom_map[atom_idx])
                 if not stereo_complete:
                     atom_stereo = Tetrahedral(stereo_atoms, None)
                 elif stereo_complete:
@@ -252,7 +251,8 @@ def stereo_mol_graph_from_rdmol(
         or b.GetStereo()
         in (Chem.BondStereo.STEREOATROPCW, Chem.BondStereo.STEREOATROPCCW)
     ):
-        begin_end_idx: tuple[int, int] = (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+        begin_end_idx: tuple[int, int] = (bond.GetBeginAtomIdx(),
+                                          bond.GetEndAtomIdx())
 
         neighbors_begin: list[int] = [
             atom.GetIdx()
