@@ -7,7 +7,7 @@ from stereomolgraph.algorithms.color_refine import label_hash
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
-    from typing import Optional, TypeVar
+    from typing import TypeVar
 
     import numpy as np
 
@@ -45,8 +45,8 @@ class _Parameters(NamedTuple):
     g1_nbrhd: Mapping[AtomId, set[AtomId]]
     g2_nbrhd: Mapping[AtomId, set[AtomId]]
     # atomid: label
-    g1_labels: np.ndarray[tuple[int], np.dtype[np.int64]]
-    g2_labels: np.ndarray[tuple[int], np.dtype[np.int64]]
+    g1_labels: Mapping[AtomId, np.int64]
+    g2_labels: Mapping[AtomId, np.int64]
     # label: set of atomids
     nodes_of_g1Labels: Mapping[np.int64, set[AtomId]]
     nodes_of_g2Labels: Mapping[np.int64, set[AtomId]]
@@ -64,6 +64,7 @@ class _Parameters(NamedTuple):
 class _State(NamedTuple):
     """
     State of the algorithm.
+
     :ivar mapping:
     :ivar inverted_mapping:
     :ivar frontier1: neighbors of mapped atoms in g1
@@ -72,14 +73,18 @@ class _State(NamedTuple):
     :ivar external2: atoms not in mapping and not in frontier2
     """
 
-    mapping: dict[int, int]
-    inverted_mapping: dict[int, int]
+    mapping: dict[AtomId, AtomId]
+    inverted_mapping: dict[AtomId, AtomId]
 
-    frontier1: set[int]  # neighbors of mapped atoms in g1
-    external1: set[int]  # atoms not in mapping and not in frontier1
+    frontier1: set[AtomId]
+    "neighbors of mapped atoms in g1"
+    external1: set[AtomId]
+    "atoms not in mapping and not in frontier1"
 
-    frontier2: set[int]  # neighbors of mapped atoms in g2
-    external2: set[int]  # atoms not in mapping and not in frontier2
+    frontier2: set[AtomId]
+    "neighbors of mapped atoms in g2"
+    external2: set[AtomId]
+    "atoms not in mapping and not in frontier2"
 
 
 def _group_keys_by_value(many_to_one: Mapping[KT, VT]) -> dict[VT, set[KT]]:
@@ -139,12 +144,12 @@ def _bfs_layers(
 def _sanity_check_and_init(
     g1: StereoMolGraph | MolGraph,
     g2: StereoMolGraph | MolGraph,
-    atom_labels: None| tuple[Mapping[AtomId, int],
-                             Mapping[AtomId, int]] = None,
+    atom_labels: None| tuple[np.ndarray[tuple[int], np.dtype[np.int64]],
+                            np.ndarray[tuple[int], np.dtype[np.int64]]] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
-) -> Optional[tuple[_Parameters, _State]]:
+) -> None | tuple[_Parameters, _State]:
     if stereo_change and not stereo:
         raise ValueError("Stereo change is only available for stereo graphs.")
 
@@ -209,11 +214,11 @@ def _sanity_check_and_init(
 
     g1_stereo_changes: defaultdict[
         AtomId, defaultdict[Change, list[Stereo]]
-    ] = defaultdict(lambda: defaultdict(list))  # type: ignore
+    ] = defaultdict(lambda: defaultdict(list))
 
     g2_stereo_changes: defaultdict[
         AtomId, defaultdict[Change, list[Stereo]]
-    ] = defaultdict(lambda: defaultdict(list))  # type: ignore
+    ] = defaultdict(lambda: defaultdict(list))
 
     if stereo_change:
         if TYPE_CHECKING:
@@ -398,7 +403,7 @@ def vf2pp_all_isomorphisms(
 def _graph_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ):
-    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params # type: ignore
+    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params
     _, _, frontier1, external1, frontier2, external2 = state
 
     t1_labels: list[int] = []
@@ -435,7 +440,7 @@ def _graph_feasibility(
 def _subgraph_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:
-    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params # type: ignore
+    g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params
     _, _, frontier1, external1, frontier2, external2 = state
 
     counter1 = Counter(g1_labels[n] for n in g1_nbrhd[u] if n in frontier1)
@@ -474,8 +479,8 @@ def _stereo_feasibility(
 
 def _subgraph_stereo_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
-) -> bool: ...
-
+) -> bool: ... # TODO
+ 
 def _stereo_change_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:

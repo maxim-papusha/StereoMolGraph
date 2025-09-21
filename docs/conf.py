@@ -67,7 +67,7 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
-    "groupwise"
+    "bysource" #"groupwise"
 )
 # autodoc_class_signature = "separated"
 # Force type hints to be links when possible
