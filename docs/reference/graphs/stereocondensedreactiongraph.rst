@@ -1,3 +1,6 @@
+StereoCondensedReactionGraph
+================================
+
 
 .. autoclass:: stereomolgraph.StereoCondensedReactionGraph
    :members:

@@ -1,3 +1,5 @@
+CondensedReactionGraph
+========================
 
 .. autoclass:: stereomolgraph.CondensedReactionGraph
    :members:
