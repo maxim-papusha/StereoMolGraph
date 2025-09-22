@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
-build-backend = "setuptools.build_meta"
+requires=["setuptools >= 77.0.3", "wheel", "pyMSVC;sys_platform=='win32'"]
+build-backend="setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
 version = "0.0.0a9"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 
 description = "A graph library for chiral molecules, reactions and transition states"
 keywords = [
@@ -49,7 +49,10 @@ dependencies = [
   "numpy>=1.20,<3",
   "rdkit>=2022.9.1",
   "cython>=3",
-  "pymsvc"
+  "pymsvc",
+  "jupyter",
+  "setuptools",
+  "distutils",
 ]
 
 [dependency-groups]
