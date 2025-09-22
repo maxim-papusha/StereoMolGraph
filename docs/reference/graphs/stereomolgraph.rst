@@ -2,5 +2,7 @@ StereoMolGraph
 ===================
 
 .. autoclass:: stereomolgraph.StereoMolGraph
-   :inherited-members:
    :show-inheritance:
+   :inherited-members:
+   :members:
+   
