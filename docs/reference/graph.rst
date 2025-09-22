@@ -31,28 +31,11 @@ Graphs
      - ✓
      - ✓
 
-
-.. toctree::
-   :maxdepth: 2
-
-  .. autoclass:: stereomolgraph.MolGraph
-   :inherited-members:
-   :show-inheritance:
-   :member-order: bysource
-
-  .. autoclass:: stereomolgraph.StereoMolGraph
-   :inherited-members:
-   :show-inheritance:
-   :member-order: bysource
-
-  .. autoclass:: stereomolgraph.CondensedReactionGraph
-   :members:
-   :inherited-members:
-   :show-inheritance:
-   :member-order: bysource
-
-  .. autoclass:: stereomolgraph.StereoCondensedReactionGraph
-   :members:
-   :inherited-members:
-   :show-inheritance:
-   :member-order: bysource
+.. autosummary::
+   :toctree: stubs/  # Directory where stub files will be generated
+   :recursive:       # Include submodules if needed
+   
+   stereomolgraph.MolGraph
+   stereomolgraph.StereoMolGraph
+   stereomolgraph.CondensedReactionGraph
+   stereomolgraph.StereoCondensedReactionGraph
