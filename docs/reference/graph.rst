@@ -31,9 +31,20 @@ Graphs
      - ✓
      - ✓
 
-.. toctree::
-   :maxdepth: 1
-   graphs/molgraph
-   graphs/stereomolgraph
-   graphs/condensedreactiongraph
-   graphs/stereocondensedreactiongraph
+.. autoclass:: stereomolgraph.MolGraph
+   :members:
+
+.. autoclass:: stereomolgraph.CondensedReactionGraph
+   :show-inheritance:
+   :inherited-members:
+   :members:
+
+.. autoclass:: stereomolgraph.StereoMolGraph
+   :show-inheritance:
+   :inherited-members:
+   :members:
+
+.. autoclass:: stereomolgraph.StereoCondensedReactionGraph
+   :show-inheritance:
+   :inherited-members:
+   :members:
