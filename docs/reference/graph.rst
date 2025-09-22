@@ -34,7 +34,24 @@ Graphs
 
 .. toctree::
    
-   graphs/molgraph
-   graphs/stereomolgraph
-   graphs/condensedreactiongraph
-   graphs/stereocondensedreactiongraph
+   .. autoclass:: stereomolgraph.MolGraph
+   :inherited-members:
+   :show-inheritance:
+   :member-order: bysource
+
+  .. autoclass:: stereomolgraph.StereoMolGraph
+   :inherited-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   .. autoclass:: stereomolgraph.CondensedReactionGraph
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :member-order: groupwise
+
+   .. autoclass:: stereomolgraph.StereoCondensedReactionGraph
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :member-order: groupwise
