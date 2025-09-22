@@ -32,8 +32,7 @@ Graphs
      - ✓
 
 .. autosummary::
-   :toctree:  # Directory where stub files will be generated
-   :recursive:       # Include submodules if needed
+   :toctree: geaph/  # Directory where stub files will be generated
    
    stereomolgraph.MolGraph
    stereomolgraph.StereoMolGraph
