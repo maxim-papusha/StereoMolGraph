@@ -49,10 +49,10 @@ Graphs
    :members:
    :inherited-members:
    :show-inheritance:
-   :member-order: groupwise
+   :member-order: bysource
 
   .. autoclass:: stereomolgraph.StereoCondensedReactionGraph
    :members:
    :inherited-members:
    :show-inheritance:
-   :member-order: groupwise
+   :member-order: bysource
