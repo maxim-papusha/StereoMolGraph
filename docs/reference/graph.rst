@@ -31,10 +31,10 @@ Graphs
      - ✓
      - ✓
 
-.. autosummary::
-   :toctree: geaph/  # Directory where stub files will be generated
-   
-   stereomolgraph.MolGraph
-   stereomolgraph.StereoMolGraph
-   stereomolgraph.CondensedReactionGraph
-   stereomolgraph.StereoCondensedReactionGraph
+.. toctree::
+   :hidden:
+
+   graphs/molgraph
+   graphs/stereomolgraph
+   graphs/condensedreactiongraph
+   graphs/stereocondensedreactiongraph
