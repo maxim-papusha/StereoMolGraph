@@ -32,7 +32,7 @@ Graphs
      - ✓
 
 .. toctree::
-   :maxdepth: 0
+   :maxdepth: 1
    graphs/molgraph
    graphs/stereomolgraph
    graphs/condensedreactiongraph
