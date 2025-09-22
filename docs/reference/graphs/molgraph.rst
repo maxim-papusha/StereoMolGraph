@@ -1,6 +1,7 @@
 MolGraph
-
+=========
 
 .. autoclass:: stereomolgraph.MolGraph
-   :member:
+   :inherited-members:
+   :show-inheritance:
    :member-order: bysource
