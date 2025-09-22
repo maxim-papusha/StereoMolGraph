@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b9"
+version = "0.0.0a9"
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -48,6 +48,7 @@ classifiers = [
 dependencies = [
   "numpy>=1.20,<3",
   "rdkit>=2022.9.1",
+  "cython>=3",
 ]
 
 [dependency-groups]
