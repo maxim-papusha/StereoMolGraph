@@ -34,8 +34,8 @@ Graphs
 
 .. toctree::
    :maxdepth: 2
-   
-   .. autoclass:: stereomolgraph.MolGraph
+
+  .. autoclass:: stereomolgraph.MolGraph
    :inherited-members:
    :show-inheritance:
    :member-order: bysource
