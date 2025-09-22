@@ -25,10 +25,11 @@ def unique_generator(input_generator: Iterator) -> Iterator:
     Yields:
         Only the first occurrence of each unique object from the input generator
     """
-    seen = set()
+    seen_hash = set()
     for item in input_generator:
-        if item not in seen:
-            seen.add(item)
+        item_hash = hash(item)
+        if item_hash not in seen_hash:
+            seen_hash.add(item_hash)
             yield item
 
 def generate_stereoisomers(
@@ -78,8 +79,8 @@ def generate_stereoisomers(
             if (stereo := graph.get_bond_stereo(b)) is not None
         )
 
-    seen = set()
-    enantiomers_seen = set()
+    seen_hash: set[int] = set()
+    enantiomers_seen_hash: set[int] = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -90,14 +91,16 @@ def generate_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo(b_stereo)
 
-        if stereoisomer not in seen:
-            seen.add(stereoisomer)
+        stereoisomer_hash = hash(stereoisomer)
+        if stereoisomer_hash not in seen_hash:
+            seen_hash.add(stereoisomer_hash)
             yield stereoisomer
 
             if not enantiomers:
                 enantiomer = stereoisomer.enantiomer()
-                if enantiomer not in enantiomers_seen:
-                    enantiomers_seen.add(enantiomer)
+                enantiomer_hash = hash(enantiomer)
+                if enantiomer_hash not in enantiomers_seen_hash:
+                    enantiomers_seen_hash.add(enantiomer_hash)
                     yield enantiomer
 
 def generate_fleeting_stereoisomers(
@@ -164,8 +167,8 @@ def generate_fleeting_stereoisomers(
             and stereo.parity is None
         )
 
-    seen_isomers = set()
-    seen_enantiomers = set()
+    seen_isomers_hash = set()
+    seen_enantiomers_hash = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -175,15 +178,17 @@ def generate_fleeting_stereoisomers(
             stereoisomer.set_atom_stereo_change(fleeting=a_stereo)
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
-
-        if stereoisomer not in seen_isomers:
-            seen_isomers.add(stereoisomer)
+        
+        stereoisomer_hash = hash(stereoisomer)
+        if stereoisomer_hash not in seen_isomers_hash:
+            seen_isomers_hash.add(stereoisomer_hash)
             yield stereoisomer
 
             if not enantiomers:
                 enantiomer = stereoisomer.enantiomer()
-                if enantiomer not in seen_enantiomers:
-                    seen_enantiomers.add(enantiomer)
+                enantiomer_hash = hash(enantiomer)
+                if enantiomer_hash not in seen_enantiomers_hash:
+                    seen_enantiomers_hash.add(enantiomer_hash)
                     yield enantiomer
 
 
