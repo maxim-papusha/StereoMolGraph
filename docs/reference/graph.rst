@@ -33,7 +33,6 @@ Graphs
 
 
 .. toctree::
-   :hidden:
    
    graphs/molgraph
    graphs/stereomolgraph
