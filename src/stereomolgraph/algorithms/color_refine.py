@@ -176,13 +176,12 @@ def stereo_morgan_generator(
 
     yield atom_hash
 
-    if (
-        iter == 0
-        or n_atoms == 0
+    if (n_atoms == 0
         or n_atoms == 1
         or all(len(c) == 1 for c in smg.connected_components())
     ):
-        return
+        while True:
+            yield atom_hash
 
     prev_atom_hash = np.zeros_like(atom_hash, dtype=np.int64)
 
