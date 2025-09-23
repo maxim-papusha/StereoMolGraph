@@ -176,12 +176,7 @@ def stereo_morgan_generator(
 
     yield atom_hash
 
-    if (
-        iter == 0
-        or n_atoms == 0
-        or n_atoms == 1
-        or all(len(c) == 1 for c in smg.connected_components())
-    ):
+    if len(smg.bonds) == 0:
         while True:
             yield atom_hash
 
