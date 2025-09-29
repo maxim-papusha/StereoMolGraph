@@ -4,16 +4,19 @@ import itertools
 from collections import deque
 from typing import TYPE_CHECKING
 
-from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
-from stereomolgraph.graphs.scrg import Change
-from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph import (
+    AtomId,
+    Bond,
+    StereoCondensedReactionGraph,
+    StereoMolGraph,
+)
 from stereomolgraph.algorithms.color_refine import color_refine_smg
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.graphs.scrg import Change
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-    from typing import Optional
-
-    from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
 
 def unique_generator(input_generator: Iterator) -> Iterator:
     """
@@ -35,8 +38,8 @@ def unique_generator(input_generator: Iterator) -> Iterator:
 def generate_stereoisomers(
     graph: StereoMolGraph,
     enantiomers: bool = True,
-    atoms: Optional[Iterable[AtomId]] = None,
-    bonds: Optional[Iterable[Bond]] = None,
+    atoms: None | Iterable[AtomId] = None,
+    bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoMolGraph]:
     """Generates all unique stereoisomers of a StereoMolGraph by generation of
     all combinations of parities. Only includes stereocenters which have a
@@ -106,8 +109,8 @@ def generate_stereoisomers(
 def generate_fleeting_stereoisomers(
     graph: StereoCondensedReactionGraph,
     enantiomers: bool = True,
-    atoms: Optional[Iterable[AtomId]] = None,
-    bonds: Optional[Iterable[Bond]] = None,
+    atoms: None | Iterable[AtomId] = None,
+    bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoCondensedReactionGraph]:
     """Generates all unique fleeting stereoisomers of a StereoCondensedReactionGraph.
     

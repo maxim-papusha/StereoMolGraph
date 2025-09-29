@@ -170,9 +170,9 @@ def stereo_morgan_generator(
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
 
-    atom_hash = (
-        label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
-    )
+    init_atom_hash = (label_hash(smg, ("atom_type",))
+                      if atom_labels is None else atom_labels)
+    atom_hash = np.append(init_atom_hash, 0) # 0 for "None" in Stereo.atoms
 
     yield atom_hash
 
@@ -188,6 +188,9 @@ def stereo_morgan_generator(
         arr_id_dict[atom] = id
         id_arr_dict[id] = atom
         stereo_hash_pointer[id] = []  # arr_id: list[stereo_pointer]
+
+    arr_id_dict[None] = -1
+    id_arr_dict[-1] = None
 
     grouped_atom_stereo: dict = defaultdict(list)
     atoms_with_atom_stereo: set[int] = set()
@@ -221,6 +224,7 @@ def stereo_morgan_generator(
                 if stereo.parity != -1
                 else stereo._inverted_atoms()  # type: ignore
             )
+
             grouped_atom_stereo[stereo.PERMUTATION_GROUP].append(
                 (atom, nbr_atoms)
             )
@@ -234,6 +238,7 @@ def stereo_morgan_generator(
                 if stereo.parity != -1
                 else stereo._inverted_atoms()  # type: ignore
             )
+
             grouped_bond_stereo[stereo.PERMUTATION_GROUP].append(
                 (bond, nbr_atoms)
             )
@@ -253,7 +258,7 @@ def stereo_morgan_generator(
     for perm_group, atom_nbr_atoms_list_tup in grouped_atom_stereo.items():
         atom_arr_ids = np.array(
             [arr_id_dict[atom] for atom, _ in atom_nbr_atoms_list_tup],
-            dtype=np.uint16,
+            dtype=np.int16,
         )
         as_atoms.append(atom_arr_ids)
 
@@ -262,12 +267,12 @@ def stereo_morgan_generator(
                 [arr_id_dict[a] for a in nbr_lst]
                 for _atom, nbr_lst in atom_nbr_atoms_list_tup
             ],
-            dtype=np.uint16,
+            dtype=np.int16,
         )
 
         as_nbr_atoms.append(nbr_atoms)
 
-        perm_group = np.array(perm_group, dtype=np.uint8)
+        perm_group = np.array(perm_group, dtype=np.int8)
         perm_atoms = nbr_atoms[..., perm_group]
         as_perm_atoms.append(perm_atoms)
 
@@ -291,7 +296,7 @@ def stereo_morgan_generator(
                 [arr_id_dict[atom] for atom in bond]
                 for bond, _ in atom_nbr_atoms_list_tup
             ],
-            dtype=np.uint16,
+            dtype=np.int16,
         )
         bs_atoms.append(atom_arr_ids)
 
@@ -300,11 +305,11 @@ def stereo_morgan_generator(
                 [arr_id_dict[a] for a in nbr_lst]
                 for _atom, nbr_lst in atom_nbr_atoms_list_tup
             ],
-            dtype=np.uint16,
+            dtype=np.int16,
         )
 
         bs_nbr_atoms.append(nbr_atoms)
-        arr_perm_group = np.array(perm_group, dtype=np.uint8)
+        arr_perm_group = np.array(perm_group, dtype=np.int8)
         perm_atoms = nbr_atoms[..., arr_perm_group]
         bs_perm_atoms.append(perm_atoms)
 

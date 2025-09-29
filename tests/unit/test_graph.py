@@ -19,7 +19,7 @@ from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
-from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
+from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
@@ -1150,17 +1150,22 @@ class TestStereoMolGraph(TestMolGraph):
     def test_inchi_coords(self):
         #glucose
         g_inchi = "InChI=1S/C9H16O6/c1-9(2)14-7-5(12)6(4(11)3-10)13-8(7)15-9/h4-8,10-12H,3H2,1-2H3/t4-,5+,6-,7-,8-/m1/s1"
-        g_mol = rdkit.Chem.AddHs(rdkit.Chem.MolFromInchi(g_inchi))
+        g_mol = rdkit.Chem.AddHs(rdkit.Chem.MolFromInchi(g_inchi), explicitOnly=True, addCoords=True)
         rdkit.Chem.rdDistGeom.EmbedMolecule(g_mol)
         g_xyz_str = rdkit.Chem.MolToXYZBlock(g_mol)
-        g_graph = stereo_mol_graph_from_rdmol(self._TestClass, g_mol, stereo_complete=True)
+        g_graph = self._TestClass.from_rdmol(g_mol, stereo_complete=True)
 
         g_geo = Geometry.from_xyz_file(StringIO(g_xyz_str))
 
         g_graph2 = self._TestClass.from_geometry(g_geo)
         #raise Exception(set(g_graph.atom_stereo).symmetric_difference(set(g_graph2.atom_stereo)))
         
-        #raise Exception(g_graph.__str__(), g_graph2.__str__())
+        if len(g_graph.atom_stereo) != len(g_graph2.atom_stereo):
+            raise Exception((len(g_graph.atom_stereo), len(g_graph2.atom_stereo), (g_graph.atom_types, g_graph.atom_types),
+                             (g_graph2.atom_types, g_graph2.atom_types), g_graph._atom_stereo, g_graph2._atom_stereo))
+
+        if not g_graph.is_isomorphic(g_graph2):
+            raise Exception(g_graph.__str__(), g_graph2.__str__())
         assert g_graph.is_isomorphic(g_graph2)
 
 class TestStereoCondensedReactionGraph(

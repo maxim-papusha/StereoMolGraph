@@ -3,8 +3,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from stereomolgraph.algorithms.color_refine import (
     numpy_int_multiset_hash,
     label_hash,

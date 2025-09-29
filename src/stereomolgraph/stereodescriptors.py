@@ -19,17 +19,20 @@ else:
     from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Generator, Set
+    from collections.abc import Iterable, Iterator, Set
 
     from typing_extensions import Self
 
     from stereomolgraph.graphs.mg import AtomId, Bond
 
 
-
+OInt = None | int
+"Optional Integer"
 
 A = TypeVar(
-    "A", bound=tuple[int, ...], covariant=True, default=tuple[int, ...]
+    "A", bound=tuple[OInt, ...],
+    covariant=True,
+    default=tuple[OInt, ...]
 )
 P = TypeVar(
     "P",
@@ -103,7 +106,7 @@ class _StereoMixin(Generic[A, P]):
         self.atoms = atoms
         self.parity = parity
 
-    def _perm_atoms(self) -> Generator[tuple[int, ...], None, None]:
+    def _perm_atoms(self) -> Iterator[A]:
         if self.parity is None:
             return (
                 tuple([self.atoms[i] for i in perm])
@@ -215,7 +218,7 @@ class _StereoMixin(Generic[A, P]):
 
 
 class Tetrahedral(
-    _StereoMixin[tuple[int, int, int, int, int], None | Literal[1, -1]],
+    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
@@ -252,13 +255,6 @@ class Tetrahedral(
             (0, 4, 3, 2, 1),
     )
 
-    def __init__(
-        self,
-        atoms: tuple[int, int, int, int, int],
-        parity: None | Literal[1, -1] = None,
-    ):
-        super().__init__(atoms=atoms, parity=parity)
-
     def get_isomers(self) -> set[Self]:
         return {
             self.__class__(atoms=self.atoms, parity=1),
@@ -271,7 +267,7 @@ class Tetrahedral(
 
 
 class SquarePlanar(
-    _StereoMixin[tuple[int, int, int, int, int], None | Literal[0]],
+    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
@@ -314,7 +310,7 @@ class SquarePlanar(
 
 
 class TrigonalBipyramidal(
-    _StereoMixin[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
@@ -361,7 +357,7 @@ class TrigonalBipyramidal(
 
 class Octahedral(
     _StereoMixin[
-        tuple[int, int, int, int, int, int, int], None | Literal[1, -1]
+        tuple[OInt, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
     ],
 ):
     """Represents all possible configurations of atoms for a Octahedral
@@ -417,7 +413,7 @@ class Octahedral(
 
 
 class PlanarBond(
-    _StereoMixin[tuple[int, int, int, int, int, int], None | Literal[0]],
+    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
@@ -462,7 +458,7 @@ class PlanarBond(
 
 
 class AtropBond(
-    _StereoMixin[tuple[int, int, int, int, int, int], None | Literal[1, -1]],
+    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""
     Represents all possible configurations of atoms for a

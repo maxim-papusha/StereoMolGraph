@@ -170,9 +170,9 @@ def stereo_mol_graph_to_rdmol(
         atom_idx = map_num_idx_dict[atom]
         rd_atom = mol.GetAtomWithIdx(atom_idx)
 
-        if a_stereo is not None and any(
-            a not in graph.atoms for a in a_stereo.atoms
-        ):
+        if False: #a_stereo is not None and any(
+            #a not in graph.atoms for a in a_stereo.atoms
+        #):
             raise NotImplementedError(
                 "Handling of missing atoms not supported yet"
             )
@@ -299,7 +299,7 @@ def stereo_mol_graph_to_rdmol(
     for b_stereo in (bs for bs in graph.bond_stereo.values() if bs):
         a1, a2 = b_stereo.atoms[2], b_stereo.atoms[3]
 
-        if not all(a in graph.atoms for a in b_stereo.atoms):
+        if False: #not all(a in graph.atoms for a in b_stereo.atoms if a is not None):
             raise NotImplementedError(
                 "Handling of missing atoms not supported"
             )
