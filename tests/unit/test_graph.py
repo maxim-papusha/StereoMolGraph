@@ -19,7 +19,6 @@ from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
-from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.stereodescriptors import (
     AtropBond,
     Octahedral,
