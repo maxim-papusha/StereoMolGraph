@@ -92,11 +92,11 @@ class MolGraph:
     @property
     def bonds(
         self,
-    ) -> Iterable[Bond]:
+    ) -> Sequence[Bond]:
         """
         :return: Returns all bonds in the MolGraph
         """
-        return self._bond_attrs.keys()
+        return self._bond_attrs.keys() # type: ignore Dicts keep the order!
 
     @property
     def bonds_with_attributes(

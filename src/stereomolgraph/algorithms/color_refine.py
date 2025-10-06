@@ -121,7 +121,10 @@ def morgan_generator(
     atom_hash = (
         label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
     )
-    yield atom_hash
+    atom_hash_view = atom_hash.view()
+    atom_hash_view.setflags(write=False)
+    yield atom_hash_view
+    
     if n_atoms == 0:
         return
 
@@ -158,8 +161,9 @@ def morgan_generator(
         for ids, nbrs in id_nbrs_tuple_list:
             # Compute the new hash for each atom based on its neighbors
             atom_hash[ids] = numpy_int_multiset_hash(atom_hash[nbrs])
-
-        yield atom_hash
+        atom_hash_view = atom_hash.view()
+        atom_hash_view.setflags(write=False)
+        yield atom_hash_view
 
 
 def stereo_morgan_generator(
@@ -174,11 +178,15 @@ def stereo_morgan_generator(
         label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
     )
 
-    yield atom_hash
+    atom_hash_view = atom_hash.view()
+    atom_hash_view.setflags(write=False)
+    yield atom_hash_view
 
     if len(smg.bonds) == 0:
         while True:
-            yield atom_hash
+            atom_hash_view = atom_hash.view()
+            atom_hash_view.setflags(write=False)
+            yield atom_hash_view
 
     prev_atom_hash = np.zeros_like(atom_hash, dtype=np.int64)
 
@@ -372,32 +380,39 @@ def stereo_morgan_generator(
                 [[ptr.item() for ptr in ptr_list] for ptr_list in ptr_lsts]
             )
             atom_hash[atoms] = numpy_int_multiset_hash(i_stereo)
-
-        yield atom_hash
+        atom_hash_view = atom_hash.view()
+        atom_hash_view.setflags(write=False)
+        yield atom_hash_view
 
 
 def _reaction_generator(
     graph: CondensedReactionGraph,
     generator: Callable,
-    max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
-    r_colors = generator(
-        graph.reactant(), atom_labels=atom_labels
-    )
-    p_colors = generator(
-        graph.product(),  atom_labels=atom_labels
-    )
-    ts_colors = generator(graph._ts(), atom_labels=atom_labels)
+    color_iters = [
+        generator(graph.reactant(), atom_labels=atom_labels),
+        generator(graph.product(), atom_labels=atom_labels),
+        generator(graph._ts(), atom_labels=atom_labels),
+    ]
 
-    for _ in itertools.repeat(None) if max_iter is None else range(max_iter):
-        stacked = np.stack(
-            [next(c) for c in (r_colors, p_colors, ts_colors)],
-            axis=-1,
-            dtype=np.int64,
-        )
+    stacked: np.ndarray | None = None
+    hash_buf: np.ndarray | None = None
 
-        yield numpy_int_tuple_hash(stacked)
+    while True:
+        for axis, it in enumerate(color_iters):
+            color = next(it)
+            if stacked is None:
+                stacked = np.empty((*color.shape, len(color_iters)),
+                                   dtype=np.int64)
+                hash_buf = np.empty(color.shape, dtype=np.int64)
+            np.copyto(stacked[..., axis], color)
+
+        assert stacked is not None and hash_buf is not None
+        hashed = numpy_int_tuple_hash(stacked, out=hash_buf)
+        hash_view = hashed.view()
+        hash_view.setflags(write=False)
+        yield hash_view
 
 
 def reaction_morgan_generator(
@@ -408,7 +423,6 @@ def reaction_morgan_generator(
     return _reaction_generator(
         graph=graph,
         generator=morgan_generator,
-        max_iter=max_iter,
         atom_labels=atom_labels,
     )
 
@@ -421,7 +435,6 @@ def stereo_reaction_morgan_generator(
     return _reaction_generator(
         graph=graph,
         generator=stereo_morgan_generator,
-        max_iter=max_iter,
         atom_labels=atom_labels,
     )
 
