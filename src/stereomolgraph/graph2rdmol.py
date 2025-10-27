@@ -214,36 +214,15 @@ def stereo_mol_graph_to_rdmol(
                 idx_map_num_dict[a.GetIdx()]
                 for a in mol.GetAtomWithIdx(atom_idx).GetNeighbors()
             ])
+
             if a_stereo.parity is None:
                 rd_stereo = Chem.rdchem.ChiralType.CHI_TETRAHEDRAL
-            elif rd_nbrs in {perm[1:5] for perm in a_stereo._perm_atoms()}:
+            elif rd_nbrs in {tuple(perm[1:5]) for perm in a_stereo._perm_atoms()}:
                 rd_stereo = rd_tetrahedral[a_stereo.parity]
             else:
-                ia_stereo = Tetrahedral(a_stereo._inverted_atoms(), a_stereo.parity * -1)
-                if rd_nbrs in {perm[1:5] for perm in ia_stereo._perm_atoms()}:
-                    rd_stereo = rd_tetrahedral[a_stereo.parity * -1]
-                else:
-                    raise RuntimeError(rd_nbrs, a_stereo._inverted_atoms(), [perm for perm in ia_stereo._perm_atoms()])
-            mol.GetAtomWithIdx(atom_idx).SetChiralTag(rd_stereo)
-            #perm = [
-            #    p
-            #    for p in a_stereo._perm_atoms()
-            #    if p[1] == rd_bonds[0] and p[2] == rd_bonds[1]
-            #][0]
+                rd_stereo = rd_tetrahedral[a_stereo.parity * -1]
+            rd_atom.SetChiralTag(rd_stereo)
 
-            #if (perm[3], perm[4]) == (rd_bonds[2], rd_bonds[3]):
-            #    mol.GetAtomWithIdx(atom_idx).SetChiralTag(
-            #        rd_tetrahedral[a_stereo.parity]
-            #    )
-
-            #elif (perm[3], perm[4]) == (rd_bonds[3], rd_bonds[2]):
-            #    mol.GetAtomWithIdx(atom_idx).SetChiralTag(
-            #        rd_tetrahedral[a_stereo.parity]
-            #    )
-            #else:
-            #    raise RuntimeError(
-            #        "Central atom was not bonded to all Stereo Atoms"
-            #    )
 
         elif a_stereo is not None and isinstance(a_stereo, SquarePlanar):
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_SQUAREPLANAR)
@@ -262,22 +241,49 @@ def stereo_mol_graph_to_rdmol(
         elif a_stereo is not None and isinstance(
             a_stereo, TrigonalBipyramidal
         ):
-            # the order of the neighbors is important for stereochemistry
-            for rd_n in rd_atom.GetNeighbors():
-                mol.RemoveBond(rd_n.GetIdx(), atom_idx)
-
-            for a in (1, 3, 4, 5, 2):
-                a = a_stereo.atoms[a]
-                mol.AddBond(
-                    atom_idx,
-                    map_num_idx_dict[a],
-                )
-            rd_atom.SetHybridization(Chem.HybridizationType.SP3D)
+            #rd_atom.SetHybridization(Chem.HybridizationType.SP3D)
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_TRIGONALBIPYRAMIDAL)
-            if a_stereo.parity == 1:
-                rd_atom.SetUnsignedProp("_chiralPermutation", 1)
-            elif a_stereo.parity == -1:
-                rd_atom.SetUnsignedProp("_chiralPermutation", 2)
+            if a_stereo.parity is not None:
+
+                atoms_order = (a_stereo._inverted_atoms()
+                               if a_stereo.parity == -1 else a_stereo.atoms)
+                rd_id_order = tuple([map_num_idx_dict[a]
+                                     for a in atoms_order[1::]])
+                rd_nbr_order = tuple([nbr.GetIdx() for nbr in rd_atom.GetNeighbors()])
+                
+                        # adapted from http://opensmiles.org/opensmiles.html
+                atom_order_permutation_dict = {
+                (0, 1, 2, 3, 4): 1,
+                (0, 1, 3, 2, 4): 2,
+                (0, 1, 2, 4, 3): 3,
+                (0, 1, 4, 2, 3): 4,
+                (0, 1, 3, 4, 2): 5,
+                (0, 1, 4, 3, 2): 6,
+                (0, 2, 3, 4, 1): 7,
+                (0, 2, 4, 3, 1): 8,
+                (1, 0, 2, 3, 4): 9,
+                (1, 0, 3, 2, 4): 11,
+                (1, 0, 2, 4, 3): 10,
+                (1, 0, 4, 2, 3): 12,
+                (1, 0, 3, 4, 2): 13,
+                (1, 0, 4, 3, 2): 14,
+                (2, 0, 1, 3, 4): 15,
+                (2, 0, 1, 4, 3): 16,
+                (3, 0, 1, 2, 4): 17,
+                (3, 0, 2, 1, 4): 18,
+                (2, 0, 4, 1, 3): 19,
+                (2, 0, 3, 1, 4): 20,
+                }
+
+                for perm, val in atom_order_permutation_dict.items():
+
+                    rd_nbr_perm = tuple([rd_nbr_order[i] for i in perm])
+                    rd_nbr_perm = tuple([rd_nbr_perm[i] for i in (0, 4, 1, 2, 3)])
+
+                    if rd_id_order == rd_nbr_perm:
+                        rd_atom.SetUnsignedProp("_chiralPermutation", val)
+                        break
+
 
         elif a_stereo is not None and isinstance(a_stereo, Octahedral):
             for rd_n in rd_atom.GetNeighbors():

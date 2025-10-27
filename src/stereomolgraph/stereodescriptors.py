@@ -132,6 +132,8 @@ class _StereoMixin(Generic[A, P]):
         return atoms  # type: ignore[return-value]
 
     def __eq__(self, other: Any) -> bool:
+        if not hasattr(other, "atoms") or not hasattr(other, "parity"):
+            return NotImplemented
         s_atoms, o_atoms = self.atoms, other.atoms
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
