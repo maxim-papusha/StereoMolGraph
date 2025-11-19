@@ -430,13 +430,13 @@ def set_crg_bond_orders(
 ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
     r, r_idx_map_num_dict = mol_graph_to_rdmol(
         graph.reactant(),
-        generate_bond_orders=True,
+        generate_bond_orders=generate_bond_orders,
         allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )
     p, p_idx_map_num_dict = mol_graph_to_rdmol(
         graph.product(),
-        generate_bond_orders=True,
+        generate_bond_orders=generate_bond_orders,
         allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )

@@ -1,16 +1,20 @@
 # pyright: standard
 from __future__ import annotations
 
-from rdkit import Chem # type: ignore
-from rdkit.Chem import Draw # type: ignore
 from typing import NamedTuple
 
+from rdkit import Chem  # type: ignore
+from rdkit.Chem import Draw  # type: ignore
+
 from stereomolgraph import (
-        MolGraph,
-        CondensedReactionGraph,
-        StereoMolGraph,
-        StereoCondensedReactionGraph)
+    CondensedReactionGraph,
+    MolGraph,
+    StereoCondensedReactionGraph,
+    StereoMolGraph,
+)
+from stereomolgraph.graphs.scrg import Change
 from stereomolgraph.stereodescriptors import PlanarBond
+
 
 def default_repr_svg(graph):
     return View2D().svg(graph)
@@ -112,6 +116,32 @@ class View2D(NamedTuple):
                     Chem.rdchem.BondType.HYDROGEN)
                 highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
 
+        if isinstance(graph, StereoCondensedReactionGraph):
+            for bond, change_dict in graph.bond_stereo_changes.items():
+                if change_dict[Change.FORMED] and not change_dict[Change.BROKEN]:
+                    atoms_idx = [map_num_idx_dict[a] for a in bond]
+                    bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
+                    bonds_to_highlight.append(bond_idx)
+                    mol.GetBondWithIdx(bond_idx).SetBondType(
+                        Chem.rdchem.BondType.AROMATIC)
+                    highlight_bond_colors[bond_idx] = (0, 0, 1)  # blue
+                
+                if change_dict[Change.BROKEN] and not change_dict[Change.FORMED]:
+                    atoms_idx = [map_num_idx_dict[a] for a in bond]
+                    bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
+                    bonds_to_highlight.append(bond_idx)
+                    mol.GetBondWithIdx(bond_idx).SetBondType(
+                        Chem.rdchem.BondType.AROMATIC)
+                    highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
+
+                if change_dict[Change.FLEETING]:
+                    atoms_idx = [map_num_idx_dict[a] for a in bond]
+                    bond_idx = mol.GetBondBetweenAtoms(*atoms_idx).GetIdx()
+                    bonds_to_highlight.append(bond_idx)
+                    mol.GetBondWithIdx(bond_idx).SetBondType(
+                        Chem.rdchem.BondType.AROMATIC)
+                    highlight_bond_colors[bond_idx] = (1, 0, 1)
+
             # make dummy atoms and their bonds grey
         if self.dummy_atoms is True:
             atom_colors = {}
@@ -131,7 +161,7 @@ class View2D(NamedTuple):
 
         drawer.drawOptions().useBWAtomPalette()
         drawer.drawOptions().continuousHighlight = False
-        drawer.drawOptions().highlightBondWidthMultiplier = 10
+        drawer.drawOptions().highlightBondWidthMultiplier = 12
         drawer.drawOptions().fillHighlights = False
         drawer.drawOptions().includeRadicals = False
 
