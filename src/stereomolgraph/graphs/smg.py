@@ -17,7 +17,6 @@ from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
-from stereomolgraph.rdmol2graph import stereo_mol_graph_from_rdmol
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
@@ -348,14 +347,12 @@ class StereoMolGraph(MolGraph):
                                 configuration instead of None.
         :return: StereoMolGraph
         """
-        smg = stereo_mol_graph_from_rdmol(
-            cls, rdmol, use_atom_map_number=use_atom_map_number,
-            stereo_complete=stereo_complete
-        )
-        assert isinstance(smg, cls), (
-            "StereoMolGraph.from_rdmol did not return a StereoMolGraph"
-        )
-        return smg
+        from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
+        rd2smg = RDMol2StereoMolGraph(
+            use_atom_map_number=use_atom_map_number,
+            stereo_complete=stereo_complete)
+        smg = rd2smg(rdmol)
+        return cls(smg)
 
     @classmethod
     def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:

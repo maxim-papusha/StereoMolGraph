@@ -1,326 +1,245 @@
 from __future__ import annotations
 
 import itertools
-from collections import defaultdict, deque
-from collections.abc import Hashable, Iterable, Iterator, Mapping
-from heapq import heappop, heappush
-from typing import TYPE_CHECKING, TypeVar
+import json
+from collections import deque
+from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING, Any
 
-from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
+from stereomolgraph import (
+    AtomId,
+    Bond,
+    CondensedReactionGraph,
+    MolGraph,
+    StereoCondensedReactionGraph,
+    StereoMolGraph,
+)
 from stereomolgraph.algorithms.color_refine import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.graphs.scrg import Change
+from stereomolgraph.graphs.crg import Change
+from stereomolgraph.periodic_table import SYMBOLS
+from stereomolgraph.stereodescriptors import (
+    AtropBond,
+    Octahedral,
+    PlanarBond,
+    SquarePlanar,
+    Tetrahedral,
+    TrigonalBipyramidal,
+)
 
-T = TypeVar("T")
+STEREO_CLASSES: dict[str, type] = {
+    "Tetrahedral": Tetrahedral,
+    "TrigonalBipyramidal": TrigonalBipyramidal,
+    "Octahedral": Octahedral,
+    "SquarePlanar": SquarePlanar,
+    "PlanarBond": PlanarBond,
+    "AtropBond": AtropBond,
+}
+
+
+class JSONHandler:
+    """Serialize and deserialize StereoMolGraph-related graphs to JSON."""
+
+    @staticmethod
+    def as_dict(graph: MolGraph) -> dict[str, Any]:
+        graph_type = type(graph).__name__
+
+        atoms_dict = sorted(
+            (
+                atom,
+                SYMBOLS[a_type],
+            )
+            for atom, a_type in zip(graph.atoms, graph.atom_types)
+        )
+
+        data: dict[str, Any] = {"Atoms": atoms_dict}
+
+        if isinstance(graph, CondensedReactionGraph):
+            formed_bonds = graph.get_formed_bonds()
+            broken_bonds = graph.get_broken_bonds()
+
+            bonds_dict = sorted(
+                sorted(bond)
+                for bond in graph.bonds
+                if bond not in formed_bonds | broken_bonds
+            )
+            data["Bonds"] = bonds_dict
+            data["Formed Bonds"] = sorted(
+                tuple(sorted(bond)) for bond in formed_bonds
+            )
+            data["Broken Bonds"] = sorted(
+                tuple(sorted(bond)) for bond in broken_bonds
+            )
+        else:
+            bonds_dict = sorted(tuple(sorted(bond)) for bond in graph.bonds)
+            data["Bonds"] = bonds_dict
+
+        if isinstance(graph, StereoMolGraph):
+            atom_stereos: dict[Any, Any] = {}
+            bond_stereos: dict[Any, Any] = {}
+
+            for atom, stereo in graph.atom_stereo.items():
+                atom_stereos[atom] = {
+                    stereo.__class__.__name__: (stereo.atoms, stereo.parity)
+                }
+            if atom_stereos:
+                data["Atom Stereo"] = atom_stereos
+
+            for bond_fset, stereo in graph.bond_stereo.items():
+                bond_key = json.dumps(sorted(bond_fset))
+                bond_stereos[bond_key] = {
+                    stereo.__class__.__name__: (stereo.atoms, stereo.parity)
+                }
+            if bond_stereos:
+                data["Bond Stereo"] = bond_stereos
+
+        if isinstance(graph, StereoCondensedReactionGraph):
+            atom_changes: dict[Any, Any] = {}
+
+            for atom, change_dict in graph.atom_stereo_changes.items():
+                atom_change_dict: dict[str, Any] = {}
+                for change, stereo in change_dict.items():
+                    if stereo is not None:
+                        atom_change_dict[change.name] = {
+                            stereo.__class__.__name__: (
+                                stereo.atoms,
+                                stereo.parity,
+                            )
+                        }
+                if atom_change_dict:
+                    atom_changes[atom] = atom_change_dict
+            if atom_changes:
+                data["Atom Stereo Changes"] = atom_changes
+
+            bond_changes: dict[Any, Any] = {}
+            for bond_fset, change_dict in graph.bond_stereo_changes.items():
+                bond_key = json.dumps(sorted(bond_fset))
+                bond_change_dict: dict[str, Any] = {}
+                for change, stereo in change_dict.items():
+                    if stereo is not None:
+                        bond_change_dict[change.name] = {
+                            stereo.__class__.__name__: (
+                                stereo.atoms,
+                                stereo.parity,
+                            )
+                        }
+                if bond_change_dict:
+                    bond_changes[bond_key] = bond_change_dict
+            if bond_changes:
+                data["Bond Stereo Changes"] = bond_changes
+
+        return {graph_type: data}
+
+    @classmethod
+    def json_serialize(cls, graph: MolGraph) -> str:
+        return json.dumps(cls.as_dict(graph))
+
+    @staticmethod
+    def _stereo_from_payload(payload: Any):
+        if not payload:
+            return None
+        class_name, (atoms, parity) = next(iter(payload.items()))
+        stereo_cls = STEREO_CLASSES[class_name]
+        return stereo_cls(tuple(int(a) for a in atoms), parity)
+
+    @classmethod
+    def json_deserialize(cls, payload: str) -> MolGraph:
+        graph_type, graph_payload = next(iter(json.loads(payload).items()))
+        graph_cls = {
+            "MolGraph": MolGraph,
+            "StereoMolGraph": StereoMolGraph,
+            "CondensedReactionGraph": CondensedReactionGraph,
+            "StereoCondensedReactionGraph": StereoCondensedReactionGraph,
+        }[graph_type]
+
+        graph = graph_cls()
+
+        for atom_id, atom_type in graph_payload.get("Atoms", []):
+            graph.add_atom(int(atom_id), atom_type)
+
+        for bond_entry in graph_payload.get("Bonds", []):
+            graph.add_bond(*map(int, bond_entry))
+
+        if isinstance(graph, CondensedReactionGraph):
+            for bond_entry in graph_payload.get("Formed Bonds", []):
+                graph.add_formed_bond(*map(int, bond_entry))
+            for bond_entry in graph_payload.get("Broken Bonds", []):
+                graph.add_broken_bond(*map(int, bond_entry))
+
+        if isinstance(graph, StereoMolGraph):
+            for entry in graph_payload.get("Atom Stereo", {}).values():
+                stereo_obj = cls._stereo_from_payload(entry)
+                if stereo_obj is not None:
+                    graph.set_atom_stereo(stereo_obj)
+
+            for entry in graph_payload.get("Bond Stereo", {}).values():
+                stereo_obj = cls._stereo_from_payload(entry)
+                if stereo_obj is not None:
+                    graph.set_bond_stereo(stereo_obj)
+
+        if isinstance(graph, StereoCondensedReactionGraph):
+            for change_dict in graph_payload.get(
+                "Atom Stereo Changes", {}
+            ).values():
+                broken = cls._stereo_from_payload(change_dict.get("BROKEN"))
+                formed = cls._stereo_from_payload(change_dict.get("FORMED"))
+                fleeting = cls._stereo_from_payload(
+                    change_dict.get("FLEETING")
+                )
+                if any((broken, formed, fleeting)):
+                    graph.set_atom_stereo_change(
+                        broken=broken,
+                        formed=formed,
+                        fleeting=fleeting,
+                    )
+
+            for change_dict in graph_payload.get(
+                "Bond Stereo Changes", {}
+            ).values():
+                broken = cls._stereo_from_payload(change_dict.get("BROKEN"))
+                formed = cls._stereo_from_payload(change_dict.get("FORMED"))
+                fleeting = cls._stereo_from_payload(
+                    change_dict.get("FLEETING")
+                )
+                if any((broken, formed, fleeting)):
+                    graph.set_bond_stereo_change(
+                        broken=broken,
+                        formed=formed,
+                        fleeting=fleeting,
+                    )
+
+        return graph
 
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from collections.abc import Iterable, Iterator
 
-    from stereomolgraph.graphs.smg import (
-        AtomId,
-        AtomStereo,
-        Bond,
-        BondStereo,
-        StereoMolGraph,
-    )
-
-    Atom_Or_Bond = AtomId | Bond
+    from stereomolgraph.graphs.smg import AtomId, Bond, StereoMolGraph
 
 
-def generate_stereo_permutations(
-    smg: StereoMolGraph, atoms: Iterable[int], bonds: Iterable[frozenset[int]]
-) -> Iterator[StereoMolGraph]: ...
-
-
-def unique_generator(
-    source: Iterator[T],
-) -> Iterator[T]:
-    """Yield only the first occurrence of each element in *source*.
-
-    A fast *hash_func* groups candidates into buckets, and *eq_func* resolves
-    hash collisions by pairwise comparison. The function keeps only the minimal
-    state required to guard against duplicates and releases each unique element
-    lazily as soon as it is identified.
+def unique_generator(input_generator: Iterator) -> Iterator:
     """
+    A generator that yields unique objects from another generator.
 
-    buckets: dict[Hashable, list[T]] = {}
+    Args:
+        input_generator: A generator yielding hashable objects
 
-    for candidate in source:
-        key = hash(candidate)
-        bucket = buckets.get(key)
-
-        if bucket is None:
-            buckets[key] = [candidate]
-            yield candidate
-            continue
-
-        for seen in bucket:
-            # TODO: use refined colors!
-            if candidate == seen:
-                break
-        else:
-            bucket.append(candidate)
-            yield candidate
-
-
-def strongly_connected_components(
-    directed_multigraph: Mapping[int, Iterable[int]],
-) -> list[frozenset[int]]:
-    """Return SCCs in edge-respecting order, preferring larger components.
-
-    The graph is first decomposed with Tarjan's algorithm. The resulting
-    condensation DAG is then traversed with a size-aware Kahn topological
-    ordering so that whenever multiple SCCs are ready, the largest is emitted
-    first. This keeps traversal aligned with edge directions while favouring
-    richer components.
+    Yields:
+        Only the first occurrence of each unique object from the input generator
     """
-
-    adjacency: dict[int, set[int]] = {}
-    all_nodes: set[int] = set()
-
-    for node, neighbours in directed_multigraph.items():
-        node_neighbors = adjacency.setdefault(node, set())
-        for neighbour in neighbours:
-            node_neighbors.add(neighbour)
-            all_nodes.add(neighbour)
-        all_nodes.add(node)
-
-    for node in all_nodes:
-        adjacency.setdefault(node, set())
-
-    index_counter = 0
-    indices: dict[int, int] = {}
-    lowlinks: dict[int, int] = {}
-    stack: list[int] = []
-    on_stack: set[int] = set()
-    components: list[frozenset[int]] = []
-
-    def strongconnect(node: int) -> None:
-        nonlocal index_counter
-        indices[node] = index_counter
-        lowlinks[node] = index_counter
-        index_counter += 1
-
-        stack.append(node)
-        on_stack.add(node)
-
-        for neighbour in adjacency[node]:
-            if neighbour not in indices:
-                strongconnect(neighbour)
-                lowlinks[node] = min(lowlinks[node], lowlinks[neighbour])
-            elif neighbour in on_stack:
-                lowlinks[node] = min(lowlinks[node], indices[neighbour])
-
-        if lowlinks[node] == indices[node]:
-            component: set[int] = set()
-            while True:
-                w = stack.pop()
-                on_stack.remove(w)
-                component.add(w)
-                if w == node:
-                    break
-            components.append(frozenset(component))
-
-    for node in adjacency:
-        if node not in indices:
-            strongconnect(node)
-
-    if not components:
-        return []
-
-    component_index: dict[int, int] = {}
-    for idx, component in enumerate(components):
-        for member in component:
-            component_index[member] = idx
-
-    dag_successors: list[set[int]] = [set() for _ in components]
-    indegree: list[int] = [0] * len(components)
-
-    for node, neighbours in adjacency.items():
-        src_idx = component_index[node]
-        for neighbour in neighbours:
-            dst_idx = component_index[neighbour]
-            if src_idx == dst_idx:
-                continue
-            if dst_idx not in dag_successors[src_idx]:
-                dag_successors[src_idx].add(dst_idx)
-                indegree[dst_idx] += 1
-
-    heap: list[tuple[int, tuple[int, ...], int]] = []
-    for idx, component in enumerate(components):
-        if indegree[idx] == 0:
-            heappush(
-                heap,
-                (-len(component), tuple(sorted(component)), idx),
-            )
-
-    ordered_components: list[frozenset[int]] = []
-    while heap:
-        _, _, idx = heappop(heap)
-        ordered_components.append(components[idx])
-        for successor in dag_successors[idx]:
-            indegree[successor] -= 1
-            if indegree[successor] == 0:
-                successor_component = components[successor]
-                heappush(
-                    heap,
-                    (
-                        -len(successor_component),
-                        tuple(sorted(successor_component)),
-                        successor,
-                    ),
-                )
-
-    return ordered_components
-
-
-Color = int
-
-
-def fast_stereoisomer(
-    graph: StereoMolGraph,
-    atoms: Optional[Iterable[AtomId]] = None,
-    bonds: Optional[Iterable[Bond]] = None,
-) -> Iterator[StereoMolGraph]:
-    atoms = graph.atoms if atoms is None else tuple(atoms)
-    bonds = graph.bonds if bonds is None else tuple(bonds)
-
-    id_index_dict: dict[AtomId, int] = {
-        atom: idx for idx, atom in enumerate(graph.atoms)
-    }
-    init_colors: list[int] = [int(c) for c in color_refine_smg(graph)]
-
-    atom_stereodescriptor_colors: dict[Color, set[AtomId]] = defaultdict(set)
-    bond_stereodescriptor_colors: dict[Color, set[Bond]] = defaultdict(set)
-
-    for atom, color in zip(graph.atoms, init_colors):
-        if (
-            a_stereo := graph.get_atom_stereo(atom)
-        ) is not None and a_stereo.parity is None:
-            atom_stereodescriptor_colors[color].add(atom)
-
-    for bond, b_stereo in graph.bond_stereo.items():
-        if b_stereo.parity is None:
-            bond_color = hash(
-                frozenset(init_colors[id_index_dict[atom]] for atom in bond)
-            )
-            bond_stereodescriptor_colors[bond_color].add(bond)
-
-    unique_stereodescriptors: set[Atom_Or_Bond] = set()
-    for color, atoms in atom_stereodescriptor_colors.items():
-        if len(atoms) == 1:
-            unique_stereodescriptors.add(min(atoms))
-    for color, bonds in bond_stereodescriptor_colors.items():
-        if len(bonds) == 1:
-            unique_stereodescriptors.add(min(bonds))
-
-    dcg: dict[Color, set[Color]] = defaultdict(set)
-    for atom in graph.atoms:
-        if atom in unique_stereodescriptors:
-            continue
-        a_stereo = graph.get_atom_stereo(atom)
-        nbrs: Iterable[int] = (
-            a_stereo.atoms if a_stereo else graph.bonded_to(atom)
-        )
-        for nbr in nbrs:
-            if nbr not in unique_stereodescriptors:
-                dcg[init_colors[id_index_dict[atom]]].add(
-                    init_colors[id_index_dict[nbr]]
-                )
-
-    for bond, b_stereo in graph.bond_stereo.items():
-        if bond in unique_stereodescriptors:
-            continue
-        for nbr in b_stereo.atoms:
-            bond_color: int = hash(
-                frozenset(init_colors[id_index_dict[atom]] for atom in bond)
-            )
-            if nbr not in bond:
-                dcg[bond_color].add(init_colors[id_index_dict[nbr]])
-
-    sccs: list[frozenset[int]] = strongly_connected_components(dcg)
-
-    def set_atom_stereos(
-        smg: StereoMolGraph,
-        atom_stereos: Iterable[AtomStereo],
-    ) -> StereoMolGraph:
-        smg = smg.copy()
-        for atom_stereo in atom_stereos:
-            smg.set_atom_stereo(atom_stereo)
-        return smg
-
-    def set_bond_stereos(
-        smg: StereoMolGraph,
-        bond_stereos: Iterable[BondStereo],
-    ) -> StereoMolGraph:
-        smg = smg.copy()
-        for bond_stereo in bond_stereos:
-            smg.set_bond_stereo(bond_stereo)
-        return smg
-
-    def perm_gen(
-        smg: StereoMolGraph,
-        last_colors: Iterable[int],
-        sccs: list[frozenset[int]],
-        unique_stereodescriptors: set[int | frozenset[int]],
-    ) -> Iterator[StereoMolGraph]:
-        sccs = sccs.copy()
-        scc: frozenset[int | frozenset[int]] = sccs.pop()
-
-        if next(iter(scc)) in atom_stereodescriptor_colors:
-            a_stereos = [
-                a_stereo.get_isomers()  # type: ignore
-                for color in scc
-                for atom in atom_stereodescriptor_colors[color]
-                if (a_stereo := smg.get_atom_stereo(atom)).parity is None  # type: ignore
-            ]
-            perm_generator = itertools.product(*a_stereos)
-            smg_gen: Iterator[StereoMolGraph] = unique_generator(
-                set_atom_stereos(smg, perm_stereos)
-                for perm_stereos in perm_generator
-            )
-
-            if not sccs:
-                yield from smg_gen
-            else:
-                yield from perm_gen(
-                    smg,
-                    last_colors,
-                    sccs,
-                    unique_stereodescriptors,
-                )
-        elif next(iter(scc)) in bond_stereodescriptor_colors:
-            b_stereos = [
-                b_stereo.get_isomers()  # type: ignore
-                for color in scc
-                for bond in bond_stereodescriptor_colors[color]
-                if (b_stereo := smg.get_bond_stereo(bond)).parity is None  # type: ignore
-            ]
-            perm_generator = itertools.product(*b_stereos)
-            smg_gen: Iterator[StereoMolGraph] = unique_generator(
-                set_bond_stereos(smg, perm_stereos)
-                for perm_stereos in perm_generator
-            )
-
-            if not sccs:
-                yield from smg_gen
-            else:
-                yield from perm_gen(
-                    smg,
-                    last_colors,
-                    sccs,
-                    unique_stereodescriptors,
-                )
-
-    yield from perm_gen(graph, init_colors, sccs, unique_stereodescriptors)
+    seen_hash = set()
+    for item in input_generator:
+        item_hash = hash(item)
+        if item_hash not in seen_hash:
+            seen_hash.add(item_hash)
+            yield item
 
 
 def generate_stereoisomers(
     graph: StereoMolGraph,
     enantiomers: bool = True,
-    atoms: Optional[Iterable[AtomId]] = None,
-    bonds: Optional[Iterable[Bond]] = None,
+    atoms: None | Iterable[AtomId] = None,
+    bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoMolGraph]:
     """Generates all unique stereoisomers of a StereoMolGraph by generation of
     all combinations of parities. Only includes stereocenters which have a
@@ -391,13 +310,13 @@ def generate_stereoisomers(
 def generate_fleeting_stereoisomers(
     graph: StereoCondensedReactionGraph,
     enantiomers: bool = True,
-    atoms: Optional[Iterable[AtomId]] = None,
-    bonds: Optional[Iterable[Bond]] = None,
+    atoms: None | Iterable[AtomId] = None,
+    bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoCondensedReactionGraph]:
-    """Generate all unique fleeting stereoisomers of a reaction graph.
+    """Generates all unique fleeting stereoisomers of a StereoCondensedReactionGraph.
 
-    Only includes stereocenters which have a parity of None for the fleeting
-    change. If a parity is set, it is not changed.
+    Only includes stereocenters which have a parity of None for the fleeting change.
+    If a parity is set, it is not changed.
 
     Args:
         graph: The reaction graph to generate isomers from
@@ -463,7 +382,7 @@ def generate_fleeting_stereoisomers(
             stereoisomer.set_atom_stereo_change(fleeting=a_stereo)
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
-        
+
         stereoisomer_hash = hash(stereoisomer)
         if stereoisomer_hash not in seen_isomers_hash:
             seen_isomers_hash.add(stereoisomer_hash)
@@ -492,9 +411,6 @@ def topological_symmetry_number(graph: StereoMolGraph) -> int:
         )
     colorings = color_refine_smg(graph)
     mappings = vf2pp_all_isomorphisms(
-        graph,
-        graph,
-        atom_labels=(colorings, colorings),
-        stereo=True,
+        graph, graph, atom_labels=(colorings, colorings), stereo=True
     )
     return deque(enumerate(mappings, 1), maxlen=1)[0][0]

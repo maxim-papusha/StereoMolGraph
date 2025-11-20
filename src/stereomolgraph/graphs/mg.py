@@ -17,7 +17,6 @@ from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
 from stereomolgraph.periodic_table import PERIODIC_TABLE, SYMBOLS, Element
-from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 from stereomolgraph.xyz2graph import connectivity_from_geometry
 
 if TYPE_CHECKING:
@@ -445,9 +444,14 @@ class MolGraph:
                                     instead of the atom index
         :return: StereoMolGraph
         """
-        return mol_graph_from_rdmol(
+        from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
+        
+        mg = mol_graph_from_rdmol(
             cls, rdmol, use_atom_map_number=use_atom_map_number
-        )  # type: ignore
+        )
+        assert isinstance(mg, cls), (
+            "MolGraph.from_rdmol did not return a MolGraph")
+        return mg
 
     def relabel_atoms(
         self, mapping: dict[int, int], copy: bool = True
@@ -680,21 +684,16 @@ class MolGraph:
 
     def __str__(self) -> str:
         a_list = sorted(
-            (a, SYMBOLS[a_type])
+            [a, SYMBOLS[a_type]]
             for a, a_type in zip(self.atoms, self.atom_types)
         )
-        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
+        b_list = sorted(sorted(bond) for bond in self.bonds)
 
-        pretty_str = pformat(
-            [["Atoms", a_list], ["Bonds", b_list]],
-            indent=0,
-            width=120,
-            compact=True,
-            sort_dicts=True,
-        )
-        return f"{self.__class__.__name__}\n{pretty_str}".translate(
-            str.maketrans("", "", ",\"'[]")
-        )
+
+        string = {self.__class__.__name__: {'Atoms': a_list, 'Bonds': b_list}}
+        import json
+        return json.dumps(string)
+        
     
     def __repr__(self):
         return str(self)
