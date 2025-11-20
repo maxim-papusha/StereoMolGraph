@@ -45,6 +45,7 @@ class View2D(NamedTuple):
     show_h: bool = True
     generate_bond_orders: bool = False
     dummy_atoms: bool = True
+    color_planar_bond_changes: bool = True
 
     def svg(
         self,
@@ -116,7 +117,9 @@ class View2D(NamedTuple):
                     Chem.rdchem.BondType.HYDROGEN)
                 highlight_bond_colors[bond_idx] = (1, 0, 0)  # red
 
-        if isinstance(graph, StereoCondensedReactionGraph):
+        if (self.color_planar_bond_changes
+            and isinstance(graph, StereoCondensedReactionGraph)):
+
             for bond, change_dict in graph.bond_stereo_changes.items():
                 if change_dict[Change.FORMED] and not change_dict[Change.BROKEN]:
                     atoms_idx = [map_num_idx_dict[a] for a in bond]
@@ -140,7 +143,7 @@ class View2D(NamedTuple):
                     bonds_to_highlight.append(bond_idx)
                     mol.GetBondWithIdx(bond_idx).SetBondType(
                         Chem.rdchem.BondType.AROMATIC)
-                    highlight_bond_colors[bond_idx] = (1, 0, 1)
+                    highlight_bond_colors[bond_idx] = (1, 0, 1) # magenta
 
             # make dummy atoms and their bonds grey
         if self.dummy_atoms is True:
