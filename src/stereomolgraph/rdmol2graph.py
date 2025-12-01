@@ -20,7 +20,7 @@ from stereomolgraph.stereodescriptors import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from typing import ClassVar, Literal
 
 
@@ -73,12 +73,38 @@ def mol_graph_from_rdmol(
 class RDMol2StereoMolGraph:
     stereo_complete: bool = False
     use_atom_map_number: bool = False
-
+    resonance: bool = True
+    _max_resonance_structures: int = 1000
     # aromatic_cis: bool = True # TODO:
     # "aromatic bonds are always planar and cis if no stereochemistry is defined"
 
     def __call__(self, rdmol: Chem.Mol) -> StereoMolGraph:
-        return self.smg_from_rdmol(rdmol)
+        if self.resonance is False:
+            return self.smg_from_rdmol(rdmol)
+        elif self.resonance is True:
+            enumerator = Chem.ResonanceMolSupplier(
+                rdmol, Chem.KEKULE_ALL, self._max_resonance_structures
+            )
+            non_resonance_generator = self.__class__(
+                stereo_complete=self.stereo_complete,
+                use_atom_map_number=self.use_atom_map_number,
+                resonance=False,
+            )
+            return self.resonance_average(
+                (non_resonance_generator(i) for i in enumerator)
+            )
+
+    def resonance_average(
+        self, smgs: Iterable[StereoMolGraph]
+    ) -> StereoMolGraph:
+        gen = iter(smgs)
+        first_smg = next(gen)
+
+        for smg in gen:
+            for bond, bond_stereo in smg.bond_stereo.items():
+                if bond not in first_smg.bond_stereo:
+                    first_smg.set_bond_stereo(bond_stereo)
+        return first_smg
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
         rdmol = Chem.AddHs(rdmol, explicitOnly=False)

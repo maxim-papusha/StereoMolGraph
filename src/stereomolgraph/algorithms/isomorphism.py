@@ -713,3 +713,15 @@ def _revert_state(
     if not has_covered_neighbor:
         external2.add(last_atom2)
 
+def stereo_induced_subgraph_mappings(g1: MolGraph, g2:MolGraph,
+                                     ) -> Iterator[dict[AtomId, AtomId]]:
+    """
+    g2 is a induced subgraph of g1 if all atoms of g2 are in g1 and all bonds
+    of g2 are in g1 without additional bonds.
+    Also the stereodescriptors have to match fully. Additional AtomIds without
+    present atoms in g2 will still be mapped. Atom Stereodescriptors have to
+    contain the ce
+    """
+    ...
+
+
