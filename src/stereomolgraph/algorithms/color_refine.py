@@ -84,11 +84,8 @@ def label_hash(
     :param mg: MolGraph object containing the atoms.
     :param atom_labels: Iterable of attribute names to use for hashing.
     """
-    if len(atom_labels) == 1:
-        atom_label = next(iter(atom_labels))
-        atom_hash = [
-            hash(mg.get_atom_attribute(atom, atom_label)) for atom in mg.atoms
-        ]
+    if atom_labels == ("atom_type",):
+        atom_hash = mg.atom_types
     else:
         atom_hash = [
             hash(
@@ -326,7 +323,7 @@ def stereo_morgan_generator(
         i_b_perm_nbrs.append(b_perm_nbrs)
         i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
         i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_bond_stereo.fill(hash(perm_group))
+        i_bond_stereo.fill(numpy_int_tuple_hash(numpy_int_tuple_hash(arr_perm_group)))
         i_b.append(i_bond_stereo)
 
         for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):

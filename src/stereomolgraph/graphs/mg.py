@@ -412,7 +412,7 @@ class MolGraph:
 
     def to_rdmol(
         self,
-        generate_bond_orders: bool = False,
+        generate_bond_orders: bool = True,
         allow_charged_fragments: bool = False,
         charge: int = 0,
     ) -> Chem.rdchem.Mol:

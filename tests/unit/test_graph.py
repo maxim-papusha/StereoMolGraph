@@ -854,7 +854,7 @@ class TestStereoMolGraph(TestMolGraph):
 
         rdkit.Chem.rdDistGeom.EmbedMolecule(rdmol)
         xyz_str = rdkit.Chem.MolToXYZBlock(rdmol)
-        geo = Geometry.from_xyz_file(StringIO(xyz_str))
+        geo = Geometry.from_xyz(xyz_str)
         graph_geo = self._TestClass.from_geometry(geo)
 
         assert graph_mol == graph_geo
@@ -1154,7 +1154,7 @@ class TestStereoMolGraph(TestMolGraph):
         g_xyz_str = rdkit.Chem.MolToXYZBlock(g_mol)
         g_graph = self._TestClass.from_rdmol(g_mol, stereo_complete=True)
 
-        g_geo = Geometry.from_xyz_file(StringIO(g_xyz_str))
+        g_geo = Geometry.from_xyz(g_xyz_str)
 
         g_graph2 = self._TestClass.from_geometry(g_geo)
         #raise Exception(set(g_graph.atom_stereo).symmetric_difference(set(g_graph2.atom_stereo)))
