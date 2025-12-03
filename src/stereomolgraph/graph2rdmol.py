@@ -130,7 +130,7 @@ def mol_graph_to_rdmol(
         mol = set_bond_orders(
             graph=graph,
             mol=mol,
-            idx_map_num_dict=idx_map_ngium_dict,
+            idx_map_num_dict=idx_map_num_dict,
             allow_charged_fragments=allow_charged_fragments,
             charge=charge,
         )

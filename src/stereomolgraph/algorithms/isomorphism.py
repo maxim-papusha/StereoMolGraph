@@ -153,13 +153,10 @@ def _sanity_check_and_init(
     if stereo_change and not stereo:
         raise ValueError("Stereo change is only available for stereo graphs.")
 
-    g1_nbrhd = g1.neighbors
-    g2_nbrhd = g2.neighbors
+    g1_nbrhd = {a: g1.neighbors[a] for a in g1.atoms}
+    g2_nbrhd = {a: g2.neighbors[a] for a in g2.atoms}
 
-    if len(g1_nbrhd) == 0 or len(g2_nbrhd) == 0:
-        return None
-
-    elif not subgraph:
+    if not subgraph:
         if len(g1_nbrhd) != len(g2_nbrhd):
             return None
 
@@ -530,9 +527,13 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
         rarest_nodes = [
             n for n in V1_unordered if label_rarity[g1_labels[n]] == max_rarity
         ]
+        # Use a key that always returns an int (degree) so max() never
+        # receives None values. Previously a dict.get could return None
+        # for atoms not present in the neighborhood mapping which made
+        # `max` try to compare None values and raised a TypeError.
         max_node: AtomId = max(
             rarest_nodes,
-            key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get, # type: ignore
+            key=lambda a: len(g1_nbrhd.get(a, ())),
         )
         assert isinstance(max_node, int)
         for dlevel_nodes in _bfs_layers(g1_nbrhd, max_node):

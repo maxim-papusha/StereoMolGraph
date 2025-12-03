@@ -8,9 +8,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
 from stereomolgraph.algorithms.color_refine import (
+    color_refine_hash_scrg,
     color_refine_scrg,
     label_hash,
-    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -76,8 +76,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_scrg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        return color_refine_hash_scrg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

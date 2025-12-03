@@ -508,7 +508,6 @@ def color_refine_crg(
         atom_labels=atom_labels,
     )
 
-
 def color_refine_scrg(
     graph: StereoCondensedReactionGraph,
     max_iter: int | None = None,
@@ -520,3 +519,32 @@ def color_refine_scrg(
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
+
+
+def color_refine_hash_mg(graph: MolGraph) -> int:
+    """Color-refined hash for plain `MolGraph` objects."""
+    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    color_array = color_refine_mg(graph, atom_labels=initial_color_array)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_smg(graph: StereoMolGraph) -> int:
+    """Color-refined hash for `StereoMolGraph` objects.
+
+    Drops the extra sentinel slot the stereo generator appends.
+    """
+    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    color_array = color_refine_smg(graph, atom_labels=initial_color_array)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_crg(graph: CondensedReactionGraph) -> int:
+    """Color-refined hash for `CondensedReactionGraph` objects."""
+    color_array = color_refine_crg(graph)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_scrg(graph: StereoCondensedReactionGraph) -> int:
+    """Color-refined hash for `StereoCondensedReactionGraph` objects."""
+    color_array = color_refine_scrg(graph)
+    return int(numpy_int_multiset_hash(color_array))

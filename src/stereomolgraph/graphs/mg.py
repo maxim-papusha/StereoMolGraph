@@ -2,16 +2,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from pprint import pformat
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
+    color_refine_hash_mg,
     color_refine_mg,
     label_hash,
-    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -130,8 +129,7 @@ class MolGraph:
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_mg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        return color_refine_hash_mg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from collections import Counter
 from enum import Enum
 from typing import TYPE_CHECKING
 
 from stereomolgraph.algorithms.color_refine import (
-    numpy_int_multiset_hash,
+    color_refine_hash_crg,
     label_hash,
     color_refine_crg,
 )
@@ -49,8 +48,8 @@ class CondensedReactionGraph(MolGraph):
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_crg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        else:
+            return color_refine_hash_crg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

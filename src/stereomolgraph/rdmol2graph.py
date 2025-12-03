@@ -17,10 +17,11 @@ from stereomolgraph.stereodescriptors import (
     SquarePlanar,
     Tetrahedral,
     TrigonalBipyramidal,
+    BondStereo
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Mapping
     from typing import ClassVar, Literal
 
 
@@ -42,7 +43,6 @@ def mol_graph_from_rdmol(
                                 instead of the atom index
     :return: StereoMolGraph
     """
-    # rdmol = Chem.AddHs(rdmol, explicitOnly=True, addCoords=True)
 
     if use_atom_map_number is False:
         rdmol = Chem.rdmolops.AddHs(rdmol, explicitOnly=True)
@@ -71,42 +71,41 @@ def mol_graph_from_rdmol(
 
 @dataclass
 class RDMol2StereoMolGraph:
+    """
+    All aromatic bonds are considered to be cis.
+    Double bonds in rings are assumed to be cis for rings of size <= 7.
+
+    """
     stereo_complete: bool = False
     use_atom_map_number: bool = False
+    lone_pair_stereo: bool = True
     resonance: bool = True
-    _max_resonance_structures: int = 1000
-    # aromatic_cis: bool = True # TODO:
-    # "aromatic bonds are always planar and cis if no stereochemistry is defined"
+    _max_resonance_structures: int = 100
+    _min_trans_ring_size: int = 7
 
     def __call__(self, rdmol: Chem.Mol) -> StereoMolGraph:
+        smg = self.smg_from_rdmol(rdmol)
+
         if self.resonance is False:
-            return self.smg_from_rdmol(rdmol)
+            return smg
+        
         elif self.resonance is True:
-            enumerator = Chem.ResonanceMolSupplier(
-                rdmol, Chem.KEKULE_ALL, self._max_resonance_structures
-            )
-            non_resonance_generator = self.__class__(
-                stereo_complete=self.stereo_complete,
-                use_atom_map_number=self.use_atom_map_number,
-                resonance=False,
-            )
-            return self.resonance_average(
-                (non_resonance_generator(i) for i in enumerator)
-            )
+            enumerator = (res_mol for res_mol
+                          in Chem.ResonanceMolSupplier(
+                              rdmol, Chem.KEKULE_ALL,
+                              self._max_resonance_structures)
+                         if res_mol is not None)
 
-    def resonance_average(
-        self, smgs: Iterable[StereoMolGraph]
-    ) -> StereoMolGraph:
-        gen = iter(smgs)
-        first_smg = next(gen)
-
-        for smg in gen:
-            for bond, bond_stereo in smg.bond_stereo.items():
-                if bond not in first_smg.bond_stereo:
-                    first_smg.set_bond_stereo(bond_stereo)
-        return first_smg
+            for res_mol in enumerator:
+                res_smg = self.smg_from_rdmol(res_mol)
+                for bond, bond_stereo in res_smg.bond_stereo.items():
+                    if bond not in smg.bond_stereo:
+                        smg.set_bond_stereo(bond_stereo)
+        return smg
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
+        if rdmol is None:
+            raise ValueError("rdmol is None")
         rdmol = Chem.AddHs(rdmol, explicitOnly=False)
         graph = StereoMolGraph()
 
@@ -216,21 +215,22 @@ class RDMol2StereoMolGraph:
 
             else:
                 continue
-
+            
+            if not self.lone_pair_stereo and None in atom_stereo.atoms:
+                continue
             graph.set_atom_stereo(atom_stereo)
 
         for bond in (
             b
             for b in rdmol.GetBonds()
-            if b.GetIsAromatic()  # TODO: check if include conjugated bonds?
+            if (rd_bond_stereo := b.GetStereo()) in self._rd_atrop.keys()
+            or b.GetIsAromatic()
             or b.GetBondType() == Chem.rdchem.BondType.DOUBLE
-            or b.GetStereo() in self._rd_atrop.keys()
         ):
-            begin_idx: int
-            end_idx: int
-            begin_idx, end_idx = (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+            bond_stereo: BondStereo
 
-            rd_bond_stereo = bond.GetStereo()
+            begin_idx: int = bond.GetBeginAtomIdx()
+            end_idx: int = bond.GetEndAtomIdx()
 
             neighbors_begin: list[int] = [
                 atom.GetIdx()
@@ -288,14 +288,13 @@ class RDMol2StereoMolGraph:
                     raise RuntimeError("Stereo Atoms not neighbors")
 
                 assert len(bond_atoms) == 6
-                stereo = AtropBond(bond_atoms, atrop_parity)
+                bond_stereo = AtropBond(bond_atoms, atrop_parity)
 
             elif (
                 bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
                 and rd_bond_stereo == Chem.BondStereo.STEREONONE
                 and len(neighbors_begin) == 2 == len(neighbors_end)
             ):
-                rd_bond_stereo = bond.GetStereo()
                 invert: None | bool = None
 
                 bond_atoms_idx = (
@@ -308,8 +307,10 @@ class RDMol2StereoMolGraph:
                 bond_atoms = tuple(
                     [id_atom_map.get(a) for a in bond_atoms_idx]
                 )
-                assert len(bond_atoms) == 6, bond_atoms
-                stereo = PlanarBond(bond_atoms, None)
+                assert len(bond_atoms) == 6
+
+                bond_stereo = PlanarBond(bond_atoms, None)
+
 
             elif rd_bond_stereo in (
                 Chem.BondStereo.STEREOZ,
@@ -346,26 +347,25 @@ class RDMol2StereoMolGraph:
                     end_stereo_atom,
                     end_non_stereo_nbr,
                 )
-                assert len(bond_atoms_idx) == 6, bond_atoms_idx
+                assert len(bond_atoms_idx) == 6
 
-                assert len(bond_atoms_idx) == 6, bond_atoms_idx
+                assert len(bond_atoms_idx) == 6
 
                 bond_atoms = tuple(
                     [id_atom_map.get(a) for a in bond_atoms_idx]
                 )
-
+ 
                 if invert:
                     bond_atoms = tuple(
                         [bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)]
-                    )
-
-                assert len(bond_atoms) == 6, bond_atoms
-                stereo = PlanarBond(bond_atoms, 0)
-
+                        )
+                assert len(bond_atoms) == 6
+                bond_stereo = PlanarBond(bond_atoms, 0)
+                
             elif bond.GetBondType() == Chem.rdchem.BondType.AROMATIC or (
                 bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
                 and rd_bond_stereo == Chem.BondStereo.STEREONONE
-                and (len(neighbors_begin) == 1 or len(neighbors_end) == 1)
+                #and (len(neighbors_begin) == 1 or len(neighbors_end) == 1)
             ):
                 # Find rings with bond begin_idx-end_idx, sort by aromatic first then size
                 rings = [
@@ -390,6 +390,7 @@ class RDMol2StereoMolGraph:
                 rings.sort(key=lambda x: (not x[1], x[0]))
 
                 # Get ordered atoms from first ring (assumed cis)
+
                 ring = rings[0][2] if rings else []
                 n_begin = [
                     n.GetIdx()
@@ -421,23 +422,19 @@ class RDMol2StereoMolGraph:
                 bond_atoms = tuple(
                     [id_atom_map.get(a) for a in bond_atoms_idx]
                 )
-                stereo = PlanarBond(bond_atoms, 0)
+
+                assert len(bond_atoms) == 6
+                if rings and rings[0][1] is False and rings[0][0] > self._min_trans_ring_size:
+                    bond_stereo = PlanarBond(bond_atoms, None)
+                else:
+                    bond_stereo = PlanarBond(bond_atoms, 0)
 
             else:
                 continue
-                stereo_atoms = [
-                    neighbors_begin[0],
-                    neighbors_begin[1],
-                    begin_idx,
-                    end_idx,
-                    neighbors_end[0],
-                    neighbors_end[1],
-                ]
-                pb_atoms = tuple([id_atom_map[a] for a in stereo_atoms])
-                assert len(pb_atoms) == 6
-                stereo = PlanarBond(pb_atoms, None)
-
-            graph.set_bond_stereo(stereo)
+        
+            if not self.lone_pair_stereo and None in bond_stereo.atoms:
+                continue
+            graph.set_bond_stereo(bond_stereo)
 
         return graph
 

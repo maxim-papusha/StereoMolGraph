@@ -10,7 +10,7 @@ import numpy as np
 from stereomolgraph.algorithms.color_refine import (
     color_refine_smg,
     label_hash,
-    numpy_int_multiset_hash
+    color_refine_hash_smg,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -64,8 +64,8 @@ class StereoMolGraph(MolGraph):
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_smg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        else:
+            return color_refine_hash_smg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -329,8 +329,9 @@ class StereoMolGraph(MolGraph):
 
     @classmethod
     def from_rdmol(
-        cls, rdmol: Chem.Mol, use_atom_map_number: bool = False,
-        stereo_complete: bool = False,
+        cls, rdmol: Chem.Mol,
+        use_atom_map_number: bool = False,
+        stereo_complete: bool = True,
     ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
@@ -350,7 +351,10 @@ class StereoMolGraph(MolGraph):
         from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
         rd2smg = RDMol2StereoMolGraph(
             use_atom_map_number=use_atom_map_number,
-            stereo_complete=stereo_complete)
+            stereo_complete=stereo_complete,
+            resonance=True,
+            lone_pair_stereo=False,
+            )
         smg = rd2smg(rdmol)
         return cls(smg)
 
