@@ -71,10 +71,19 @@ def mol_graph_from_rdmol(
 
 @dataclass
 class RDMol2StereoMolGraph:
-    """
-    All aromatic bonds are considered to be cis.
-    Double bonds in rings are assumed to be cis for rings of size <= 7.
+    """Convert an RDKit :class:`rdkit.Chem.Mol` to a :class:`StereoMolGraph`.
 
+    All aromatic bonds are considered to be cis. Double bonds in rings are
+    assumed to be cis for rings of size <= 7.
+
+    :param stereo_complete: If ``True``, attempt to infer complete stereo
+        parities when possible. Defaults to ``False``.
+    :param use_atom_map_number: Use RDKit atom map numbers as atom identifiers
+        instead of RDKit atom indices. Defaults to ``False``.
+    :param lone_pair_stereo: Include stereochemistry that depends on lone
+        pairs (if present). Defaults to ``True``.
+    :param resonance: Enumerate resonance structures and merge bond stereo
+        information from them. Defaults to ``True``.
     """
     stereo_complete: bool = False
     use_atom_map_number: bool = False
