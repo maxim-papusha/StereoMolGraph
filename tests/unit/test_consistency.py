@@ -4,14 +4,21 @@ import pytest
 
 from stereomolgraph import StereoMolGraph
 from stereomolgraph.coords import Geometry
+from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
     Octahedral,
 )
 
+@pytest.fixture(scope="module")
+def rdmol2graph():
+    return RDMol2StereoMolGraph(stereo_complete = True,
+        use_atom_map_number = False,
+        lone_pair_stereo = False,
+        resonance = True)
 
 class TestRDKitConversion:
-    _TestClass = StereoMolGraph
+
 
     def test_from_rdmol(self):
         rdmol = rdkit.Chem.MolFromSmiles(
@@ -20,7 +27,10 @@ class TestRDKitConversion:
             "([H:77])[H:8]",
             sanitize=False,
         )
-        mol_graph = self._TestClass.from_rdmol(rdmol, use_atom_map_number=True)
+        mol_graph = RDMol2StereoMolGraph(stereo_complete = True,
+        use_atom_map_number = True,
+        lone_pair_stereo = False,
+        resonance = True)(rdmol)
 
         assert set(mol_graph.atoms) == set(
             (1, 2, 33, 4, 5, 6, 77, 8, 9, 10, 111, 12, 13)
@@ -49,12 +59,12 @@ class TestRDKitConversion:
         ],
         ids=["isopropanol", "caffeine"],
     )
-    def test_from_rdmol_to_rdmol_not_chiral(self, inchi):
+    def test_from_rdmol_to_rdmol_not_chiral(self, inchi, rdmol2graph):
         rdmol = rdkit.Chem.MolFromInchi(inchi, sanitize=False, removeHs=False)
         assert inchi == rdkit.Chem.MolToInchi(rdmol, treatWarningAsError=True)  # type: ignore
 
-        molgraph = self._TestClass.from_rdmol(rdmol)
-        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
+        smg = rdmol2graph(rdmol)
+        rdmol2, _ = smg._to_rdmol(generate_bond_orders=True)
         assert inchi == rdkit.Chem.MolToInchi(rdmol2, treatWarningAsError=True)  # type: ignore
 
     @pytest.mark.parametrize(
@@ -74,11 +84,11 @@ class TestRDKitConversion:
             "Butadiene",
         ],
     )
-    def test_from_rdmol_to_rdmol_stereo(self, inchi):
+    def test_from_rdmol_to_rdmol_stereo(self, inchi, rdmol2graph):
         rdmol = rdkit.Chem.MolFromInchi(inchi, sanitize=False)
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
-        molgraph = self._TestClass.from_rdmol(rdmol)
-        rdmol2, _ = molgraph._to_rdmol(generate_bond_orders=True)
+        smg = rdmol2graph(rdmol)
+        rdmol2, _ = smg._to_rdmol(generate_bond_orders=True)
         molblock = rdkit.Chem.MolToMolBlock(rdmol2)
         assert inchi == rdkit.Chem.MolBlockToInchi(molblock)  # type: ignore
 
@@ -93,15 +103,15 @@ class TestRDKitConversion:
         ],
         ids=["alpha-D-gulopyranose", "benzene", "caffeine","L-Histidine N3-H", "L-Histidine N1-H"],
     )
-    def test_from_rdmol_eq_from_geometry(self, inchi):
+    def test_from_rdmol_eq_from_geometry(self, inchi, rdmol2graph):
         rdmol = rdkit.Chem.MolFromInchi(inchi)
         rdmol = rdkit.Chem.AddHs(rdmol, addCoords=True)
-        graph_mol = self._TestClass.from_rdmol(rdmol, stereo_complete=True)
+        graph_mol = rdmol2graph(rdmol)
 
         rdkit.Chem.rdDistGeom.EmbedMolecule(rdmol)
         xyz_str = rdkit.Chem.MolToXYZBlock(rdmol)
         geo = Geometry.from_xyz(xyz_str)
-        graph_geo = self._TestClass.from_geometry(geo)
+        graph_geo = StereoMolGraph.from_geometry(geo)
 
         assert graph_mol == graph_geo
 
@@ -114,11 +124,11 @@ class TestRDKitConversion:
             "Cl[Pt@SP2](Cl)([NH3])[NH3]",
         ],
     )
-    def test_from_rdmol_to_rdmol_square_planar(self, smiles):
+    def test_from_rdmol_to_rdmol_square_planar(self, smiles, rdmol2graph):
         rdmol = rdkit.Chem.MolFromSmiles(smiles, sanitize=True)
         rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
-        molgraph = self._TestClass.from_rdmol(rdmol)
-        rdmol2, _ = molgraph._to_rdmol(
+        smg = rdmol2graph(rdmol)
+        rdmol2, _ = smg._to_rdmol(
             generate_bond_orders=True, allow_charged_fragments=True
         )
         rdkit.Chem.SanitizeMol(
@@ -131,14 +141,14 @@ class TestRDKitConversion:
             atom.SetAtomMapNum(0)
         assert rdkit.Chem.MolToSmiles(rdmol) == rdkit.Chem.MolToSmiles(rdmol2)
 
-    def test_from_rdmol_square_planar_different(self):
+    def test_from_rdmol_square_planar_different(self,rdmol2graph):
         smiles = ["Cl[Pt@SP1](Cl)([NH3])[NH3]", "Cl[Pt@SP2](Cl)([NH3])[NH3]"]
         rdmols = [rdkit.Chem.MolFromSmiles(s, sanitize=False) for s in smiles]
         rdmol = [rdkit.Chem.AddHs(mol, explicitOnly=True) for mol in rdmols]
-        molgraphs = [self._TestClass.from_rdmol(mol) for mol in rdmol]
+        molgraphs = [rdmol2graph(mol) for mol in rdmol]
         assert molgraphs[0] != molgraphs[1]
 
-    def test_from_rdmol_square_planar(self):
+    def test_from_rdmol_square_planar(self,rdmol2graph):
         smiles = (
             "C[Pt@SP1](F)(Cl)[H]",
             "C[Pt@SP2](Cl)(F)[H]",
@@ -146,10 +156,10 @@ class TestRDKitConversion:
         )
         mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
         mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
-        molgraphs = [self._TestClass.from_rdmol(i) for i in mols]
+        molgraphs = [rdmol2graph(i) for i in mols]
         assert all(molgraph == molgraphs[0] for molgraph in molgraphs)
 
-    def test_from_rdmol_trigonal_bipyramidal(self):
+    def test_from_rdmol_trigonal_bipyramidal(self, rdmol2graph):
         smiles = (
             "S[As@TB1](F)(Cl)(Br)N",
             "S[As@TB2](F)(Br)(Cl)N",
@@ -174,7 +184,7 @@ class TestRDKitConversion:
         )
         mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
         mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
-        molgraphs = [self._TestClass.from_rdmol(i) for i in mols]
+        molgraphs = [rdmol2graph(i) for i in mols]
         assert all(
             any(
                 isinstance(stereo, TrigonalBipyramidal)
@@ -184,7 +194,7 @@ class TestRDKitConversion:
         )
         assert all(molgraph == molgraphs[0] for molgraph in molgraphs)
 
-    def test_from_rdmol_octahedral(self):
+    def test_from_rdmol_octahedral(self, rdmol2graph):
         smiles = (
             "O[Co@OH1](Cl)(C)(N)(F)P",
             "O[Co@OH2](Cl)(F)(N)(C)P",
@@ -219,7 +229,7 @@ class TestRDKitConversion:
         )
         mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
         mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
-        molgraphs = [self._TestClass.from_rdmol(i) for i in mols]
+        molgraphs = [rdmol2graph(i) for i in mols]
         assert all(
             any(
                 isinstance(stereo, Octahedral)
@@ -229,7 +239,7 @@ class TestRDKitConversion:
         )
         assert all(molgraph == molgraphs[0] for molgraph in molgraphs)
 
-    def test_from_rdmol_octahedral_compare(self):
+    def test_from_rdmol_octahedral_compare(self, rdmol2graph):
         identical1 = (
             "Cl[Co@OH1](N)(N)(O)(Cl)Cl",
             "Cl[Co@OH2](N)(N)(O)(Cl)Cl",
@@ -269,13 +279,13 @@ class TestRDKitConversion:
 
         mols1 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical1]
         mols1 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols1]
-        molgraphs1 = [self._TestClass.from_rdmol(i) for i in mols1]
+        molgraphs1 = [rdmol2graph(i) for i in mols1]
         mols2 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical2]
         mols2 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols2]
-        molgraphs2 = [self._TestClass.from_rdmol(i) for i in mols2]
+        molgraphs2 = [rdmol2graph(i) for i in mols2]
         mols3 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical3]
         mols3 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols3]
-        molgraphs3 = [self._TestClass.from_rdmol(i) for i in mols3]
+        molgraphs3 = [rdmol2graph(i) for i in mols3]
 
         assert all(molgraph == molgraphs1[0] for molgraph in molgraphs1)
         assert all(molgraph == molgraphs2[0] for molgraph in molgraphs2)
@@ -314,7 +324,7 @@ class TestRDKitConversion:
 
         assert set() == set1 & set2 == set1 & set3 == set2 & set3
 
-    def test_inchi_coords(self):
+    def test_inchi_coords(self, rdmol2graph):
         g_inchi = (
             "InChI=1S/C9H16O6/c1-9(2)14-7-5(12)6(4(11)3-10)13-8(7)15-9/h4-8,10-12H,3H2,1-2H3/t4-,5+,6-,7-,8-/m1/s1"
         )
@@ -323,9 +333,9 @@ class TestRDKitConversion:
         )
         rdkit.Chem.rdDistGeom.EmbedMolecule(g_mol)
         g_xyz_str = rdkit.Chem.MolToXYZBlock(g_mol)
-        g_graph = self._TestClass.from_rdmol(g_mol, stereo_complete=True)
+        g_graph = rdmol2graph(g_mol)
 
         g_geo = Geometry.from_xyz(g_xyz_str)
 
-        g_graph2 = self._TestClass.from_geometry(g_geo)
+        g_graph2 = StereoMolGraph.from_geometry(g_geo)
         assert g_graph.is_isomorphic(g_graph2)

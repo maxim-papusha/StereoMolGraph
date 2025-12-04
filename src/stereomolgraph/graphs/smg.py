@@ -353,7 +353,7 @@ class StereoMolGraph(MolGraph):
             use_atom_map_number=use_atom_map_number,
             stereo_complete=stereo_complete,
             resonance=True,
-            lone_pair_stereo=False,
+            lone_pair_stereo=True,
             )
         smg = rd2smg(rdmol)
         return cls(smg)
