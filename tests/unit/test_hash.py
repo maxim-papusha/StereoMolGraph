@@ -1,6 +1,6 @@
 import pytest
 import rdkit
-import rdkit.Chem
+from rdkit import Chem
 
 from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.algorithms.color_refine import (
@@ -140,16 +140,17 @@ class TestHashConsistency:
         expected_hash,
         rdmol2graph: RDMol2StereoMolGraph,
     ):
-        rdmol1 = rdkit.Chem.MolFromSmiles(smiles)
-        rdmol1 = rdkit.Chem.AddHs(rdmol1, explicitOnly=True)
+        rdmol1 = Chem.MolFromSmiles(smiles)
+        rdmol1 = Chem.AddHs(rdmol1, explicitOnly=True)
         graph1 = rdmol2graph(rdmol1)
-        rdmol2 = rdkit.Chem.MolFromInchi(fixedh_inchi, sanitize=True)
-        rdmol2 = rdkit.Chem.AddHs(rdmol2, explicitOnly=True)
+        rdmol2 = Chem.MolFromInchi(fixedh_inchi, sanitize=True)
+        rdmol2 = Chem.AddHs(rdmol2, explicitOnly=True)
         graph2 = rdmol2graph(rdmol2)
 
+        assert graph1 == graph2
         assert (
             color_refine_hash_smg(graph1)
             == color_refine_hash_smg(graph2)
             == expected_hash
         )
-        assert graph1 == graph2
+        
