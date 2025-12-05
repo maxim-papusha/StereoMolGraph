@@ -1,6 +1,5 @@
 import pytest
-import rdkit
-from rdkit import Chem
+from rdkit import Chem # type: ignore
 
 from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.algorithms.color_refine import (
@@ -10,7 +9,7 @@ from stereomolgraph.algorithms.color_refine import (
 # This hash is supposed to be consistent between
 # different python and library verisions
 
-tcases = [
+tcases:list[dict[str, str|int]] = [
     {
         "name": "caffeine",
         "smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
@@ -118,7 +117,7 @@ tcases = [
 
 class TestHashConsistency:
     @pytest.fixture(scope="class")
-    def rdmol2graph(self):
+    def rdmol2graph(self) -> RDMol2StereoMolGraph:
         return RDMol2StereoMolGraph(
             stereo_complete=True,
             resonance=True,
@@ -134,17 +133,17 @@ class TestHashConsistency:
     )
     def test_all(
         self,
-        name,
-        smiles,
-        fixedh_inchi,
-        expected_hash,
+        name: str,
+        smiles: str,
+        fixedh_inchi: str,
+        expected_hash: int,
         rdmol2graph: RDMol2StereoMolGraph,
     ):
-        rdmol1 = Chem.MolFromSmiles(smiles)
-        rdmol1 = Chem.AddHs(rdmol1, explicitOnly=True)
+        rdmol1 = Chem.MolFromSmiles(smiles, sanitize=True)
+        rdmol1 = Chem.AddHs(rdmol1)
         graph1 = rdmol2graph(rdmol1)
-        rdmol2 = Chem.MolFromInchi(fixedh_inchi, sanitize=True)
-        rdmol2 = Chem.AddHs(rdmol2, explicitOnly=True)
+        rdmol2 = Chem.MolFromInchi(fixedh_inchi, sanitize=True, removeHs=False)
+        rdmol2 = Chem.AddHs(rdmol2)
         graph2 = rdmol2graph(rdmol2)
 
         assert graph1 == graph2
