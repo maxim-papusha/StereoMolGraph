@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING
 
 import rdkit.Chem as Chem  # type: ignore
 
@@ -27,21 +26,6 @@ from typing import ClassVar, Literal
 def mol_graph_from_rdmol(
     cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number: bool = False
 ) -> MolGraph:
-    """
-    Creates a StereoMolGraph from an RDKit Mol object.
-    Implicit Hydrogens are added to the graph.
-    Stereo information is conserved. Double bonds, aromatic bonds and
-    conjugated bonds are interpreted as planar. Atoms with 5 bonding
-    partners are assumed to be TrigonalBipyramidal and allow interchange
-    of the substituents (berry pseudorotation). Atoms with 6 bonding
-    partners are assumed to be octahedral and do not allow interchange of
-    the substituents.
-
-    :param rdmol: RDKit Mol object
-    :param use_atom_map_number: If the atom map number should be used
-                                instead of the atom index
-    :return: StereoMolGraph
-    """
 
     if use_atom_map_number is False:
         rdmol = Chem.rdmolops.AddHs(rdmol, explicitOnly=True)
@@ -114,7 +98,7 @@ class RDMol2StereoMolGraph:
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
         if rdmol is None:
             raise ValueError("rdmol is None")
-        rdmol = Chem.AddHs(rdmol, explicitOnly=False)
+        #rdmol = Chem.AddHs(rdmol, explicitOnly=False)
         graph = StereoMolGraph()
 
         id_atom_map: dict[int, AtomId]
