@@ -141,8 +141,10 @@ class TestHashConsistency:
         rdmol2graph: RDMol2StereoMolGraph,
     ):
         rdmol1 = rdkit.Chem.MolFromSmiles(smiles)
+        rdmol1 = rdkit.Chem.AddHs(rdmol1, explicitOnly=True)
         graph1 = rdmol2graph(rdmol1)
         rdmol2 = rdkit.Chem.MolFromInchi(fixedh_inchi, sanitize=True)
+        rdmol2 = rdkit.Chem.AddHs(rdmol2, explicitOnly=True)
         graph2 = rdmol2graph(rdmol2)
 
         assert (

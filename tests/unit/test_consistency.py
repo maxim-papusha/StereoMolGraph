@@ -27,6 +27,7 @@ class TestRDKitConversion:
             "([H:77])[H:8]",
             sanitize=False,
         )
+        rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         mol_graph = RDMol2StereoMolGraph(stereo_complete = True,
         use_atom_map_number = True,
         lone_pair_stereo = False,
@@ -61,6 +62,7 @@ class TestRDKitConversion:
     )
     def test_from_rdmol_to_rdmol_not_chiral(self, inchi, rdmol2graph):
         rdmol = rdkit.Chem.MolFromInchi(inchi, sanitize=False, removeHs=False)
+        rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
         assert inchi == rdkit.Chem.MolToInchi(rdmol, treatWarningAsError=True)  # type: ignore
 
         smg = rdmol2graph(rdmol)
@@ -105,7 +107,7 @@ class TestRDKitConversion:
     )
     def test_from_rdmol_eq_from_geometry(self, inchi, rdmol2graph):
         rdmol = rdkit.Chem.MolFromInchi(inchi)
-        rdmol = rdkit.Chem.AddHs(rdmol, addCoords=True)
+        rdmol = rdkit.Chem.AddHs(rdmol, addCoords=True, explicitOnly=True)
         graph_mol = rdmol2graph(rdmol)
 
         rdkit.Chem.rdDistGeom.EmbedMolecule(rdmol)
