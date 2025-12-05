@@ -20,9 +20,8 @@ from stereomolgraph.stereodescriptors import (
     BondStereo
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from typing import ClassVar, Literal
+from collections.abc import Mapping
+from typing import ClassVar, Literal
 
 
 def mol_graph_from_rdmol(
