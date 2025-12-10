@@ -53,13 +53,13 @@ classifiers = [
 
 dependencies = [
   "numpy>=1.20,<3",
-  "rdkit>=2022.9.1",
+  "rdkit",
 ]
 
 [dependency-groups]
 notebook = ["ipykernel"]
 docs = [{include-group = "notebook"},
-       "rdkit>=2022.9.1,<2025",
+       "rdkit",
        "sphinx>=8.2,<9;python_version>='3.11'",
        "sphinx-rtd-theme",
        "myst-nb",
