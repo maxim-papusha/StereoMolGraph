@@ -698,3 +698,4 @@ class MolGraph:
 
     def _ipython_display_(self) -> None:
         print(self.__repr__())
+

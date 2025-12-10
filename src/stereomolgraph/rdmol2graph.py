@@ -27,9 +27,6 @@ def mol_graph_from_rdmol(
     cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number: bool = False
 ) -> MolGraph:
 
-    if use_atom_map_number is False:
-        rdmol = Chem.rdmolops.AddHs(rdmol, explicitOnly=True)
-
     graph = cls()
 
     if use_atom_map_number:

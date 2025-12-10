@@ -16,8 +16,8 @@ from stereomolgraph.graphs.scrg import Change
 from stereomolgraph.stereodescriptors import PlanarBond
 
 
-def default_repr_svg(graph):
-    return View2D().svg(graph)
+def default_repr_svg(self: MolGraph) -> str:
+    return View2D().svg(self)
 
 
 def default_view_molgraph(self: MolGraph) -> None:
@@ -25,6 +25,13 @@ def default_view_molgraph(self: MolGraph) -> None:
 
 
 MolGraph._ipython_display_ = default_view_molgraph
+MolGraph._repr_svg_ = default_repr_svg
+
+class _HighlightTuple(NamedTuple):
+    atoms_to_highlight: list
+    highlight_atom_colors: dict
+    bonds_to_highlight: list
+    highlight_bond_colors: dict
 
 
 class View2D(NamedTuple):
@@ -50,7 +57,7 @@ class View2D(NamedTuple):
     dummy_atoms: bool = True
     color_planar_bond_changes: bool = True
 
-    def svg(
+    def _to_mol(
         self,
         graph: (
             MolGraph
@@ -58,7 +65,7 @@ class View2D(NamedTuple):
             | StereoMolGraph
             | StereoCondensedReactionGraph
         ),
-    ) -> str:
+    ) -> tuple[Chem.Mol, _HighlightTuple]:
         mol, idx_map_num_dict = graph._to_rdmol(
             generate_bond_orders=self.generate_bond_orders
         )
@@ -97,7 +104,9 @@ class View2D(NamedTuple):
 
         if isinstance(graph, StereoMolGraph) and not self.generate_bond_orders:
             for db in graph.bond_stereo.values():
-                if isinstance(db, PlanarBond):
+                if (isinstance(db, PlanarBond)
+                    and isinstance(db.atoms[2], int)
+                    and isinstance(db.atoms[3], int)):
                     a1 = map_num_idx_dict[db.atoms[2]]
                     a2 = map_num_idx_dict[db.atoms[3]]
                     rd_bond = mol.GetBondBetweenAtoms(a1, a2)
@@ -170,7 +179,22 @@ class View2D(NamedTuple):
                     for bond in atom.GetBonds():
                         bonds_to_highlight.append(bond.GetIdx())
                         highlight_bond_colors[bond.GetIdx()] = grey
-
+        ht = _HighlightTuple(atoms_to_highlight=atoms_to_highlight,
+                             highlight_atom_colors=highlight_atom_colors,
+                             bonds_to_highlight=bonds_to_highlight,
+                             highlight_bond_colors=highlight_bond_colors)
+        return mol, ht
+    
+    def svg(
+        self,
+        graph: (
+            MolGraph
+            | CondensedReactionGraph
+            | StereoMolGraph
+            | StereoCondensedReactionGraph
+        )
+    ) -> str:
+        mol, ht = self._to_mol(graph)
         Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True)  # type: ignore
         Chem.rdDepictor.StraightenDepiction(mol)  # type: ignore
 
@@ -184,10 +208,10 @@ class View2D(NamedTuple):
 
         drawer.DrawMolecule(
             mol,
-            highlightAtoms=atoms_to_highlight,
-            highlightAtomColors=highlight_atom_colors,
-            highlightBonds=bonds_to_highlight,
-            highlightBondColors=highlight_bond_colors,
+            highlightAtoms=ht.atoms_to_highlight,
+            highlightAtomColors=ht.highlight_atom_colors,
+            highlightBonds=ht.bonds_to_highlight,
+            highlightBondColors=ht.highlight_bond_colors,
         )
 
         drawer.FinishDrawing()

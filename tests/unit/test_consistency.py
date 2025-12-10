@@ -27,7 +27,7 @@ class TestRDKitConversion:
             "([H:77])[H:8]",
             sanitize=False,
         )
-        rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
+        rdmol = rdkit.Chem.AddHs(rdmol)
         mol_graph = RDMol2StereoMolGraph(stereo_complete = True,
         use_atom_map_number = True,
         lone_pair_stereo = False,
@@ -87,8 +87,8 @@ class TestRDKitConversion:
         ],
     )
     def test_from_rdmol_to_rdmol_stereo(self, inchi, rdmol2graph):
-        rdmol = rdkit.Chem.MolFromInchi(inchi, sanitize=False)
-        rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
+        rdmol = rdkit.Chem.MolFromInchi(inchi)
+        rdmol = rdkit.Chem.AddHs(rdmol)
         smg = rdmol2graph(rdmol)
         rdmol2, _ = smg._to_rdmol(generate_bond_orders=True)
         molblock = rdkit.Chem.MolToMolBlock(rdmol2)
@@ -127,8 +127,8 @@ class TestRDKitConversion:
         ],
     )
     def test_from_rdmol_to_rdmol_square_planar(self, smiles, rdmol2graph):
-        rdmol = rdkit.Chem.MolFromSmiles(smiles, sanitize=True)
-        rdmol = rdkit.Chem.AddHs(rdmol, explicitOnly=True)
+        rdmol = rdkit.Chem.MolFromSmiles(smiles)
+        rdmol = rdkit.Chem.AddHs(rdmol)
         smg = rdmol2graph(rdmol)
         rdmol2, _ = smg._to_rdmol(
             generate_bond_orders=True, allow_charged_fragments=True
@@ -145,8 +145,8 @@ class TestRDKitConversion:
 
     def test_from_rdmol_square_planar_different(self,rdmol2graph):
         smiles = ["Cl[Pt@SP1](Cl)([NH3])[NH3]", "Cl[Pt@SP2](Cl)([NH3])[NH3]"]
-        rdmols = [rdkit.Chem.MolFromSmiles(s, sanitize=False) for s in smiles]
-        rdmol = [rdkit.Chem.AddHs(mol, explicitOnly=True) for mol in rdmols]
+        rdmols = [rdkit.Chem.MolFromSmiles(s) for s in smiles]
+        rdmol = [rdkit.Chem.AddHs(mol) for mol in rdmols]
         molgraphs = [rdmol2graph(mol) for mol in rdmol]
         assert molgraphs[0] != molgraphs[1]
 
@@ -156,8 +156,8 @@ class TestRDKitConversion:
             "C[Pt@SP2](Cl)(F)[H]",
             "C[Pt@SP3](F)([H])Cl",
         )
-        mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
-        mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
+        mols = [rdkit.Chem.MolFromSmiles(i) for i in smiles]
+        mols = [rdkit.Chem.AddHs(i) for i in mols]
         molgraphs = [rdmol2graph(i) for i in mols]
         assert all(molgraph == molgraphs[0] for molgraph in molgraphs)
 
@@ -184,8 +184,8 @@ class TestRDKitConversion:
             "F[As@TB17](Cl)(Br)(S)N",
             "F[As@TB18](Br)(Cl)(S)N",
         )
-        mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
-        mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
+        mols = [rdkit.Chem.MolFromSmiles(i) for i in smiles]
+        mols = [rdkit.Chem.AddHs(i) for i in mols]
         molgraphs = [rdmol2graph(i) for i in mols]
         assert all(
             any(
@@ -229,8 +229,8 @@ class TestRDKitConversion:
             "O[Co@OH28](P)(Cl)(N)(F)C",
             "O[Co@OH27](P)(Cl)(N)(C)F",
         )
-        mols = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in smiles]
-        mols = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols]
+        mols = [rdkit.Chem.MolFromSmiles(i) for i in smiles]
+        mols = [rdkit.Chem.AddHs(i) for i in mols]
         molgraphs = [rdmol2graph(i) for i in mols]
         assert all(
             any(
@@ -279,14 +279,14 @@ class TestRDKitConversion:
             "Cl[Co@OH13](N)(N)(O)(Cl)Cl",
         )
 
-        mols1 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical1]
-        mols1 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols1]
+        mols1 = [rdkit.Chem.MolFromSmiles(i) for i in identical1]
+        mols1 = [rdkit.Chem.AddHs(i) for i in mols1]
         molgraphs1 = [rdmol2graph(i) for i in mols1]
-        mols2 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical2]
-        mols2 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols2]
+        mols2 = [rdkit.Chem.MolFromSmiles(i) for i in identical2]
+        mols2 = [rdkit.Chem.AddHs(i) for i in mols2]
         molgraphs2 = [rdmol2graph(i) for i in mols2]
-        mols3 = [rdkit.Chem.MolFromSmiles(i, sanitize=False) for i in identical3]
-        mols3 = [rdkit.Chem.AddHs(i, explicitOnly=True) for i in mols3]
+        mols3 = [rdkit.Chem.MolFromSmiles(i) for i in identical3]
+        mols3 = [rdkit.Chem.AddHs(i) for i in mols3]
         molgraphs3 = [rdmol2graph(i) for i in mols3]
 
         assert all(molgraph == molgraphs1[0] for molgraph in molgraphs1)
