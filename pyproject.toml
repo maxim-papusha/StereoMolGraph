@@ -59,7 +59,7 @@ dependencies = [
 [dependency-groups]
 notebook = ["ipykernel"]
 docs = [{include-group = "notebook"},
-       "rdkit",
+       "rdkit==2024.9.3",
        "sphinx>=8.2,<9;python_version>='3.11'",
        "sphinx-rtd-theme",
        "myst-nb",
