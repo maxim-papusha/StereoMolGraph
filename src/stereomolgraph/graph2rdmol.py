@@ -68,16 +68,18 @@ def set_bond_orders(
         )
     )
 
-    index_map_num_dict = {i: map_num for i, map_num in enumerate(graph.atoms)}
+    # Map atom identifiers to their position in the connectivity matrix
+    atom_idx_in_matrix = {map_num: i for i, map_num in enumerate(graph.atoms)}
 
+    # Map atom identifiers to RDKit indices in the constructed molecule
     map_num_idx_dict = {
         map_num: idx for idx, map_num in idx_map_num_dict.items()
     }
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[index_map_num_dict[atom1]][
-            index_map_num_dict[atom2]
+        bond_order = bond_order_mat[atom_idx_in_matrix[atom1]][
+            atom_idx_in_matrix[atom2]
         ]
 
         mol.GetBondBetweenAtoms(
