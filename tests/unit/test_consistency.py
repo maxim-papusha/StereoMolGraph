@@ -341,3 +341,13 @@ class TestRDKitConversion:
 
         g_graph2 = StereoMolGraph.from_geometry(g_geo)
         assert g_graph.is_isomorphic(g_graph2)
+
+    def test_ethene_bond_stereo_parity(self, rdmol2graph):
+        rdmol = rdkit.Chem.MolFromSmiles('C=C')
+        rdmol = rdkit.Chem.AddHs(rdmol)
+        smg = rdmol2graph(rdmol)
+        
+        # Check that all bond stereo have parity not None
+        assert smg.bond_stereo
+        for bond_stereo in smg.bond_stereo.values():
+            assert bond_stereo.parity is not None
