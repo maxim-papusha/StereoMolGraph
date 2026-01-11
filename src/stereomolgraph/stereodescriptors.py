@@ -221,7 +221,7 @@ class _StereoMixin(Generic[A, P]):
 
 
 class Tetrahedral(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
@@ -270,7 +270,7 @@ class Tetrahedral(
 
 
 class SquarePlanar(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
@@ -313,7 +313,7 @@ class SquarePlanar(
 
 
 class TrigonalBipyramidal(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
@@ -360,7 +360,7 @@ class TrigonalBipyramidal(
 
 class Octahedral(
     _StereoMixin[
-        tuple[OInt, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
+        tuple[int, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
     ],
 ):
     """Represents all possible configurations of atoms for a Octahedral
@@ -416,7 +416,7 @@ class Octahedral(
 
 
 class PlanarBond(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
+    _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
@@ -461,7 +461,7 @@ class PlanarBond(
 
 
 class AtropBond(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""
     Represents all possible configurations of atoms for a
@@ -498,3 +498,38 @@ class AtropBond(
         bond = frozenset(self.atoms[2:4])
         assert len(bond) == 2
         return bond
+
+
+class NonRotatableBond(
+    _StereoMixin[tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt],
+                 None | Literal[0]],
+):
+    r"""
+    Represents a bond that cannot freely rotate
+ 
+             0    5
+             |    |
+        1  ▷ 3 - 4 ◁ 6
+            ◀     ▶
+           2        7
+
+    """
+    parity = 0
+    inversion = None
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4, 5, 6, 7),
+                         (5, 7, 6, 4, 3, 0, 2, 1),
+                         (1, 2, 0, 3, 4, 6, 7, 5),
+                         (6, 5, 7, 4, 3, 1, 0, 2),
+                         (2, 0, 1, 3, 4, 7, 5, 6),
+                         (7, 6, 5, 4, 3, 2, 1, 0))
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[3:5])
+        assert len(bond) == 2
+        return bond
+

@@ -219,10 +219,10 @@ def _octahedral_from_coords(
     planar_groups: list[set[int]] = []
     for p1, p2, p3, p4 in itertools.combinations(indeces, 4):
         points = [p1, p2, p3, p4]
-        if are_planar(coords[points]):
+        if are_planar(coords[points], threshold=0.3):
             planar_groups.append(set(points))
 
-    if not len(planar_groups) == 3:
+    if len(planar_groups) != 3:
         return None
 
     trans_atoms = planar_groups[0].intersection(planar_groups[1])
@@ -239,9 +239,13 @@ def _octahedral_from_coords(
     a3, a5 = cis_atoms0
     a4, a6 = cis_atoms1
 
-    parity = int(handedness(coords[[a1, a3, a5, a4]]))
+
+
+    parity = int(handedness(coords[[a1, a3, a4, a2]]))
+    parity2 = int(handedness(coords[[a1, a3, a6, a2]]))
+    assert parity2 == -parity
     assert parity == 1 or parity == -1
-    return Octahedral((atoms[0], a1, a2, a3, a4, a5, a6), parity)
+    return Octahedral((atoms[0], atoms[a1], atoms[a2], atoms[a3], atoms[a4], atoms[a5], atoms[a6]), parity)
 
 
 def _planar_bond_from_coords(

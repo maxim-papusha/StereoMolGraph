@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     FOUR = Literal[4]
 
 def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
-               threshold: float = 1.0
+               threshold: float = 0.35
                ) -> np.bool_:
     """Checks if all atoms are in one plane
 
@@ -48,20 +48,25 @@ def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
         raise ValueError("threshold has to be bigger than 0")
     if len(points) < 4:
         return np.bool_(True)
+    points = np.asarray(points, dtype=float)
 
-    for p1, p2, p3, p4 in combinations(points, 4):
-        d = deque([p1, p2, p3, p4])
-        for _ in range(4):
-            d.rotate()
-            vec1 = p1 - p2
-            vec2 = p3 - p2
-            vec3 = p4 - p2
-            normal = np.cross(vec1, vec2)
-            norm_normal = normal / np.linalg.norm(normal)
-            result = abs(np.dot(norm_normal, vec3))
-            if result > threshold:
-                return np.bool_(False)
-    return np.bool_(True)
+    # centroid
+    x0 = points.mean(axis=0)
+
+    # centered coordinates
+    X = points - x0
+
+    # SVD → plane normal is direction of smallest variance
+    _, _, vh = np.linalg.svd(X, full_matrices=False)
+    n = vh[-1]
+
+    # normalize normal
+    n /= np.linalg.norm(n)
+
+    # orthogonal distances
+    distances = np.abs(X @ n)
+    
+    return np.bool_(np.all(distances <= threshold))
 
 def are_planar_volume(
     coords: np.ndarray[tuple[FOUR, THREE], NP_FLOAT], threshold: float = 3.0
@@ -235,27 +240,81 @@ class Geometry:
         return cls._from_xyz_stream(io.StringIO(xyz_string))
 
     @classmethod
+    def _parse_one_xyz_structure(cls, stream: TextIO) -> Geometry | None:
+        """Parse a single XYZ structure from current stream position.
+        
+        :param stream: File-like object positioned at start of a structure
+        :return: Geometry object or None if end of stream
+        """
+        # Read the number of atoms
+        n_atoms_line = stream.readline()
+        if not n_atoms_line or not n_atoms_line.strip():
+            return None
+        
+        try:
+            n_atoms = int(n_atoms_line.strip())
+        except ValueError:
+            return None
+        
+        # Read and discard the comment line
+        if not stream.readline():
+            raise ValueError("Unexpected end of file at comment line")
+        
+        # Read and parse atom lines
+        dt = np.dtype([("atom", "U5"), ("x", "f8"), ("y", "f8"), ("z", "f8")])
+        atom_lines = [stream.readline() for _ in range(n_atoms)]
+        
+        if not all(atom_lines):
+            raise ValueError("Unexpected end of file while reading atoms")
+        
+        atom_data = np.loadtxt(io.StringIO("".join(atom_lines)), dtype=dt, comments=None)
+        atom_types = [PERIODIC_TABLE[atom] for atom in atom_data["atom"]]
+        coords = np.column_stack((atom_data["x"], atom_data["y"], atom_data["z"]))
+        
+        return cls(atom_types=atom_types, coords=coords)
+
+    @classmethod
     def _from_xyz_stream(cls, stream: TextIO) -> Geometry:
         """Core parser for XYZ content from a file-like stream.
 
         This implements the actual parsing once and is used by both
         `from_xyz_file` and `from_xyz` to avoid duplicated code.
         """
-        dt = np.dtype(
-            [
-                ("atom", "U5"),  # Unicode string up to 5 characters
-                ("x", "f8"),  # 64-bit float
-                ("y", "f8"),
-                ("z", "f8"),
-            ]
-        )
+        geom = cls._parse_one_xyz_structure(stream)
+        if geom is None:
+            raise ValueError("Empty or invalid XYZ data")
+        return geom
 
-        data = np.loadtxt(stream, skiprows=2, dtype=dt, comments=None)
+    @classmethod
+    def from_xyz_file_multi(cls, path: PathLike[str] | str) -> tuple[Geometry, ...]:
+        """Create multiple Geometries from an XYZ file containing multiple structures.
+        
+        :param path: Path to XYZ file containing one or more structures
+        :return: Tuple of Geometry objects
+        """
+        with open(path, "r") as fh:
+            return cls._from_xyz_stream_multi(fh)
 
-        atom_types = [PERIODIC_TABLE[atom] for atom in data["atom"]]
-        coords = np.column_stack((data["x"], data["y"], data["z"]))
+    @classmethod
+    def from_xyz_multi(cls, xyz_string: str) -> tuple[Geometry, ...]:
+        """Create multiple Geometries from an XYZ-format string containing multiple structures.
+        
+        :param xyz_string: XYZ-format string containing one or more structures
+        :return: Tuple of Geometry objects
+        """
+        return cls._from_xyz_stream_multi(io.StringIO(xyz_string))
 
-        return cls(atom_types=atom_types, coords=coords)
+    @classmethod
+    def _from_xyz_stream_multi(cls, stream: TextIO) -> tuple[Geometry, ...]:
+        """Core parser for multiple XYZ structures from a file-like stream.
+        
+        :param stream: File-like object containing XYZ data
+        :return: Tuple of Geometry objects
+        """
+        geometries: list[Geometry] = []
+        while (geom := cls._parse_one_xyz_structure(stream)) is not None:
+            geometries.append(geom)
+        return tuple(geometries)
 
     def xyz_str(self, comment: None | str = None) -> str:
         """
@@ -280,7 +339,7 @@ class Geometry:
 
 
 def default_connectivity_cutoff(atom_types: tuple[Element, Element]) -> float:
-    return sum(COVALENT_RADII[a] for a in atom_types) * 1.2
+    return sum(COVALENT_RADII[a] for a in atom_types) * 1.3
 
 
 CONNECTIVITY_CUTOFF_FUNC: Callable[[tuple[Element, Element]], float] = (
@@ -347,10 +406,7 @@ class BondsFromDistance:
         elements = (PERIODIC_TABLE[atom_types[0]],
             PERIODIC_TABLE[atom_types[1]],
         )
-        if distance < 0:
-            raise ValueError("distance can not be negative")
-        else:
-            return 1 if distance < self.connectivity_cutoff[elements] else 0
+        return 1 if distance < self.connectivity_cutoff[elements] else 0
 
     def array(
         self,

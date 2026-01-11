@@ -171,9 +171,10 @@ def stereo_morgan_generator(
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
 
-    init_atom_hash = (label_hash(smg, ("atom_type",))
-                      if atom_labels is None else atom_labels)
-    atom_hash = np.append(init_atom_hash, 0) # 0 for "None" in Stereo.atoms
+    init_atom_hash = (
+        label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
+    )
+    atom_hash = np.append(init_atom_hash, 0)  # 0 for "None" in Stereo.atoms
 
     atom_hash_view = atom_hash.view()
     atom_hash_view.setflags(write=False)
@@ -323,7 +324,9 @@ def stereo_morgan_generator(
         i_b_perm_nbrs.append(b_perm_nbrs)
         i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
         i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_bond_stereo.fill(numpy_int_tuple_hash(numpy_int_tuple_hash(arr_perm_group)))
+        i_bond_stereo.fill(
+            numpy_int_tuple_hash(numpy_int_tuple_hash(arr_perm_group))
+        )
         i_b.append(i_bond_stereo)
 
         for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
@@ -405,8 +408,9 @@ def _reaction_generator(
         for axis, it in enumerate(color_iters):
             color = next(it)
             if stacked is None:
-                stacked = np.empty((*color.shape, len(color_iters)),
-                                   dtype=np.int64)
+                stacked = np.empty(
+                    (*color.shape, len(color_iters)), dtype=np.int64
+                )
                 hash_buf = np.empty(color.shape, dtype=np.int64)
             np.copyto(stacked[..., axis], color)
 
@@ -464,6 +468,10 @@ def _color_refine(
             break
         elif new_n_classes == n_atoms:
             break
+        elif new_n_classes < n_atom_classes:
+            raise RuntimeError("Number of atom classes decreased.")
+        elif new_n_classes > n_atoms:
+            raise RuntimeError("Number of atom classes exceeded number of atoms.")
         else:
             n_atom_classes = new_n_classes
 
@@ -548,3 +556,18 @@ def color_refine_hash_scrg(graph: StereoCondensedReactionGraph) -> int:
     """Color-refined hash for `StereoCondensedReactionGraph` objects."""
     color_array = color_refine_scrg(graph)
     return int(numpy_int_multiset_hash(color_array))
+
+
+def modulo_fold(
+    vec: np.ndarray, n_bits: int = 1024, count: bool = False, dtype=np.uint32
+) -> np.ndarray:
+    idx = np.mod(vec, n_bits)
+
+    fp = np.zeros(n_bits, dtype=dtype)
+
+    if count:
+        np.add.at(fp, idx, 1)
+    else:
+        fp[idx] = 1
+
+    return fp
