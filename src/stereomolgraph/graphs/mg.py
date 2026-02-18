@@ -390,6 +390,16 @@ class MolGraph:
         matrix = np.zeros((n, n), dtype=np.int8)
         atomid_index_dict = {id: index for index, id in enumerate(self.atoms)}
 
+        dangling = [
+            (a1, a2)
+            for a1, a2 in self.bonds
+            if a1 not in atomid_index_dict or a2 not in atomid_index_dict
+        ]
+        if dangling:
+            raise ValueError(
+                "Dangling bonds reference missing atoms: " + str(dangling)
+            )
+
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1

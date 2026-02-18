@@ -195,7 +195,13 @@ class View2D(NamedTuple):
         )
     ) -> str:
         mol, ht = self._to_mol(graph)
-        Chem.rdDepictor.Compute2DCoords(mol, useRingTemplates=True)  # type: ignore
+        
+        Chem.rdDepictor.Compute2DCoords(mol,  # type: ignore
+                                        clearConfs=True,
+                                        sampleSeed=42,
+                                        nSample=100,
+                                        permuteDeg4Nodes=True,
+                                        useRingTemplates=True)
         Chem.rdDepictor.StraightenDepiction(mol)  # type: ignore
 
         drawer = Draw.rdMolDraw2D.MolDraw2DSVG(self.width, self.height)
