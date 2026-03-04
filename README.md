@@ -1,7 +1,7 @@
 # StereoMolGraph
 
 [![View Documentation](https://img.shields.io/badge/📖-Documentation-8CA1AF)](https://stereomolgraph.readthedocs.io)
-[![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13-blue?logo=python)](https://www.python.org/)
+[![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13|3.14-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 ![PyPI - Version](https://img.shields.io/pypi/v/StereoMolGraph?link=https%3A%2F%2Fpypi.org%2Fproject%2FStereoMolGraph)
 [![Documentation Status](https://readthedocs.org/projects/stereomolgraph/badge/?version=dev)](https://stereomolgraph.readthedocs.io/en/latest/?badge=dev)
