@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools >= 70.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b9"
+version = "0.0.0b17"
 readme = "README.md"
 requires-python = ">=3.10"
 
