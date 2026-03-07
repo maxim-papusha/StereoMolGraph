@@ -9,6 +9,7 @@
 [![Test Examples](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_example_test.yaml)
 [![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
 [![DOI](doi.org/10.26434/chemrxiv-2025-0g4wn)](https://doi.org/10.26434/chemrxiv-2025-0g4wn)
+[![DOI](http://img.shields.io/badge/DOI-doi.org/10.26434/chemrxiv-2025-0g4wn-blue.svg)](https://doi.org/10.26434/chemrxiv-2025-0g4wn)
 [![PyPI Downloads](https://static.pepy.tech/badge/stereomolgraph)](https://pepy.tech/projects/stereomolgraph)
 
 StereoMolGraph (SMG) is a lightweight Python library for representing molecules and transition states with explicit, local stereochemistry. It provides:
