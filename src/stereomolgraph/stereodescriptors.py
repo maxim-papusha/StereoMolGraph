@@ -102,6 +102,7 @@ class _StereoMixin(Generic[A, P]):
         return f"{self.__class__.__name__}({self.atoms}, {self.parity})"
 
     def __init__(self, atoms: A, parity: P = None):
+        assert len(atoms) == len(self.PERMUTATION_GROUP[0])
         self.atoms = atoms
         self.parity = parity
 
@@ -154,6 +155,8 @@ class _StereoMixin(Generic[A, P]):
         return (ret_parity, *canon_atoms)
 
     def __eq__(self, other: Any) -> bool:
+        if not hasattr(other, "atoms") or not hasattr(other, "parity"):
+            return NotImplemented
         s_atoms, o_atoms = self.atoms, other.atoms
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
@@ -185,7 +188,7 @@ class _StereoMixin(Generic[A, P]):
             if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
-            if self.parity is None or other.parity is None:
+            if other.parity is None:
                 return set_s_atoms == set_o_atoms
 
             if self.parity == other.parity:

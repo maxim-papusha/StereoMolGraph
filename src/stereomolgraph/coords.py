@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from collections import deque
 from itertools import combinations
 from typing import TYPE_CHECKING
@@ -17,7 +18,7 @@ from stereomolgraph.periodic_table import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from os import PathLike
-    from typing import Literal, TypeVar
+    from typing import Literal, TextIO, TypeVar
 
     NP_FLOAT = TypeVar(
         "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
@@ -216,7 +217,30 @@ class Geometry:
     @classmethod
     def from_xyz_file(cls, path: PathLike[str] | str) -> Geometry:
         """Create a Geometry from an XYZ file."""
+        # Delegate to the stream-based implementation for a single core
+        # implementation. We open the file and pass the file object so
+        # that the parsing logic is shared with `from_xyz`.
+        with open(path, "r") as fh:
+            return cls._from_xyz_stream(fh)
 
+    @classmethod
+    def from_xyz(cls, xyz_string: str) -> Geometry:
+        """Create a Geometry from an XYZ-format string.
+
+        This mirrors :meth:`from_xyz_file` but reads from a string instead of a
+        file path.
+        """
+        # Reuse the stream-based implementation by wrapping the string in
+        # a StringIO and delegating to the shared parser.
+        return cls._from_xyz_stream(io.StringIO(xyz_string))
+
+    @classmethod
+    def _from_xyz_stream(cls, stream: TextIO) -> Geometry:
+        """Core parser for XYZ content from a file-like stream.
+
+        This implements the actual parsing once and is used by both
+        `from_xyz_file` and `from_xyz` to avoid duplicated code.
+        """
         dt = np.dtype(
             [
                 ("atom", "U5"),  # Unicode string up to 5 characters
@@ -226,7 +250,7 @@ class Geometry:
             ]
         )
 
-        data = np.loadtxt(path, skiprows=2, dtype=dt, comments=None)
+        data = np.loadtxt(stream, skiprows=2, dtype=dt, comments=None)
 
         atom_types = [PERIODIC_TABLE[atom] for atom in data["atom"]]
         coords = np.column_stack((data["x"], data["y"], data["z"]))
