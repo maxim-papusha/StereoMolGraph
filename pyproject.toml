@@ -60,7 +60,7 @@ docs = ["rdkit>=2022.9.1,<2025",
 
 dev = ["pytest>=7.1.2",
        "hypothesis",
-       "ipykernel",
+       "nbclient",
        "nbformat",
        "ruff>=0.6.0"]
 
