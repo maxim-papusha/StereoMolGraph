@@ -86,15 +86,12 @@ def label_hash(
     """
     if len(atom_labels) == 1:
         atom_label = next(iter(atom_labels))
-        atom_hash = [
-            hash(mg.get_atom_attribute(atom, atom_label)) for atom in mg.atoms
-        ]
+        atom_hash = [hash(mg.get_atom_attribute(atom, atom_label)) for atom in mg.atoms]
     else:
         atom_hash = [
             hash(
                 frozenset(
-                    (attr, mg.get_atom_attribute(atom, attr))
-                    for attr in atom_labels
+                    (attr, mg.get_atom_attribute(atom, attr)) for attr in atom_labels
                 )
             )
             for atom in mg.atoms
@@ -118,9 +115,7 @@ def morgan_generator(
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
 
-    atom_hash = (
-        label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
-    )
+    atom_hash = label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
     yield atom_hash
     if n_atoms == 0:
         return
@@ -138,9 +133,7 @@ def morgan_generator(
     bonded_lst.sort(key=lambda x: len(x[1]))
 
     id_nbrs_tuple_list = []
-    for n_nbrs, group in itertools.groupby(
-        bonded_lst, key=lambda x: len(x[1])
-    ):
+    for n_nbrs, group in itertools.groupby(bonded_lst, key=lambda x: len(x[1])):
         if n_nbrs == 0:
             continue  # Skip aggregation if no neighbors
 
@@ -170,9 +163,10 @@ def stereo_morgan_generator(
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
 
-    init_atom_hash = (label_hash(smg, ("atom_type",))
-                      if atom_labels is None else atom_labels)
-    atom_hash = np.append(init_atom_hash, 0) # 0 for "None" in Stereo.atoms
+    init_atom_hash = (
+        label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
+    )
+    atom_hash = np.append(init_atom_hash, 0)  # 0 for "None" in Stereo.atoms
 
     yield atom_hash
 
@@ -220,28 +214,20 @@ def stereo_morgan_generator(
     for atom, stereo in smg.atom_stereo.items():
         if stereo.parity is not None:
             nbr_atoms = (
-                stereo.atoms
-                if stereo.parity != -1
-                else stereo._inverted_atoms()  # type: ignore
+                stereo.atoms if stereo.parity != -1 else stereo._inverted_atoms()  # type: ignore
             )
 
-            grouped_atom_stereo[stereo.PERMUTATION_GROUP].append(
-                (atom, nbr_atoms)
-            )
+            grouped_atom_stereo[stereo.PERMUTATION_GROUP].append((atom, nbr_atoms))
 
             atoms_with_atom_stereo.add(atom)
 
     for bond, stereo in smg.bond_stereo.items():
         if stereo.parity is not None:
             nbr_atoms = (
-                stereo.atoms
-                if stereo.parity != -1
-                else stereo._inverted_atoms()  # type: ignore
+                stereo.atoms if stereo.parity != -1 else stereo._inverted_atoms()  # type: ignore
             )
 
-            grouped_bond_stereo[stereo.PERMUTATION_GROUP].append(
-                (bond, nbr_atoms)
-            )
+            grouped_bond_stereo[stereo.PERMUTATION_GROUP].append((bond, nbr_atoms))
 
             for atom in bond:
                 atoms_with_bond_stereo.add(atom)
@@ -387,12 +373,8 @@ def _reaction_generator(
     max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
-    r_colors = generator(
-        graph.reactant(), atom_labels=atom_labels
-    )
-    p_colors = generator(
-        graph.product(),  atom_labels=atom_labels
-    )
+    r_colors = generator(graph.reactant(), atom_labels=atom_labels)
+    p_colors = generator(graph.product(), atom_labels=atom_labels)
     ts_colors = generator(graph._ts(), atom_labels=atom_labels)
 
     for _ in itertools.repeat(None) if max_iter is None else range(max_iter):
@@ -444,9 +426,7 @@ def _color_refine(
     atom_hash = next(sm_generator)
     n_atom_classes = np.unique(atom_hash).shape[0]
 
-    counter = (
-        itertools.count(1, 1) if max_iter is None else range(max_iter + 1)
-    )
+    counter = itertools.count(1, 1) if max_iter is None else range(max_iter + 1)
     for _ in counter:
         atom_hash = next(sm_generator)
         new_n_classes = np.unique(atom_hash).shape[0]

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     KT = TypeVar("KT", bound=Hashable, covariant=True)
     VT = TypeVar("VT", bound=Hashable, covariant=True)
 
+
 class _Parameters(NamedTuple):
     """
     Parameters of the algorithm.
@@ -121,7 +122,7 @@ def _bfs_layers(
     """
     if isinstance(sources, int):
         sources = [sources]
-    
+
     current_layer = list(sources)
     visited = set(sources)
 
@@ -144,8 +145,11 @@ def _bfs_layers(
 def _sanity_check_and_init(
     g1: StereoMolGraph | MolGraph,
     g2: StereoMolGraph | MolGraph,
-    atom_labels: None| tuple[np.ndarray[tuple[int], np.dtype[np.int64]],
-                            np.ndarray[tuple[int], np.dtype[np.int64]]] = None,
+    atom_labels: None
+    | tuple[
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+    ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
@@ -182,8 +186,8 @@ def _sanity_check_and_init(
             return None
 
     if atom_labels is None:
-        g1_labels = {a:h for a, h in zip(g1.atoms, label_hash(g1))}
-        g2_labels = {a:h for a, h in zip(g2.atoms, label_hash(g2))}
+        g1_labels = {a: h for a, h in zip(g1.atoms, label_hash(g1))}
+        g2_labels = {a: h for a, h in zip(g2.atoms, label_hash(g2))}
     else:
         g1_labels, g2_labels = atom_labels
 
@@ -212,50 +216,42 @@ def _sanity_check_and_init(
             for atom in s.atoms:
                 g2_stereo[atom].append(s)
 
-    g1_stereo_changes: defaultdict[
-        AtomId, defaultdict[Change, list[Stereo]]
-    ] = defaultdict(lambda: defaultdict(list))
+    g1_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
 
-    g2_stereo_changes: defaultdict[
-        AtomId, defaultdict[Change, list[Stereo]]
-    ] = defaultdict(lambda: defaultdict(list))
+    g2_stereo_changes: defaultdict[AtomId, defaultdict[Change, list[Stereo]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
 
     if stereo_change:
         if TYPE_CHECKING:
             assert isinstance(g1, StereoCondensedReactionGraph)
             assert isinstance(g2, StereoCondensedReactionGraph)
-        
+
         for _, stereo_change_dict in g1.atom_stereo_changes.items():
             for stereo_change_enum, atom_stereo in stereo_change_dict.items():
                 if atom_stereo is not None:
                     for atom in atom_stereo.atoms:
-                        g1_stereo_changes[atom][stereo_change_enum].append(
-                            atom_stereo
-                        )
+                        g1_stereo_changes[atom][stereo_change_enum].append(atom_stereo)
 
         for _, stereo_change_dict in g2.atom_stereo_changes.items():
             for stereo_change_enum, atom_stereo in stereo_change_dict.items():
                 if atom_stereo is not None:
                     for atom in atom_stereo.atoms:
-                        g2_stereo_changes[atom][stereo_change_enum].append(
-                            atom_stereo
-                        )
+                        g2_stereo_changes[atom][stereo_change_enum].append(atom_stereo)
 
         for _, stereo_change_dict in g1.bond_stereo_changes.items():
             for stereo_change_enum, bond_stereo in stereo_change_dict.items():
                 if bond_stereo is not None:
                     for atom in bond_stereo.atoms:
-                        g1_stereo_changes[atom][stereo_change_enum].append(
-                            bond_stereo
-                        )
+                        g1_stereo_changes[atom][stereo_change_enum].append(bond_stereo)
 
         for _, stereo_change_dict in g2.bond_stereo_changes.items():
             for stereo_change_enum, bond_stereo in stereo_change_dict.items():
                 if bond_stereo is not None:
                     for atom in bond_stereo.atoms:
-                        g2_stereo_changes[atom][stereo_change_enum].append(
-                            bond_stereo
-                        )
+                        g2_stereo_changes[atom][stereo_change_enum].append(bond_stereo)
 
     g1_degree = {a: len(n_set) for a, n_set in g1_nbrhd.items()}
     g2_degree = {a: len(n_set) for a, n_set in g2_nbrhd.items()}
@@ -283,9 +279,7 @@ def _sanity_check_and_init(
 def _wrap_all(
     *funcs: Callable[[AtomId, AtomId, _State, _Parameters], bool],
 ) -> Callable[[AtomId, AtomId, _State, _Parameters], bool]:
-    def wrapper(
-        a: AtomId, b: AtomId, state: _State, params: _Parameters
-    ) -> bool:
+    def wrapper(a: AtomId, b: AtomId, state: _State, params: _Parameters) -> bool:
         return all(f(a, b, state, params) for f in funcs)
 
     return wrapper
@@ -300,13 +294,11 @@ def vf2pp_all_isomorphisms(
     | StereoMolGraph
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
-    atom_labels: None| tuple[Mapping[AtomId, int],
-                             Mapping[AtomId, int]] = None,
+    atom_labels: None | tuple[Mapping[AtomId, int], Mapping[AtomId, int]] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
-    
     """Find all isomorphisms between two graphs.
 
     Algorithms are based of VF2++.
@@ -321,16 +313,14 @@ def vf2pp_all_isomorphisms(
 
     # setup helper function based on input parameters
 
-    feasibility_funcs: list[
-        Callable[[AtomId, AtomId, _State, _Parameters], bool]
-    ] = []
+    feasibility_funcs: list[Callable[[AtomId, AtomId, _State, _Parameters], bool]] = []
     if subgraph:
         feasibility_funcs.append(_subgraph_feasibility)
         if stereo:
             feasibility_funcs.append(_subgraph_stereo_feasibility)
         if stereo_change:
             feasibility_funcs.append(_subgraph_stereo_change_feasibility)
-            
+
     elif not subgraph:
         feasibility_funcs.append(_graph_feasibility)
         if stereo:
@@ -340,11 +330,10 @@ def vf2pp_all_isomorphisms(
     else:
         raise ValueError("Invalid combination of parameters.")
 
-    feasibility = _wrap_all(*feasibility_funcs) # type: ignore
+    feasibility = _wrap_all(*feasibility_funcs)
     revert_state = _revert_state
     update_state = _update_state
-    find_candidates = (_find_subgraph_candidates if subgraph
-                       else _find_candidates)
+    find_candidates = _find_subgraph_candidates if subgraph else _find_candidates
 
     # to avoid overhead
     mapping = state.mapping
@@ -400,9 +389,7 @@ def vf2pp_all_isomorphisms(
             inverted_mapping.pop(candidate)
 
 
-def _graph_feasibility(
-    u: AtomId, v: AtomId, state: _State, params: _Parameters
-):
+def _graph_feasibility(u: AtomId, v: AtomId, state: _State, params: _Parameters):
     g1_nbrhd, g2_nbrhd, g1_labels, g2_labels, *_ = params
     _, _, frontier1, external1, frontier2, external2 = state
 
@@ -437,6 +424,7 @@ def _graph_feasibility(
 
     return True
 
+
 def _subgraph_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:
@@ -451,6 +439,7 @@ def _subgraph_feasibility(
     counter1 = Counter(g1_labels[n] for n in g1_nbrhd[u] if n in external1)
     counter2 = Counter(g2_labels[n] for n in g2_nbrhd[v] if n in external2)
     return counter1 <= counter2
+
 
 def _stereo_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
@@ -477,10 +466,12 @@ def _stereo_feasibility(
         return True
     return False
 
+
 def _subgraph_stereo_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
-) -> bool: ... # TODO
- 
+) -> bool: ...  # TODO
+
+
 def _stereo_change_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
 ) -> bool:
@@ -494,7 +485,7 @@ def _stereo_change_feasibility(
         )
         for stereo_change, stereo_list in params.g1_stereo_changes[u].items()
         for stereo in stereo_list
-        if stereo is not None # type: ignore
+        if stereo is not None  # type: ignore
         and all([a in state.mapping for a in stereo.atoms])
     }
 
@@ -502,7 +493,7 @@ def _stereo_change_feasibility(
         (stereo_change, stereo)
         for stereo_change, stereo_list in params.g2_stereo_changes[u].items()
         for stereo in stereo_list
-        if stereo is not None # type: ignore
+        if stereo is not None  # type: ignore
         and all([a in state.inverted_mapping for a in stereo.atoms])
     }
 
@@ -510,18 +501,19 @@ def _stereo_change_feasibility(
         return True
     return False
 
+
 def _subgraph_stereo_change_feasibility(
     u: AtomId, v: AtomId, state: _State, params: _Parameters
-) -> bool: ...
+) -> bool:
+    ...
     # TODO: Implement subgraph stereo change feasibility check
+
 
 def _matching_order(params: _Parameters) -> list[AtomId]:
     g1_nbrhd, _, g1_labels, _, _, nodes_of_g2Labels, *_ = params
 
     V1_unordered = set(g1_labels.keys())
-    label_rarity = {
-        label: len(nodes) for label, nodes in nodes_of_g2Labels.items()
-    }
+    label_rarity = {label: len(nodes) for label, nodes in nodes_of_g2Labels.items()}
     used_degrees = {node: 0 for node in g1_nbrhd}
     node_order: list[int] = []
 
@@ -532,7 +524,7 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
         ]
         max_node: AtomId = max(
             rarest_nodes,
-            key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get, # type: ignore
+            key={a: len(n_set) for a, n_set in g1_nbrhd.items()}.get,  # type: ignore
         )
         assert isinstance(max_node, int)
         for dlevel_nodes in _bfs_layers(g1_nbrhd, max_node):
@@ -540,17 +532,11 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
             while nodes_to_add:
                 max_used_degree = max(used_degrees[n] for n in nodes_to_add)
                 max_used_degree_nodes = [
-                    n
-                    for n in nodes_to_add
-                    if used_degrees[n] == max_used_degree
+                    n for n in nodes_to_add if used_degrees[n] == max_used_degree
                 ]
-                max_degree = max(
-                    len(g1_nbrhd[n]) for n in max_used_degree_nodes
-                )
+                max_degree = max(len(g1_nbrhd[n]) for n in max_used_degree_nodes)
                 max_degree_nodes = [
-                    n
-                    for n in max_used_degree_nodes
-                    if len(g1_nbrhd[n]) == max_degree
+                    n for n in max_used_degree_nodes if len(g1_nbrhd[n]) == max_degree
                 ]
                 next_node = min(
                     max_degree_nodes, key=lambda x: label_rarity[g1_labels[x]]
@@ -567,9 +553,7 @@ def _matching_order(params: _Parameters) -> list[AtomId]:
     return node_order
 
 
-def _find_candidates(
-    u: AtomId, state: _State, params: _Parameters
-) -> set[AtomId]:
+def _find_candidates(u: AtomId, state: _State, params: _Parameters) -> set[AtomId]:
     (
         g1_nbrhd,
         g2_nbrhd,
@@ -648,9 +632,7 @@ def _update_state(
     new_atom1: AtomId, new_atom2: AtomId, state: _State, params: _Parameters
 ) -> None:
     g1_nbrhd, g2_nbrhd, *_ = params
-    mapping, inverted_mapping, frontier1, external1, frontier2, external2 = (
-        state
-    )
+    mapping, inverted_mapping, frontier1, external1, frontier2, external2 = state
 
     unmapped_neighbors1 = {n for n in g1_nbrhd[new_atom1] if n not in mapping}
     frontier1 |= unmapped_neighbors1
@@ -658,9 +640,7 @@ def _update_state(
     frontier1.discard(new_atom1)
     external1.discard(new_atom1)
 
-    unmapped_neighbors2 = {
-        n for n in g2_nbrhd[new_atom2] if n not in inverted_mapping
-    }
+    unmapped_neighbors2 = {n for n in g2_nbrhd[new_atom2] if n not in inverted_mapping}
     frontier2 |= unmapped_neighbors2
     external2 -= unmapped_neighbors2
     frontier2.discard(new_atom2)
@@ -675,9 +655,7 @@ def _revert_state(
     # If the node we want to remove from the mapping, has at least one
     # covered neighbor, add it to frontier1.
     g1_nbrhd, g2_nbrhd, *_ = params
-    mapping, inverted_mapping, frontier1, external1, frontier2, external2 = (
-        state
-    )
+    mapping, inverted_mapping, frontier1, external1, frontier2, external2 = state
 
     has_covered_neighbor = False
     for neighbor in g1_nbrhd[last_atom1]:
@@ -712,4 +690,3 @@ def _revert_state(
 
     if not has_covered_neighbor:
         external2.add(last_atom2)
-
