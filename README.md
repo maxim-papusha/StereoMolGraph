@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/img/logo_test_smg_dark.svg">
-  <img alt="Logo" src="docs/_static/img/logo_text_smg.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/img/logo_smg_dark.svg">
+  <img alt="Logo" src="docs/_static/img/logo_smg.svg">
 </picture>
 
 # StereoMolGraph #
