@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools >= 70.0.3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -10,7 +10,7 @@ stereomolgraph = ["py.typed"]
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b16"
+version = "0.0.0b17"
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -50,41 +50,28 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 
-
 dependencies = [
   "numpy>=1.20,<3",
-  "rdkit",
+  "rdkit>=2022.9.1",
+  "typing-extensions",
 ]
 
-[dependency-groups]
-notebook = ["ipykernel"]
-docs = [{include-group = "notebook"},
-       "rdkit==2024.9.3",
+[project.optional-dependencies]
+docs = ["rdkit>=2022.9.1,<2025",
        "sphinx>=8.2,<9;python_version>='3.11'",
        "sphinx-rtd-theme",
        "myst-nb",
        "sphinx-autodoc-typehints",
        "sphinx-copybutton"]
 
-dev = [{include-group = "docs"},
-
-       "line_profiler",
-
-       "pytest>=7.1.2,<8",
-       "pytest-xdist[psutil]", 
-       "pytest-cov>=6,<7",
+dev = ["pytest>=7.1.2",
        "hypothesis",
-
-       "ruff>=0.6.0",
-       "pyright",
-
-       "typing-extensions>=4.12;python_version<'3.13'",
-        # official module to add type hinting features used in future Python versions
-]
+       "nbclient",
+       "nbformat",
+       "ruff>=0.6.0"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-addopts = "-n logical"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::RuntimeWarning",
@@ -94,10 +81,6 @@ markers = [
     "example: marks testing of examples folder (deselect with '-m \"not example\"')",
     "hypothesis: marks property based testing with hypothesis (deselect with '-m \"not hypothesis\"')",
 ]
-
-[tool.pyright]
-include = ["src"]
-exclude = ["tests", "examples"]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP035", "W291","F541"]
@@ -110,3 +93,4 @@ Documentation = "https://stereomolgraph.readthedocs.io/"
 Repository = "https://github.com/maxim-papusha/StereoMolGraph.git"
 PyPi = "https://pypi.org/project/StereoMolGraph/"
 Zenodo = "https://doi.org/10.5281/zenodo.16360310"
+Publication = "https://doi.org/10.26434/chemrxiv-2025-0g4wn"

@@ -1,22 +1,16 @@
 from __future__ import annotations
 
-import itertools
 import json
 from collections import deque
 from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Any
 
 from stereomolgraph import (
-    AtomId,
-    Bond,
     CondensedReactionGraph,
     MolGraph,
     StereoCondensedReactionGraph,
     StereoMolGraph,
 )
-from stereomolgraph.algorithms.color_refine import color_refine_smg
-from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.graphs.crg import Change
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -64,12 +58,8 @@ class JSONHandler:
                 if bond not in formed_bonds | broken_bonds
             )
             data["Bonds"] = bonds_dict
-            data["Formed Bonds"] = sorted(
-                tuple(sorted(bond)) for bond in formed_bonds
-            )
-            data["Broken Bonds"] = sorted(
-                tuple(sorted(bond)) for bond in broken_bonds
-            )
+            data["Formed Bonds"] = sorted(tuple(sorted(bond)) for bond in formed_bonds)
+            data["Broken Bonds"] = sorted(tuple(sorted(bond)) for bond in broken_bonds)
         else:
             bonds_dict = sorted(tuple(sorted(bond)) for bond in graph.bonds)
             data["Bonds"] = bonds_dict
@@ -178,14 +168,10 @@ class JSONHandler:
                     graph.set_bond_stereo(stereo_obj)
 
         if isinstance(graph, StereoCondensedReactionGraph):
-            for change_dict in graph_payload.get(
-                "Atom Stereo Changes", {}
-            ).values():
+            for change_dict in graph_payload.get("Atom Stereo Changes", {}).values():
                 broken = cls._stereo_from_payload(change_dict.get("BROKEN"))
                 formed = cls._stereo_from_payload(change_dict.get("FORMED"))
-                fleeting = cls._stereo_from_payload(
-                    change_dict.get("FLEETING")
-                )
+                fleeting = cls._stereo_from_payload(change_dict.get("FLEETING"))
                 if any((broken, formed, fleeting)):
                     graph.set_atom_stereo_change(
                         broken=broken,
@@ -193,14 +179,10 @@ class JSONHandler:
                         fleeting=fleeting,
                     )
 
-            for change_dict in graph_payload.get(
-                "Bond Stereo Changes", {}
-            ).values():
+            for change_dict in graph_payload.get("Bond Stereo Changes", {}).values():
                 broken = cls._stereo_from_payload(change_dict.get("BROKEN"))
                 formed = cls._stereo_from_payload(change_dict.get("FORMED"))
-                fleeting = cls._stereo_from_payload(
-                    change_dict.get("FLEETING")
-                )
+                fleeting = cls._stereo_from_payload(change_dict.get("FLEETING"))
                 if any((broken, formed, fleeting)):
                     graph.set_bond_stereo_change(
                         broken=broken,
@@ -406,8 +388,7 @@ def topological_symmetry_number(graph: StereoMolGraph) -> int:
 
     if any(stereo.parity is None for stereo in graph.stereo.values()):
         raise NotImplementedError(
-            "all stereocenters have to be defined"
-            " to calculate the symmetry number"
+            "all stereocenters have to be defined to calculate the symmetry number"
         )
     colorings = color_refine_smg(graph)
     mappings = vf2pp_all_isomorphisms(
