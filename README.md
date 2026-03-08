@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/img/logo_test_smg_dark.svg">
+  <img alt="Logo" src="docs/_static/img/logo_text_smg.svg">
+</picture>
+
 # StereoMolGraph #
 [![View Documentation](https://img.shields.io/badge/📖-Documentation-8CA1AF)](https://stereomolgraph.readthedocs.io)
 [![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13-blue?logo=python)](https://www.python.org/)
