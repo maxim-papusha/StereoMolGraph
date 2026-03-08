@@ -2,9 +2,10 @@
 # typing with rdkit is not fully supported
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import ClassVar, Literal
 
 import rdkit.Chem as Chem  # type: ignore
 
@@ -18,11 +19,6 @@ from stereomolgraph.stereodescriptors import (
     Tetrahedral,
     TrigonalBipyramidal,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from typing import ClassVar, Literal
-
 
 def mol_graph_from_rdmol(
     cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number: bool = False
