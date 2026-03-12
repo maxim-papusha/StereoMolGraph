@@ -17,10 +17,6 @@ from stereomolgraph.experimental._isomers import (
     generate_stereoisomers,
     unique_generator,
 )
-from stereomolgraph.experimental._canon import (
-    canonical_atom_order,
-    canonical_relabel_mapping,
-)
 from stereomolgraph.experimental._json import JSONHandler, STEREO_CLASSES
 from stereomolgraph.experimental._symmetry import topological_symmetry_number
 from stereomolgraph.stereodescriptors import (

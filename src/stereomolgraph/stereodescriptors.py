@@ -147,7 +147,7 @@ class _StereoMixin(Generic[A, P]):
                 tuple([self.atoms[i] for i in perm])
                 for perm in itertools.permutations(range(len(self.atoms)))
             )
-            ret_parity = None
+            ret_parity = 2
         else:
             raise RuntimeError("Parity should be 1, -1, 0 or None")
 
