@@ -1,11 +1,11 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from stereomolgraph import AtomId, MolGraph
-from stereomolgraph.algorithms.color_refine import color_refine_mg
-
+from stereomolgraph import AtomId, MolGraph, StereoMolGraph
+from stereomolgraph.algorithms.color_refine import label_hash
+from stereomolgraph.stereodescriptors import Stereo
 
 CanonNum = int
 
@@ -27,6 +27,8 @@ class _Parameters:
     degrees: Mapping[AtomId, Degree]
     colors: Mapping[AtomId, Color]
 
+    stereo_of_atoms: Mapping[AtomId, list[Stereo]]
+
     # TODO: stereo, bond_change, stereo_change, ...
 
 
@@ -42,8 +44,10 @@ class _CanonState:
 
     queue: list[set[AtomId]] = field(default_factory=list)
 
+
 def better_than(label_like1, label_like2):
     return label_like1 < label_like2
+
 
 def get_candidates(
     params: _Parameters, state: _CanonState
@@ -57,12 +61,35 @@ def get_candidates(
         if state.frontier
         else set(params.nbrhds) - state.current_mapping.keys()
     )
-
+    assert all(atom in params.nbrhds for atom in frontier), (
+        f"atom neighborhoods missing for {[atom for atom in frontier if atom not in params.nbrhds]}"
+    )
+    assert all(atom in params.colors for atom in frontier), (
+        f"atom colors missing for {[atom for atom in frontier if atom not in params.colors]}"
+    )
+    assert all(atom in params.degrees for atom in frontier), (
+        f"atom degrees missing for {[atom for atom in frontier if atom not in params.degrees]}"
+    )
     step_labels = [
         (
             sorted(
-                state.current_mapping.get(nbr, n_atoms + 1)
+                (state.current_mapping.get(nbr, n_atoms + 1), params.colors[nbr])
                 for nbr in params.nbrhds[atom_id]
+            ),
+            sorted(
+                s.__class__(
+                    atoms=tuple(
+                        (
+                            state.current_mapping.get(a, n_atoms + 1),
+                            params.colors.get(
+                                a, 0
+                            ),  # if None in stereo.atoms color is 0
+                        )
+                        for a in s.atoms
+                    ),
+                    parity=s.parity,
+                ).canonical_form()
+                for s in params.stereo_of_atoms.get(atom_id, [])
             ),
             params.atom_color_frequency[atom_id],
             params.degrees[atom_id],
@@ -96,22 +123,32 @@ def get_candidates(
 
     return atoms, best_step_label
 
+
 def initialize(g: MolGraph) -> tuple[_Parameters, _CanonState]:
     """Prepare immutable inputs and initial state for non-stereo canonical
     enumeration."""
     nbrhd = g.neighbors
-    colors = {atom: int(label) for atom, label in zip(g.atoms, color_refine_mg(g))}
+    colors = {atom: int(label) for atom, label in zip(g.atoms, label_hash(g))}  #
+    # color_refine_mg(g))}
 
     degrees = {atom: len(nbrs) for atom, nbrs in nbrhd.items()}
 
     label_class_sizes = Counter(colors.values())
     atom_color_frequency = {atom: label_class_sizes[colors[atom]] for atom in g.atoms}
 
+    stereo_of_atoms: dict[AtomId, list[Stereo]] = defaultdict(list)
+    if isinstance(g, StereoMolGraph):
+        for s in g.stereo.values():
+            for atom in s.atoms:
+                if atom is not None:
+                    stereo_of_atoms[atom].append(s)
+
     param = _Parameters(
         nbrhds=nbrhd,
         colors=colors,
         degrees=degrees,
         atom_color_frequency=atom_color_frequency,
+        stereo_of_atoms=stereo_of_atoms,
     )
 
     initial_state = _CanonState(frontier=set(g.atoms))
@@ -132,6 +169,7 @@ def initialize(g: MolGraph) -> tuple[_Parameters, _CanonState]:
     )
 
     return param, state
+
 
 def canon_atom_num(g: MolGraph) -> Mapping[AtomId, CanonNum]:
     """Return canonical atom order using best-first branching and tie backtracking."""

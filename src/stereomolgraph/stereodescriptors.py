@@ -79,6 +79,8 @@ class Stereo(Protocol, Generic[A, P]):
         inverted ones, but all possible stereoisomers."""
         ...
 
+    def canonical_form(self) -> tuple[int, tuple[OInt, ...]]: ...
+
 
 @runtime_checkable
 class AtomStereo(Stereo[A, P], Protocol, Generic[A, P]):
@@ -132,7 +134,7 @@ class _StereoMixin(Generic[A, P]):
         assert len(atoms) == len(self.atoms) == len(self.inversion)
         return atoms  # type: ignore[return-value]
 
-    def canonical_form(self) -> tuple:
+    def canonical_form(self) -> tuple[int, tuple[OInt, ...]]:
         if self.parity == 1 or self.parity == 0:
             canon_atoms = min(self._perm_atoms())
             ret_parity = self.parity
