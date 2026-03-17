@@ -130,23 +130,23 @@ class _StereoMixin(Generic[A, P]):
     def _inverted_atoms(self) -> A:
         if self.inversion is None:
             return self.atoms
-        atoms = tuple([self.atoms[i] for i in self.inversion])
+        atoms = tuple(self.atoms[i] for i in self.inversion)
         assert len(atoms) == len(self.atoms) == len(self.inversion)
         return atoms  # type: ignore[return-value]
 
     def canonical_form(self) -> tuple[int, tuple[OInt, ...]]:
         if self.parity == 1 or self.parity == 0:
-            canon_atoms = min(self._perm_atoms())
+            canon_atoms = max(self._perm_atoms())
             ret_parity = self.parity
         elif self.parity == -1:
             atoms = self._inverted_atoms()
-            canon_atoms = min(
-                tuple([atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
+            canon_atoms = max(
+                tuple(atoms[i] for i in perm) for perm in self.PERMUTATION_GROUP
             )
             ret_parity = 1
         elif self.parity is None:
-            canon_atoms = min(
-                tuple([self.atoms[i] for i in perm])
+            canon_atoms = max(
+                tuple(self.atoms[i] for i in perm)
                 for perm in itertools.permutations(range(len(self.atoms)))
             )
             ret_parity = 2

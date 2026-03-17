@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from stereomolgraph import AtomId, MolGraph, StereoMolGraph
-from stereomolgraph.algorithms.color_refine import label_hash
+from stereomolgraph.algorithms.color_refine import (
+    color_refine_mg,
+    color_refine_smg,
+)
 from stereomolgraph.stereodescriptors import Stereo
 
 CanonNum = int
@@ -34,6 +37,10 @@ class _Parameters:
 
 @dataclass
 class _CanonState:
+    """State of the search that is updated at each step.
+    Everywhere where the order of elements should not matter sets are used instead of
+    lists. Python dicts keep the insertion order and are FILO"""
+
     best_labels: list[Label] = field(default_factory=list)
     best_mapping: dict[AtomId, CanonNum] = field(default_factory=dict)
 
@@ -46,90 +53,128 @@ class _CanonState:
 
 
 def better_than(label_like1, label_like2):
-    return label_like1 < label_like2
+    """Tuples and lists are compared element wise lexicographically.
+    If all shared elements are equal, the shorter one is considered smaller."""
+    return label_like1 > label_like2
 
 
-def get_candidates(
-    params: _Parameters, state: _CanonState
-) -> tuple[set[AtomId], Label]:
-    """Return the a set of candidate atoms to investigate.
-    The candidates are determined based on the current state of the search:
+def _canonical_stereo_label(
+    atom_id: AtomId,
+    stereo: Stereo,
+    current_mapping: Mapping[AtomId, CanonNum],
+    colors: Mapping[AtomId, Color],
+) -> tuple[Any, ...]:
+    unmapped_atom_num = -1
+    self_marker = len(colors) + 1  # n_atoms + 1, always > any assigned canon num
+    return stereo.__class__(
+        atoms=tuple(
+            (
+                self_marker
+                if a == atom_id
+                else current_mapping.get(a, unmapped_atom_num),
+                colors.get(a, unmapped_atom_num),
+            )
+            for a in stereo.atoms
+        ),
+        parity=stereo.parity,
+    ).canonical_form()
+
+
+def _candidate_label(
+    atom_id: AtomId,
+    params: _Parameters,
+    current_mapping: Mapping[AtomId, CanonNum],
+) -> Label:
+    unmapped_atom_num: CanonNum = -1
+
+    neighbor_label = sorted(
+        (
+            (current_mapping.get(nbr, unmapped_atom_num), params.colors[nbr])
+            for nbr in params.nbrhds[atom_id]
+        ),
+        reverse=True,
+    )
+    stereo_label = sorted(
+        (
+            _canonical_stereo_label(
+                atom_id,
+                stereo,
+                current_mapping=current_mapping,
+                colors=params.colors,
+            )
+            for stereo in params.stereo_of_atoms.get(atom_id, [])
+        ),
+        reverse=True,
+    )
+
+    return (
+        -1 * params.atom_color_frequency[atom_id],
+        params.degrees[atom_id],
+        neighbor_label,
+        stereo_label,
+        params.colors[atom_id],
+    )
+
+
+def update_queue(params: _Parameters, state: _CanonState) -> None:
+    """Return frontier atoms tied for the best next-step label.
+
+    An empty result means the current branch is complete or can be pruned.
     """
-    n_atoms = len(params.nbrhds)
+
     frontier = (
         state.frontier
         if state.frontier
         else set(params.nbrhds) - state.current_mapping.keys()
     )
-    assert all(atom in params.nbrhds for atom in frontier), (
-        f"atom neighborhoods missing for {[atom for atom in frontier if atom not in params.nbrhds]}"
-    )
-    assert all(atom in params.colors for atom in frontier), (
-        f"atom colors missing for {[atom for atom in frontier if atom not in params.colors]}"
-    )
-    assert all(atom in params.degrees for atom in frontier), (
-        f"atom degrees missing for {[atom for atom in frontier if atom not in params.degrees]}"
-    )
-    step_labels = [
-        (
-            sorted(
-                (state.current_mapping.get(nbr, n_atoms + 1), params.colors[nbr])
-                for nbr in params.nbrhds[atom_id]
-            ),
-            sorted(
-                s.__class__(
-                    atoms=tuple(
-                        (
-                            state.current_mapping.get(a, n_atoms + 1),
-                            params.colors.get(
-                                a, 0
-                            ),  # if None in stereo.atoms color is 0
-                        )
-                        for a in s.atoms
-                    ),
-                    parity=s.parity,
-                ).canonical_form()
-                for s in params.stereo_of_atoms.get(atom_id, [])
-            ),
-            params.atom_color_frequency[atom_id],
-            params.degrees[atom_id],
-            params.colors[atom_id],
+
+    candidate_labels = {
+        atom_id: _candidate_label(
             atom_id,
+            params=params,
+            current_mapping=state.current_mapping,
         )
         for atom_id in frontier
-    ]
-    if not step_labels:
-        assert len(state.current_mapping) == len(params.nbrhds), (
-            len(state.current_mapping),
-            len(params.nbrhds),
-        )
-        return set(), ()
+    }
 
-    # Compare using label parts except atom_id (last element),
-    # so all atoms with the same minimal label are kept.
-    best_step_label = min(lbl[:-1] for lbl in step_labels)
+    atoms = set()
+    best_step_label = ()
+
+    if candidate_labels:
+        best_step_label = max(candidate_labels.values())
+        potential_new_labels = state.current_labels + [best_step_label]
+
+        if not better_than(
+            state.best_labels[: len(potential_new_labels)],
+            potential_new_labels,
+        ):
+            atoms = {
+                atom_id
+                for atom_id, candidate_label in candidate_labels.items()
+                if candidate_label == best_step_label
+            }
+
+    state.queue.append(atoms)
+    state.current_labels.append(best_step_label)
 
     if (
-        state.best_labels
-        and state.current_mapping
-        and len(state.best_labels) < len(state.current_mapping)
-        and better_than(
-            state.best_labels[len(state.current_mapping) - 1], best_step_label
-        )
+        not atoms
+        and len(params.nbrhds) == len(state.current_mapping)
+        and better_than(state.current_labels, state.best_labels)
     ):
-        return set(), ()
-
-    atoms = {lbl[-1] for lbl in step_labels if lbl[:-1] == best_step_label}
-
-    return atoms, best_step_label
+        state.best_labels = state.current_labels.copy()
+        state.best_mapping = state.current_mapping.copy()
 
 
-def initialize(g: MolGraph) -> tuple[_Parameters, _CanonState]:
+def initialize(g: MolGraph) -> _Parameters:
     """Prepare immutable inputs and initial state for non-stereo canonical
     enumeration."""
     nbrhd = g.neighbors
-    colors = {atom: int(label) for atom, label in zip(g.atoms, label_hash(g))}  #
-    # color_refine_mg(g))}
+
+    if isinstance(g, StereoMolGraph):
+        colors = {atom: int(label) for atom, label in zip(g.atoms, color_refine_smg(g))}
+    elif isinstance(g, MolGraph):
+        colors = {atom: int(label) for atom, label in zip(g.atoms, color_refine_mg(g))}
 
     degrees = {atom: len(nbrs) for atom, nbrs in nbrhd.items()}
 
@@ -151,55 +196,44 @@ def initialize(g: MolGraph) -> tuple[_Parameters, _CanonState]:
         stereo_of_atoms=stereo_of_atoms,
     )
 
-    initial_state = _CanonState(frontier=set(g.atoms))
-
-    initial_candidates, initial_label = get_candidates(param, initial_state)
-
-    # Takes first step, because initially frontier contains all atoms
-    # and later only the neighbors of the already enumerated ones
-    atom = initial_candidates.pop()
-
-    state = _CanonState(
-        best_labels=[initial_label],
-        best_mapping={atom: 1},
-        current_labels=[initial_label],
-        current_mapping={atom: 1},
-        frontier=nbrhd[atom].copy(),
-        queue=[initial_candidates],
-    )
-
-    return param, state
+    return param
 
 
 def canon_atom_num(g: MolGraph) -> Mapping[AtomId, CanonNum]:
     """Return canonical atom order using best-first branching and tie backtracking."""
 
-    params, state = initialize(g)
-    # includes first step.
+    canon_num: CanonNum = len(g.atoms)
+
+    params = initialize(g)
+    state = _CanonState()
+    update_queue(params, state)
 
     while state.queue:
-        if len(state.queue[-1]) > len(params.nbrhds) - len(state.current_mapping):
-            raise RuntimeError("Too many candidates ?")
-        if len(state.queue) > len(params.nbrhds):
-            raise RuntimeError("Too many backtracking levels ?")
+        # execute step forward
+        if state.queue[-1]:
+            # Enumeration start with "n_atoms" and counts down to 1,
+            # so that the first mapped atom gets the highest canon number.
+            next_atom = state.queue[-1].pop()
 
-        # plan step
-        if len(state.current_mapping) == len(state.queue):
-            # can be empty (set(), tuple()) if there are no candidates.
-            new_candidates, label = get_candidates(params, state)
-            assert new_candidates.issubset(state.frontier)
-            state.queue.append(new_candidates)
-            state.current_labels.append(label)
+            state.current_mapping[next_atom] = canon_num
+            canon_num -= 1
+
+            # incremental frontier update
+            state.frontier.discard(next_atom)
+            state.frontier |= params.nbrhds[next_atom] - state.current_mapping.keys()
+
+            # plans next step
+            update_queue(params, state)
 
         # execute step back
-        if not state.queue[-1]:
-            state.queue.pop()
-            if state.current_labels:
-                state.current_labels.pop()
-            atom_id = None
-            if state.current_mapping:
+        else:
+            _empty_set = state.queue.pop()
+
+            _last_label = state.current_labels.pop()
+            if state.queue:
                 atom_id, _ = state.current_mapping.popitem()
-            if atom_id is not None:
+                canon_num += 1
+
                 not_frontier_anymore = {
                     nbr
                     for nbr in params.nbrhds[atom_id]
@@ -208,25 +242,7 @@ def canon_atom_num(g: MolGraph) -> Mapping[AtomId, CanonNum]:
                     )
                 }
                 state.frontier -= not_frontier_anymore
-                state.frontier.add(atom_id)
-
-        # execute step forward
-        if (
-            state.queue
-            and state.queue[-1]
-            and len(state.queue) - len(state.current_mapping) == 1
-        ):
-            next_atom = state.queue[-1].pop()
-            state.current_mapping[next_atom] = len(state.current_mapping) + 1
-            state.frontier |= params.nbrhds[next_atom]
-            state.frontier -= state.current_mapping.keys()
-
-            # update best
-            if len(state.current_labels) > len(state.best_labels) or (
-                len(state.current_labels) == len(state.best_labels)
-                and better_than(state.current_labels, state.best_labels)
-            ):
-                state.best_labels = state.current_labels.copy()
-                state.best_mapping = state.current_mapping.copy()
+                if params.nbrhds[atom_id].intersection(state.current_mapping.keys()):
+                    state.frontier.add(atom_id)
 
     return state.best_mapping
