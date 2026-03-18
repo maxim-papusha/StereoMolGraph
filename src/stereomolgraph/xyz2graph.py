@@ -190,7 +190,21 @@ def _trigonal_bipyramidal_from_coords(
     # The atoms with the largest angle are the axial atoms
     angles = angle_from_coords(coords[lst])
 
-    i, j = lst[angles.argmax()][[0, 2]]  # axial atoms
+    # Sort by angle (largest to smallest) and iterate until we find valid axial atoms
+    sorted_indices = np.argsort(angles)[::-1]
+    
+    for idx in sorted_indices:
+        i, j = lst[idx][[0, 2]]  # potential axial atoms
+        i, j = int(i), int(j)
+        
+        equatorial = [a for a in indices if a not in (i, j)]
+        i_rotation = -1 * handedness(coords.take([*equatorial, i], axis=0))
+        j_rotation = handedness(coords.take([*equatorial, j], axis=0))
+        
+        if int(i_rotation) == int(j_rotation):
+            break
+    else:
+        return None
     i, j = int(i), int(j)
 
     equatorial = [a for a in indices if a not in (i, j)]
@@ -219,10 +233,10 @@ def _octahedral_from_coords(
     planar_groups: list[set[int]] = []
     for p1, p2, p3, p4 in itertools.combinations(indeces, 4):
         points = [p1, p2, p3, p4]
-        if are_planar(coords[points]):
+        if are_planar(coords[points], threshold=0.3):
             planar_groups.append(set(points))
 
-    if not len(planar_groups) == 3:
+    if len(planar_groups) != 3:
         return None
 
     trans_atoms = planar_groups[0].intersection(planar_groups[1])
@@ -239,9 +253,13 @@ def _octahedral_from_coords(
     a3, a5 = cis_atoms0
     a4, a6 = cis_atoms1
 
-    parity = int(handedness(coords[[a1, a3, a5, a4]]))
+
+
+    parity = int(handedness(coords[[a1, a3, a4, a2]]))
+    parity2 = int(handedness(coords[[a1, a3, a6, a2]]))
+    assert parity2 == -parity
     assert parity == 1 or parity == -1
-    return Octahedral((atoms[0], a1, a2, a3, a4, a5, a6), parity)
+    return Octahedral((atoms[0], atoms[a1], atoms[a2], atoms[a3], atoms[a4], atoms[a5], atoms[a6]), parity)
 
 
 def _planar_bond_from_coords(
