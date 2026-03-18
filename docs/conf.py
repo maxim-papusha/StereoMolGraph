@@ -87,10 +87,11 @@ html_theme_options = {
         },
     ],
     "collapse_navigation": True,
-    "navigation_depth": 2,
+    "navigation_depth": 3,
     "header_links_before_dropdown": 4,
     "primary_sidebar_end": ["sidebar-ethical-ads", "theme-switcher"],
     "navbar_align": "left",
+    "show_nav_level": 3,
 }
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
