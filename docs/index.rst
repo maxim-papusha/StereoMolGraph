@@ -1,4 +1,6 @@
 
+Stereochemistry-Aware Molecular and Reaction Graphs
+===================================================
 
 .. image:: _static/img/logo_smg.png
    :align: center
