@@ -56,7 +56,7 @@ If you have questions or ideas that don’t fit a template, you can still open a
 
 If you use StereoMolGraph in your work, please cite the Zenodo record:
 
-[![DOI](https://zenodo.org/badge/999259345.svg)](https://doi.org/10.5281/zenodo.16360310)
+[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
 
 ## License
 
