@@ -88,6 +88,7 @@ html_theme_options = {
     ],
     "collapse_navigation": True,
     "navigation_depth": 2,
+    "primary_sidebar_end": ["sidebar-ethical-ads", "theme-switcher"],
 }
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
