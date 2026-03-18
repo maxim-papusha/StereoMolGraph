@@ -5,7 +5,7 @@ API Reference
    :maxdepth: 1
 
    graph
-   algorithms
+   algorithms/index
    stereodescriptors
    rdmol2graph
    graph2rdmol
