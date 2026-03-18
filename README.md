@@ -50,7 +50,6 @@ Bug reports and feature requests are welcome — please open an issue on GitHub:
 
 - Issues: https://github.com/maxim-papusha/StereoMolGraph/issues
 
-If you have questions or ideas that don’t fit a template, you can still open an issue and tag it appropriately.
 
 ## Citation
 
