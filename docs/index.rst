@@ -30,7 +30,9 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 .. |github| image:: https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white
    :target: https://github.com/maxim-papusha/StereoMolGraph
 
-|pypi| |python| |license| |tests| |github| |doi|
+|pypi| |python| |license| |tests| 
+
+|github| |doi|
 
 Welcome to the documentation for **StereoMolGraph**!
 This package provides multiple :doc:`graph classes </reference/graphs/index>` to represent molecules and reactions.
