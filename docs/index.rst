@@ -34,11 +34,12 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 
 |github| |doi|
 
-Welcome to the documentation for **StereoMolGraph**!
-This package provides multiple :doc:`graph classes </reference/graphs/index>` to represent molecules and reactions.
-Local :doc:`Stereodescriptors </reference/stereodescriptors>` are used to define stereochemistry.
-A variety of :doc:`graph algorithms </reference/algorithms/index>` are implemented in a stereochemistry-aware manner.
+Welcome to the documentation for **StereoMolGraph**.
 
+This package provides a collection of :doc:`graph classes </reference/graphs/index>` for the representation of molecules and chemical reactions.
+Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from :doc:`group-theoretical </theory/index>` principles.
+
+Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
 Citing
 ------
