@@ -46,9 +46,9 @@ extensions = [
     # MyST extensions
     "myst_nb",
     # Theme and UI extensions
-    "sphinx_rtd_theme",
     "sphinx_copybutton",
     "sphinx.ext.intersphinx",
+    "pydata_sphinx_theme",
 ]
 
 intersphinx_mapping = {
