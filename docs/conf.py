@@ -86,10 +86,10 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
-    "collapse_navigation": False,
+    "collapse_navigation": True,
     "navigation_depth": 4,
     "header_links_before_dropdown": 4,
-    "primary_sidebar_end": ["sidebar-ethical-ads", "theme-switcher"],
+    "primary_sidebar_end": ["sidebar-ethical-ads"],
     "navbar_align": "left",
     "show_nav_level": 4,
 }
