@@ -68,10 +68,24 @@ html_favicon = "_static/img/favicon.png"
 
 html_theme_options = {
     "logo": {
-        "alt_text": "StereoMolGraph",
+        "text": "StereoMolGraph",
         "image_light": "_static/img/logo_smg_200px.png",
         "image_dark": "_static/img/logo_smg_200px.png",
-    }
+    },
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/maxim-papusha/StereoMolGraph",
+            "icon": "fa-brands fa-github",
+            "type": "fontawesome",
+        },
+        {
+            "name": "PyPi",
+            "url": "https://pypi.org/project/StereoMolGraph",
+            "icon": "fa-brands fa-python",
+            "type": "fontawesome",
+        },
+    ],
 }
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
