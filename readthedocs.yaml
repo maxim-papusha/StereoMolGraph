@@ -11,8 +11,7 @@ build:
     python: "3.13"
   commands:
     - pip install uv
-    - uv venv $READTHEDOCS_VIRTUALENV_PATH
-    - uv pip install ".[docs]"
+    - uv pip install --system ".[docs]"
     - python -m sphinx -b html docs/ $READTHEDOCS_OUTPUT/html
         
 
