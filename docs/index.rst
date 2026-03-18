@@ -1,5 +1,14 @@
-StereoMolGraph documentation
-============================
+
+
+.. image:: _static/img/logo_smg.png
+   :align: center
+   :class: only-light
+   :alt: StereoMolGraph
+
+.. image:: _static/img/logo_smg_dark.png
+   :align: center
+   :class: only-dark
+   :alt: StereoMolGraph
 
 Citing
 ------
