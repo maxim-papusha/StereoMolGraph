@@ -15,6 +15,7 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 Welcome to the documentation for **StereoMolGraph**!
 This package provides multiple :doc:`graph classes </reference/graphs/index>` to represent molecules and reactions.
 Local :doc:`Stereodescriptors </reference/stereodescriptors>` are used to define stereochemistry.
+A variety of :doc:`graph algorithms </reference/algorithms/index>` are implemented in a stereochemistry-aware manner.
 
 
 Citing
