@@ -4,7 +4,7 @@ API Reference
 .. toctree::
    :maxdepth: 1
 
-   graph
+   graphs/index
    algorithms/index
    stereodescriptors
    rdmol2graph

@@ -16,15 +16,15 @@ Graphs
      -
      -
      -
+   * - :class:`~stereomolgraph.StereoMolGraph`
+     - ✓
+     - 
+     - ✓
+     -
    * - :class:`~stereomolgraph.CondensedReactionGraph`
      - ✓
      - ✓
-     -
-     -
-   * - :class:`~stereomolgraph.StereoMolGraph`
-     - ✓
-     -
-     - ✓
+     - 
      -
    * - :class:`~stereomolgraph.StereoCondensedReactionGraph`
      - ✓
