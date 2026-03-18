@@ -30,11 +30,6 @@ StereoMolGraph (SMG) is a lightweight Python library for representing molecules 
 - Stereochemistry describes relative spatial arrangement. No absolute stereochemistry.
 - Transparent: Simple 2D visualization in IPython notebooks
 
-
-## Examples
-
-Explore the working example notebooks in `docs/examples/` (executed in CI). For rendered examples and guides, see the documentation: https://stereomolgraph.readthedocs.io
-
 ## RDKit interoperability notes
 
 - Hydrogens must be explicit for stereo-safe bidirectional conversion.
