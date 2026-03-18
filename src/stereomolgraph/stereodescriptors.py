@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 import itertools
-import sys
 from collections import Counter
 from typing import (
     TYPE_CHECKING,
-    Any,
     Generic,
     Literal,
     Protocol,
-    TypeVar,
+    cast,
     runtime_checkable,
 )
 
-if sys.version_info >= (3, 13):
-    from typing import TypeVar
-else:
-    from typing_extensions import TypeVar
+from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Set
@@ -29,21 +24,16 @@ if TYPE_CHECKING:
 OInt = None | int
 "Optional Integer"
 
-A = TypeVar(
-    "A", bound=tuple[OInt, ...],
-    covariant=True,
-    default=tuple[OInt, ...]
-)
+A = TypeVar("A", bound=tuple[OInt, ...], default=tuple[OInt, ...])
 P = TypeVar(
     "P",
-    covariant=True,
     bound=None | Literal[1, 0, -1],
-    default=None | Literal[1, 0, -1],
+    default=None,
 )
 
 
 @runtime_checkable
-class Stereo(Protocol, Generic[A, P]):
+class Stereo(Protocol[A, P]):
     """
     Protocol to represent the orientation of a group of atoms in space.
     This is used to represent local stereochemistry and simultaneously the
@@ -59,15 +49,18 @@ class Stereo(Protocol, Generic[A, P]):
         If 0 the orientation is defined and part of a achiral stereochemistry.
         If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
         """
+
     @property
-    def PERMUTATION_GROUP(self,) -> Iterable[A]:
+    def PERMUTATION_GROUP(
+        self,
+    ) -> Iterable[A]:
         """Defines all allowed permutations defined by the symmetry group under
         which the stereochemistry is invariant."""
         ...
 
     def __init__(self, atoms: A, parity: P = None): ...
 
-    def __eq__(self, other: Any) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
 
     def __hash__(self) -> int: ...
 
@@ -82,13 +75,13 @@ class Stereo(Protocol, Generic[A, P]):
 
 
 @runtime_checkable
-class AtomStereo(Stereo[A, P], Protocol, Generic[A, P]):
+class AtomStereo(Stereo[A, P], Protocol[A, P]):
     @property
     def central_atom(self) -> AtomId: ...
 
 
 @runtime_checkable
-class BondStereo(Stereo[A, P], Protocol, Generic[A, P]):
+class BondStereo(Stereo[A, P], Protocol[A, P]):
     @property
     def bond(self) -> Bond: ...
 
@@ -115,8 +108,7 @@ class _StereoMixin(Generic[A, P]):
             )
         else:
             return (
-                tuple([self.atoms[i] for i in perm])
-                for perm in self.PERMUTATION_GROUP
+                tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
             )
 
     def invert(self) -> Self:
@@ -126,18 +118,16 @@ class _StereoMixin(Generic[A, P]):
             return self
         new_parity = -self.parity
         assert new_parity in (1, -1)
-        return self.__class__(self.atoms, new_parity) # type: ignore[return-value]
+        return self.__class__(self.atoms, new_parity)
 
     def _inverted_atoms(self) -> A:
         if self.inversion is None:
             return self.atoms
-        atoms = tuple([self.atoms[i] for i in self.inversion])
-        assert len(atoms) == len(self.atoms) == len(self.inversion)
-        return atoms  # type: ignore[return-value]
+        return cast(A, tuple(self.atoms[i] for i in self.inversion))
 
-    def __eq__(self, other: Any) -> bool:
-        if not hasattr(other, "atoms") or not hasattr(other, "parity"):
-            return NotImplemented
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _StereoMixin):
+            return False
         s_atoms, o_atoms = self.atoms, other.atoms
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
@@ -151,9 +141,7 @@ class _StereoMixin(Generic[A, P]):
             if other.parity == 0:
                 return False
 
-            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
-                set_o_atoms
-            ):
+            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
             elif self.parity == other.parity:
@@ -162,17 +150,13 @@ class _StereoMixin(Generic[A, P]):
                 )
 
             elif self.parity * -1 == other.parity:
-                return any(
-                    other._inverted_atoms() == p for p in self._perm_atoms()
-                )
+                return any(other._inverted_atoms() == p for p in self._perm_atoms())
 
         if self.parity == 0:
             if other.parity in (1, -1):
                 return False
 
-            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
-                set_o_atoms
-            ):
+            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
             if other.parity is None:
@@ -199,10 +183,7 @@ class _StereoMixin(Generic[A, P]):
             return hash(perm)
         # else parity in (1, -1):
         perm = frozenset(
-            {
-                tuple([self.atoms[i] for i in perm])
-                for perm in self.PERMUTATION_GROUP
-            }
+            {tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP}
         )
 
         inverted_perm = frozenset(
@@ -244,18 +225,18 @@ class Tetrahedral(
 
     inversion = (0, 2, 1, 3, 4)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4),
-            (0, 3, 1, 2, 4),
-            (0, 2, 3, 1, 4),
-            (0, 1, 4, 2, 3),
-            (0, 2, 1, 4, 3),
-            (0, 4, 2, 1, 3),
-            (0, 1, 3, 4, 2),
-            (0, 4, 1, 3, 2),
-            (0, 3, 4, 1, 2),
-            (0, 2, 4, 3, 1),
-            (0, 3, 2, 4, 1),
-            (0, 4, 3, 2, 1),
+        (0, 1, 2, 3, 4),
+        (0, 3, 1, 2, 4),
+        (0, 2, 3, 1, 4),
+        (0, 1, 4, 2, 3),
+        (0, 2, 1, 4, 3),
+        (0, 4, 2, 1, 3),
+        (0, 1, 3, 4, 2),
+        (0, 4, 1, 3, 2),
+        (0, 3, 4, 1, 2),
+        (0, 2, 4, 3, 1),
+        (0, 3, 2, 4, 1),
+        (0, 4, 3, 2, 1),
     )
 
     def get_isomers(self) -> set[Self]:
@@ -290,14 +271,14 @@ class SquarePlanar(
 
     inversion = None
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4),
-            (0, 2, 3, 4, 1),
-            (0, 3, 4, 1, 2),
-            (0, 4, 1, 2, 3),
-            (0, 4, 3, 2, 1),
-            (0, 3, 2, 1, 4),
-            (0, 2, 1, 4, 3),
-            (0, 1, 4, 3, 2),
+        (0, 1, 2, 3, 4),
+        (0, 2, 3, 4, 1),
+        (0, 3, 4, 1, 2),
+        (0, 4, 1, 2, 3),
+        (0, 4, 3, 2, 1),
+        (0, 3, 2, 1, 4),
+        (0, 2, 1, 4, 3),
+        (0, 1, 4, 3, 2),
     )
 
     def get_isomers(self) -> set[SquarePlanar]:
@@ -337,12 +318,12 @@ class TrigonalBipyramidal(
 
     inversion = (0, 1, 2, 3, 5, 4)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (0, 1, 2, 5, 3, 4),
-            (0, 1, 2, 4, 5, 3),
-            (0, 2, 1, 3, 5, 4),
-            (0, 2, 1, 5, 4, 3),
-            (0, 2, 1, 4, 3, 5),
+        (0, 1, 2, 3, 4, 5),
+        (0, 1, 2, 5, 3, 4),
+        (0, 1, 2, 4, 5, 3),
+        (0, 2, 1, 3, 5, 4),
+        (0, 2, 1, 5, 4, 3),
+        (0, 2, 1, 4, 3, 5),
     )
 
     def get_isomers(self) -> set[Self]:
@@ -359,9 +340,7 @@ class TrigonalBipyramidal(
 
 
 class Octahedral(
-    _StereoMixin[
-        tuple[int, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
-    ],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     """Represents all possible configurations of atoms for a Octahedral
     Stereochemistry::
@@ -376,30 +355,30 @@ class Octahedral(
 
     inversion = (0, 2, 1, 3, 4, 5, 6)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5, 6),
-            (0, 1, 2, 6, 3, 4, 5),
-            (0, 1, 2, 5, 6, 3, 4),
-            (0, 1, 2, 4, 5, 6, 3),
-            (0, 2, 1, 4, 3, 6, 5),
-            (0, 2, 1, 5, 4, 3, 6),
-            (0, 2, 1, 6, 5, 4, 3),
-            (0, 2, 1, 3, 6, 5, 4),
-            (0, 3, 5, 2, 4, 1, 6),
-            (0, 3, 5, 6, 2, 4, 1),
-            (0, 3, 5, 1, 6, 2, 4),
-            (0, 3, 5, 4, 1, 6, 2),
-            (0, 5, 3, 1, 4, 2, 6),
-            (0, 5, 3, 6, 1, 4, 2),
-            (0, 5, 3, 2, 6, 1, 4),
-            (0, 5, 3, 4, 2, 6, 1),
-            (0, 4, 6, 3, 2, 5, 1),
-            (0, 4, 6, 1, 3, 2, 5),
-            (0, 4, 6, 5, 1, 3, 2),
-            (0, 4, 6, 2, 5, 1, 3),
-            (0, 6, 4, 3, 1, 5, 2),
-            (0, 6, 4, 2, 3, 1, 5),
-            (0, 6, 4, 5, 2, 3, 1),
-            (0, 6, 4, 1, 5, 2, 3),
+        (0, 1, 2, 3, 4, 5, 6),
+        (0, 1, 2, 6, 3, 4, 5),
+        (0, 1, 2, 5, 6, 3, 4),
+        (0, 1, 2, 4, 5, 6, 3),
+        (0, 2, 1, 4, 3, 6, 5),
+        (0, 2, 1, 5, 4, 3, 6),
+        (0, 2, 1, 6, 5, 4, 3),
+        (0, 2, 1, 3, 6, 5, 4),
+        (0, 3, 5, 2, 4, 1, 6),
+        (0, 3, 5, 6, 2, 4, 1),
+        (0, 3, 5, 1, 6, 2, 4),
+        (0, 3, 5, 4, 1, 6, 2),
+        (0, 5, 3, 1, 4, 2, 6),
+        (0, 5, 3, 6, 1, 4, 2),
+        (0, 5, 3, 2, 6, 1, 4),
+        (0, 5, 3, 4, 2, 6, 1),
+        (0, 4, 6, 3, 2, 5, 1),
+        (0, 4, 6, 1, 3, 2, 5),
+        (0, 4, 6, 5, 1, 3, 2),
+        (0, 4, 6, 2, 5, 1, 3),
+        (0, 6, 4, 3, 1, 5, 2),
+        (0, 6, 4, 2, 3, 1, 5),
+        (0, 6, 4, 5, 2, 3, 1),
+        (0, 6, 4, 1, 5, 2, 3),
     )
 
     def get_isomers(self) -> set[Octahedral]:
@@ -439,10 +418,10 @@ class PlanarBond(
 
     inversion = None
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (1, 0, 2, 3, 5, 4),
-            (4, 5, 3, 2, 0, 1),
-            (5, 4, 3, 2, 1, 0),
+        (0, 1, 2, 3, 4, 5),
+        (1, 0, 2, 3, 5, 4),
+        (4, 5, 3, 2, 0, 1),
+        (5, 4, 3, 2, 1, 0),
     )
 
     def get_isomers(self) -> set[PlanarBond]:
@@ -479,10 +458,10 @@ class AtropBond(
 
     inversion = (1, 0, 2, 3, 4, 5)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (1, 0, 2, 3, 5, 4),
-            (4, 5, 3, 2, 1, 0),
-            (5, 4, 3, 2, 0, 1),
+        (0, 1, 2, 3, 4, 5),
+        (1, 0, 2, 3, 5, 4),
+        (4, 5, 3, 2, 1, 0),
+        (5, 4, 3, 2, 0, 1),
     )
 
     def get_isomers(self) -> set[AtropBond]:
@@ -501,12 +480,13 @@ class AtropBond(
 
 
 class NonRotatableBond(
-    _StereoMixin[tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt],
-                 None | Literal[0]],
+    _StereoMixin[
+        tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[0]
+    ],
 ):
     r"""
     Represents a bond that cannot freely rotate
- 
+
              0    5
              |    |
         1  ▷ 3 - 4 ◁ 6
@@ -514,15 +494,18 @@ class NonRotatableBond(
            2        7
 
     """
+
     parity = 0
     inversion = None
     _bond: Bond
-    PERMUTATION_GROUP = ((0, 1, 2, 3, 4, 5, 6, 7),
-                         (5, 7, 6, 4, 3, 0, 2, 1),
-                         (1, 2, 0, 3, 4, 6, 7, 5),
-                         (6, 5, 7, 4, 3, 1, 0, 2),
-                         (2, 0, 1, 3, 4, 7, 5, 6),
-                         (7, 6, 5, 4, 3, 2, 1, 0))
+    PERMUTATION_GROUP = (
+        (0, 1, 2, 3, 4, 5, 6, 7),
+        (5, 7, 6, 4, 3, 0, 2, 1),
+        (1, 2, 0, 3, 4, 6, 7, 5),
+        (6, 5, 7, 4, 3, 1, 0, 2),
+        (2, 0, 1, 3, 4, 7, 5, 6),
+        (7, 6, 5, 4, 3, 2, 1, 0),
+    )
 
     def get_isomers(self) -> set[Self]:
         return {self}
@@ -532,4 +515,3 @@ class NonRotatableBond(
         bond = frozenset(self.atoms[3:5])
         assert len(bond) == 2
         return bond
-
