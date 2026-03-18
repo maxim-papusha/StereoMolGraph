@@ -64,12 +64,11 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_logo = 
 html_favicon = "_static/img/favicon.png"
 
 html_theme_options = {
     "logo": {
-        "text": "StereoMolGraph Docs",
+        "alt_text": "StereoMolGraph",
         "image_light": "_static/img/logo_smg_200px.png",
         "image_dark": "_static/img/logo_smg_200px.png",
     }
