@@ -62,9 +62,10 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_logo = "_static/img/logo.png"
+html_logo = "_static/img/logo_smg_200px.png"
+html_favicon = "_static/img/favicon.png"
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
     "bysource"  # "groupwise"
