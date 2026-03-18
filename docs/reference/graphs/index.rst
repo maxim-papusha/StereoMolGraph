@@ -37,7 +37,7 @@ Graphs
    :maxdepth: 1
    :hidden:
 
-   graphs/molgraph
-   graphs/condensedreactiongraph
-   graphs/stereomolgraph
-   graphs/stereocondensedreactiongraph
+   molgraph
+   condensedreactiongraph
+   stereomolgraph
+   stereocondensedreactiongraph
