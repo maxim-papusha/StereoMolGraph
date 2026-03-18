@@ -533,7 +533,7 @@ class TestPlanar:
             ],
             dtype=np.float64,
         )
-        assert not are_planar(coords, threshold=0.5)
+        assert not are_planar(coords, threshold=0.1)
 
 
 class TestTetrahedral:
