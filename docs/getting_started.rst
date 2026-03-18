@@ -1,6 +1,14 @@
 Getting Started
 ===============
 
+Install from PyPI
+------------------
+
+.. code-block:: bash
+
+   pip install stereomolgraph
+
+
 Creating a Molecular Graph
 --------------------------
 
