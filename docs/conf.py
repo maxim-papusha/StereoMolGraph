@@ -86,7 +86,7 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
-    "collapse_navigation": True,
+    "collapse_navigation": False,
     "navigation_depth": 4,
     "header_links_before_dropdown": 4,
     "primary_sidebar_end": ["sidebar-ethical-ads", "theme-switcher"],
