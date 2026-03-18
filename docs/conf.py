@@ -86,6 +86,8 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "collapse_navigation": True,
+    "navigation_depth": 2,
 }
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (

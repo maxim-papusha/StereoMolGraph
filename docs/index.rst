@@ -1,9 +1,16 @@
 StereoMolGraph documentation
 ============================
 
+Citing
+------
+
+To cite StereoMolGraph please use the following publication:
+Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs. *ChemRxiv.* **2026**.
+DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn/v2
+
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Quickstart:
 
    installation.rst
