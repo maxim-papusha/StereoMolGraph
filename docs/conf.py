@@ -81,7 +81,7 @@ html_theme_options = {
         },
         {
             "name": "PyPi",
-            "url": "https://pypi.org/project/StereoMolGraph",
+            "url": "https://pypi.org/project/StereoMolGraph/#description",
             "icon": "fa-brands fa-python",
             "type": "fontawesome",
         },
