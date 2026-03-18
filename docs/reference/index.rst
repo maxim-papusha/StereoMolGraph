@@ -3,12 +3,12 @@
    :caption: API Reference
    :hidden:
 
-   reference/graph
-   reference/algorithms
-   reference/stereodescriptors
-   reference/rdmol2graph
-   reference/graph2rdmol
-   reference/coords
-   reference/ipython
-   reference/periodic_table
-   reference/experimental
+   graph
+   algorithms
+   stereodescriptors
+   rdmol2graph
+   graph2rdmol
+   coords
+   ipython
+   periodic_table
+   experimental

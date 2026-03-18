@@ -27,20 +27,7 @@ DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
    :hidden:
 
    getting_started
-   tutorial
+   tutorial/index
    reference/index
 
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-   :hidden:
 
-   reference/graph
-   reference/algorithms
-   reference/stereodescriptors
-   reference/rdmol2graph
-   reference/graph2rdmol
-   reference/coords
-   reference/ipython
-   reference/periodic_table
-   reference/experimental
