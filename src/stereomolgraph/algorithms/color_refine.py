@@ -84,9 +84,8 @@ def label_hash(
     :param mg: MolGraph object containing the atoms.
     :param atom_labels: Iterable of attribute names to use for hashing.
     """
-    if len(atom_labels) == 1:
-        atom_label = next(iter(atom_labels))
-        atom_hash = [hash(mg.get_atom_attribute(atom, atom_label)) for atom in mg.atoms]
+    if atom_labels == ("atom_type",):
+        atom_hash = mg.atom_types
     else:
         atom_hash = [
             hash(
@@ -116,7 +115,10 @@ def morgan_generator(
         assert len(atom_labels) == n_atoms
 
     atom_hash = label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
-    yield atom_hash
+    atom_hash_view = atom_hash.view()
+    atom_hash_view.setflags(write=False)
+    yield atom_hash_view
+
     if n_atoms == 0:
         return
 
@@ -151,8 +153,9 @@ def morgan_generator(
         for ids, nbrs in id_nbrs_tuple_list:
             # Compute the new hash for each atom based on its neighbors
             atom_hash[ids] = numpy_int_multiset_hash(atom_hash[nbrs])
-
-        yield atom_hash
+        atom_hash_view = atom_hash.view()
+        atom_hash_view.setflags(write=False)
+        yield atom_hash_view
 
 
 def stereo_morgan_generator(
@@ -168,11 +171,15 @@ def stereo_morgan_generator(
     )
     atom_hash = np.append(init_atom_hash, 0)  # 0 for "None" in Stereo.atoms
 
-    yield atom_hash
+    atom_hash_view = atom_hash.view()
+    atom_hash_view.setflags(write=False)
+    yield atom_hash_view
 
     if len(smg.bonds) == 0:
         while True:
-            yield atom_hash
+            atom_hash_view = atom_hash.view()
+            atom_hash_view.setflags(write=False)
+            yield atom_hash_view
 
     prev_atom_hash = np.zeros_like(atom_hash, dtype=np.int64)
 
@@ -304,7 +311,7 @@ def stereo_morgan_generator(
         i_b_perm_nbrs.append(b_perm_nbrs)
         i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
         i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_bond_stereo.fill(hash(perm_group))
+        i_bond_stereo.fill(numpy_int_tuple_hash(numpy_int_tuple_hash(arr_perm_group)))
         i_b.append(i_bond_stereo)
 
         for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
@@ -363,28 +370,38 @@ def stereo_morgan_generator(
                 [[ptr.item() for ptr in ptr_list] for ptr_list in ptr_lsts]
             )
             atom_hash[atoms] = numpy_int_multiset_hash(i_stereo)
-
-        yield atom_hash
+        atom_hash_view = atom_hash.view()
+        atom_hash_view.setflags(write=False)
+        yield atom_hash_view
 
 
 def _reaction_generator(
     graph: CondensedReactionGraph,
     generator: Callable,
-    max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
-    r_colors = generator(graph.reactant(), atom_labels=atom_labels)
-    p_colors = generator(graph.product(), atom_labels=atom_labels)
-    ts_colors = generator(graph._ts(), atom_labels=atom_labels)
+    color_iters = [
+        generator(graph.reactant(), atom_labels=atom_labels),
+        generator(graph.product(), atom_labels=atom_labels),
+        generator(graph._ts(), atom_labels=atom_labels),
+    ]
 
-    for _ in itertools.repeat(None) if max_iter is None else range(max_iter):
-        stacked = np.stack(
-            [next(c) for c in (r_colors, p_colors, ts_colors)],
-            axis=-1,
-            dtype=np.int64,
-        )
+    stacked: np.ndarray | None = None
+    hash_buf: np.ndarray | None = None
 
-        yield numpy_int_tuple_hash(stacked)
+    while True:
+        for axis, it in enumerate(color_iters):
+            color = next(it)
+            if stacked is None:
+                stacked = np.empty((*color.shape, len(color_iters)), dtype=np.int64)
+                hash_buf = np.empty(color.shape, dtype=np.int64)
+            np.copyto(stacked[..., axis], color)
+
+        assert stacked is not None and hash_buf is not None
+        hashed = numpy_int_tuple_hash(stacked, out=hash_buf)
+        hash_view = hashed.view()
+        hash_view.setflags(write=False)
+        yield hash_view
 
 
 def reaction_morgan_generator(
@@ -395,7 +412,6 @@ def reaction_morgan_generator(
     return _reaction_generator(
         graph=graph,
         generator=morgan_generator,
-        max_iter=max_iter,
         atom_labels=atom_labels,
     )
 
@@ -408,7 +424,6 @@ def stereo_reaction_morgan_generator(
     return _reaction_generator(
         graph=graph,
         generator=stereo_morgan_generator,
-        max_iter=max_iter,
         atom_labels=atom_labels,
     )
 
@@ -490,3 +505,32 @@ def color_refine_scrg(
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
+
+
+def color_refine_hash_mg(graph: MolGraph) -> int:
+    """Color-refined hash for plain `MolGraph` objects."""
+    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    color_array = color_refine_mg(graph, atom_labels=initial_color_array)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_smg(graph: StereoMolGraph) -> int:
+    """Color-refined hash for `StereoMolGraph` objects.
+
+    Drops the extra sentinel slot the stereo generator appends.
+    """
+    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    color_array = color_refine_smg(graph, atom_labels=initial_color_array)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_crg(graph: CondensedReactionGraph) -> int:
+    """Color-refined hash for `CondensedReactionGraph` objects."""
+    color_array = color_refine_crg(graph)
+    return int(numpy_int_multiset_hash(color_array))
+
+
+def color_refine_hash_scrg(graph: StereoCondensedReactionGraph) -> int:
+    """Color-refined hash for `StereoCondensedReactionGraph` objects."""
+    color_array = color_refine_scrg(graph)
+    return int(numpy_int_multiset_hash(color_array))

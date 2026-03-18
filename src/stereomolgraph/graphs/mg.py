@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
+    color_refine_hash_mg,
     color_refine_mg,
     label_hash,
-    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -98,7 +98,7 @@ class MolGraph:
         """
         :return: Returns all bonds in the MolGraph
         """
-        return self._bond_attrs.keys()
+        return self._bond_attrs.keys()  # type: ignore Dicts keep the order!
 
     @property
     def bonds_with_attributes(
@@ -133,8 +133,7 @@ class MolGraph:
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_mg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        return color_refine_hash_mg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -410,7 +409,7 @@ class MolGraph:
 
     def to_rdmol(
         self,
-        generate_bond_orders: bool = False,
+        generate_bond_orders: bool = True,
         allow_charged_fragments: bool = False,
         charge: int = 0,
     ) -> Chem.rdchem.Mol:

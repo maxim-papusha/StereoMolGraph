@@ -185,12 +185,13 @@ def _trigonal_bipyramidal_from_coords(
 
     lst = np.array(
         [[i, 0, j] for i, j in itertools.combinations(indices, 2)],
-        dtype=np.int8,
-    )
+        dtype=np.int8)
 
     # The atoms with the largest angle are the axial atoms
     angles = angle_from_coords(coords[lst])
+
     i, j = lst[angles.argmax()][[0, 2]]  # axial atoms
+    i, j = int(i), int(j)
 
     equatorial = [a for a in indices if a not in (i, j)]
     i_rotation = -1 * handedness(coords.take([*equatorial, i], axis=0))
@@ -198,9 +199,13 @@ def _trigonal_bipyramidal_from_coords(
 
     assert int(i_rotation) == int(j_rotation)
 
-    atoms_in_new_order = (i, j, *equatorial)
+    indeces_in_new_order = (i, j, *equatorial)
+
     orientation = int(i_rotation)
-    tb_atoms = (atoms[0], *atoms_in_new_order)
+    tb_indeces = (0, *indeces_in_new_order)
+
+    tb_atoms = tuple(atoms[i] for i in tb_indeces)
+
     assert len(tb_atoms) == 6
     assert orientation in (1, -1)
     return TrigonalBipyramidal(tb_atoms, orientation)

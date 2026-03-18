@@ -2,9 +2,10 @@
 # typing with rdkit is not fully supported
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import ClassVar, Literal
 
 import rdkit.Chem as Chem  # type: ignore
 
@@ -12,6 +13,7 @@ from stereomolgraph import AtomId, MolGraph, StereoMolGraph
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     AtropBond,
+    BondStereo,
     Octahedral,
     PlanarBond,
     SquarePlanar,
@@ -19,34 +21,10 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from typing import ClassVar, Literal
-
 
 def mol_graph_from_rdmol(
     cls: type[MolGraph], rdmol: Chem.Mol, use_atom_map_number: bool = False
 ) -> MolGraph:
-    """
-    Creates a StereoMolGraph from an RDKit Mol object.
-    Implicit Hydrogens are added to the graph.
-    Stereo information is conserved. Double bonds, aromatic bonds and
-    conjugated bonds are interpreted as planar. Atoms with 5 bonding
-    partners are assumed to be TrigonalBipyramidal and allow interchange
-    of the substituents (berry pseudorotation). Atoms with 6 bonding
-    partners are assumed to be octahedral and do not allow interchange of
-    the substituents.
-
-    :param rdmol: RDKit Mol object
-    :param use_atom_map_number: If the atom map number should be used
-                                instead of the atom index
-    :return: StereoMolGraph
-    """
-    # rdmol = Chem.AddHs(rdmol, explicitOnly=True, addCoords=True)
-
-    if use_atom_map_number is False:
-        rdmol = Chem.rdmolops.AddHs(rdmol, explicitOnly=True)
-
     graph = cls()
 
     if use_atom_map_number:
@@ -67,19 +45,54 @@ def mol_graph_from_rdmol(
 
 @dataclass
 class RDMol2StereoMolGraph:
-    resonance: bool = True
+    """Convert an RDKit :class:`rdkit.Chem.Mol` to a :class:`StereoMolGraph`.
+
+    All aromatic bonds are considered to be cis. Double bonds in rings are
+    assumed to be cis for rings of size <= 7.
+
+    :param stereo_complete: If ``True``, attempt to infer complete stereo
+        parities when possible. Defaults to ``False``.
+    :param use_atom_map_number: Use RDKit atom map numbers as atom identifiers
+        instead of RDKit atom indices. Defaults to ``False``.
+    :param lone_pair_stereo: Include stereochemistry that depends on lone
+        pairs (if present). Defaults to ``True``.
+    :param resonance: Enumerate resonance structures and merge bond stereo
+        information from them. Defaults to ``True``.
+    """
+
     stereo_complete: bool = False
     use_atom_map_number: bool = False
-
-    # aromatic_cis: bool = True # TODO:
-    # "aromatic bonds are always planar and cis if no stereochemistry is defined"
+    lone_pair_stereo: bool = True
+    resonance: bool = True
+    _max_resonance_structures: int = 100
+    _min_trans_ring_size: int = 7
 
     def __call__(self, rdmol: Chem.Mol) -> StereoMolGraph:
-        return self.smg_from_rdmol(rdmol)
+        smg = self.smg_from_rdmol(rdmol)
+
+        if self.resonance is False:
+            return smg
+
+        elif self.resonance is True:
+            enumerator = (
+                res_mol
+                for res_mol in Chem.ResonanceMolSupplier(
+                    rdmol, Chem.KEKULE_ALL, self._max_resonance_structures
+                )
+                if res_mol is not None
+            )
+
+            for res_mol in enumerator:
+                res_smg = self.smg_from_rdmol(res_mol)
+                for bond, bond_stereo in res_smg.bond_stereo.items():
+                    if bond not in smg.bond_stereo:
+                        smg.set_bond_stereo(bond_stereo)
+        return smg
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
+        if rdmol is None:
+            raise ValueError("rdmol is None")
 
-        rdmol = Chem.AddHs(rdmol, explicitOnly=False)
         graph = StereoMolGraph()
 
         id_atom_map: dict[int, AtomId]
@@ -117,12 +130,20 @@ class RDMol2StereoMolGraph:
 
             if chiral_tag in self._rd_tetrahedral:
                 stereo_atoms = (id_atom_map[atom_idx], *neighbors)
-                assert len(stereo_atoms) == 5
-
-                atom_stereo = Tetrahedral(
-                    stereo_atoms,
-                    self._rd_tetrahedral[chiral_tag],
-                )
+                if len(stereo_atoms) == 5:
+                    atom_stereo = Tetrahedral(
+                        stereo_atoms,
+                        self._rd_tetrahedral[chiral_tag],
+                    )
+                elif len(stereo_atoms) == 4:
+                    atom_stereo = Tetrahedral(
+                        (*stereo_atoms, None),
+                        self._rd_tetrahedral[chiral_tag],
+                    )
+                else:
+                    raise RuntimeError(
+                        "Tetrahedral stereo must have 3 or 4 neighbors"
+                    )
 
             elif chiral_tag == Chem.ChiralType.CHI_TETRAHEDRAL or (
                 hybridization == Chem.HybridizationType.SP3 and len(neighbors) == 4
@@ -175,20 +196,21 @@ class RDMol2StereoMolGraph:
             else:
                 continue
 
+            if not self.lone_pair_stereo and None in atom_stereo.atoms:
+                continue
             graph.set_atom_stereo(atom_stereo)
 
         for bond in (
             b
             for b in rdmol.GetBonds()
-            if b.GetIsAromatic()  # TODO: check if include conjugated bonds?
+            if (rd_bond_stereo := b.GetStereo()) in self._rd_atrop.keys()
+            or b.GetIsAromatic()
             or b.GetBondType() == Chem.rdchem.BondType.DOUBLE
-            or b.GetStereo() in self._rd_atrop.keys()
         ):
-            begin_idx: int
-            end_idx: int
-            begin_idx, end_idx = (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+            bond_stereo: BondStereo
 
-            rd_bond_stereo = bond.GetStereo()
+            begin_idx: int = bond.GetBeginAtomIdx()
+            end_idx: int = bond.GetEndAtomIdx()
 
             neighbors_begin: list[int] = [
                 atom.GetIdx()
@@ -201,6 +223,8 @@ class RDMol2StereoMolGraph:
                 for atom in rdmol.GetAtomWithIdx(end_idx).GetNeighbors()
                 if atom.GetIdx() != begin_idx
             ]
+            if len(neighbors_begin) > 2 or len(neighbors_end) > 2:
+                continue
 
             if (
                 rd_bond_stereo == Chem.BondStereo.STEREOATROPCW
@@ -242,28 +266,12 @@ class RDMol2StereoMolGraph:
                     raise RuntimeError("Stereo Atoms not neighbors")
 
                 assert len(bond_atoms) == 6
-                stereo = AtropBond(bond_atoms, atrop_parity)
+                bond_stereo = AtropBond(bond_atoms, atrop_parity)
 
-            elif (
-                bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
-                and rd_bond_stereo == Chem.BondStereo.STEREONONE
-                and len(neighbors_begin) == 2 == len(neighbors_end)
+            elif rd_bond_stereo in (
+                Chem.BondStereo.STEREOZ,
+                Chem.BondStereo.STEREOE,
             ):
-                rd_bond_stereo = bond.GetStereo()
-                invert: None | bool = None
-
-                bond_atoms_idx = (
-                    *neighbors_begin,
-                    begin_idx,
-                    end_idx,
-                    *neighbors_end,
-                )
-
-                bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
-                assert len(bond_atoms) == 6, bond_atoms
-                stereo = PlanarBond(bond_atoms, None)
-
-            elif rd_bond_stereo in (Chem.BondStereo.STEREOZ, Chem.BondStereo.STEREOE):
                 invert = {
                     Chem.BondStereo.STEREOZ: False,
                     Chem.BondStereo.STEREOE: True,
@@ -275,7 +283,9 @@ class RDMol2StereoMolGraph:
                 begin_non_stereo_nbr = (
                     None
                     if len(neighbors_begin) == 1
-                    else [a for a in neighbors_begin if a != begin_stereo_atom][0]
+                    else [
+                        a for a in neighbors_begin if a != begin_stereo_atom
+                    ][0]
                 )
                 end_non_stereo_nbr = (
                     None
@@ -291,161 +301,119 @@ class RDMol2StereoMolGraph:
                     end_stereo_atom,
                     end_non_stereo_nbr,
                 )
-                assert len(bond_atoms_idx) == 6, bond_atoms_idx
+                assert len(bond_atoms_idx) == 6
 
-                assert len(bond_atoms_idx) == 6, bond_atoms_idx
+                assert len(bond_atoms_idx) == 6
 
-                bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
+                bond_atoms = tuple(
+                    [id_atom_map.get(a) for a in bond_atoms_idx]
+                )
 
                 if invert:
-                    bond_atoms = tuple([bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)])
-
-                assert len(bond_atoms) == 6, bond_atoms
-                stereo = PlanarBond(bond_atoms, 0)
+                    bond_atoms = tuple(
+                        [bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)]
+                    )
+                assert len(bond_atoms) == 6
+                bond_stereo = PlanarBond(bond_atoms, 0)
 
             elif bond.GetBondType() == Chem.rdchem.BondType.AROMATIC or (
                 bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
                 and rd_bond_stereo == Chem.BondStereo.STEREONONE
-                and (len(neighbors_begin) == 1 or len(neighbors_end) == 1)
             ):
-                ri = rdmol.GetRingInfo()
-                rings: list[set[int]] = [set(ring) for ring in ri.AtomRings()]
-
-                neighbors_begin0 = neighbors_begin[0]
-                neighbors_begin1 = (
-                    None if len(neighbors_begin) == 1 else neighbors_begin[1]
-                )
-                neighbors_end0 = neighbors_end[0]
-                neighbors_end1 = None if len(neighbors_end) == 1 else neighbors_end[1]
-                stereo_atoms = [
-                    neighbors_begin0,
-                    neighbors_begin1,
-                    begin_idx,
-                    end_idx,
-                    neighbors_end0,
-                    neighbors_end1,
+                # Find rings with bond begin_idx-end_idx, sort by aromatic first then size
+                rings = [
+                    (
+                        all(
+                            rdmol.GetBondBetweenAtoms(
+                                list(r)[i], list(r)[(i + 1) % len(r)]
+                            ).GetIsAromatic()
+                            for i in range(len(r))
+                        ),
+                        len(r),
+                        list(r),
+                    )
+                    for r in Chem.GetSymmSSSR(rdmol)
+                    if begin_idx in r and end_idx in r
                 ]
+                rings.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
-                common_ring_size_db1: None | int = None
-                for ring in rings:
-                    if all(
-                        a in ring
-                        for a in (
-                            neighbors_begin0,
-                            begin_idx,
-                            end_idx,
-                            neighbors_end0,
-                        )
-                    ):
-                        if (
-                            common_ring_size_db1 is None
-                            or len(ring) < common_ring_size_db1
-                        ):
-                            common_ring_size_db1 = len(ring)
-                    if all(
-                        a in ring
-                        for a in (
-                            neighbors_begin1,
-                            begin_idx,
-                            end_idx,
-                            neighbors_end1,
-                        )
-                    ):
-                        if (
-                            common_ring_size_db1 is None
-                            or len(ring) < common_ring_size_db1
-                        ):
-                            common_ring_size_db1 = len(ring)
+                if rings and (
+                    rings[0][0] is True  # aromatic rings always cis
+                    or rings[0][1] < self._min_trans_ring_size
+                ):
+                    ring = rings[0][2] if rings else []
 
-                common_ring_size_db2: None | int = None
+                    # Get ordered atoms from first ring (assumed cis)
 
-                for ring in rings:
-                    if all(
-                        a in ring
-                        for a in (
-                            neighbors_begin1,
-                            begin_idx,
-                            end_idx,
-                            neighbors_end0,
-                        )
-                    ):
-                        if (
-                            common_ring_size_db2 is None
-                            or len(ring) < common_ring_size_db2
-                        ):
-                            common_ring_size_db2 = len(ring)
-                for ring in rings:
-                    if all(
-                        a in ring
-                        for a in (
-                            neighbors_begin0,
-                            begin_idx,
-                            end_idx,
-                            neighbors_end1,
-                        )
-                    ):
-                        if (
-                            common_ring_size_db2 is None
-                            or len(ring) < common_ring_size_db2
-                        ):
-                            common_ring_size_db2 = len(ring)
+                    n_begin = [
+                        n.GetIdx()
+                        for n in rdmol.GetAtomWithIdx(begin_idx).GetNeighbors()
+                        if n.GetIdx() != end_idx
+                    ]
+                    n_end = [
+                        n.GetIdx()
+                        for n in rdmol.GetAtomWithIdx(end_idx).GetNeighbors()
+                        if n.GetIdx() != begin_idx
+                    ]
 
-                if common_ring_size_db1 is None and common_ring_size_db2 is None:
-                    pb_atoms = tuple([id_atom_map.get(a) for a in stereo_atoms])
-                    assert len(pb_atoms) == 6
-                    stereo = PlanarBond(pb_atoms, None)
-                elif common_ring_size_db1:
-                    pb_atoms = tuple(tuple([id_atom_map.get(a) for a in stereo_atoms]))
-                    assert len(pb_atoms) == 6
-                    stereo = PlanarBond(pb_atoms, parity=0)
-                elif common_ring_size_db2:
-                    pb_atoms = tuple(
-                        tuple(
-                            [
-                                id_atom_map.get(stereo_atoms[i])
-                                for i in (0, 1, 2, 3, 4, 5)
-                            ]
-                        )
+                    bond_atoms_idx = [
+                        next(
+                            (n for n in n_begin if n in ring), None
+                        ),  # atom1: in-ring neighbor of begin_idx
+                        next(
+                            (n for n in n_begin if n not in ring), None
+                        ),  # atom2: out-of-ring neighbor of begin_idx
+                        begin_idx,  # atom3
+                        end_idx,  # atom4
+                        next(
+                            (n for n in n_end if n in ring), None
+                        ),  # atom5: in-ring neighbor of end_idx
+                        next(
+                            (n for n in n_end if n not in ring), None
+                        ),  # atom6: out-of-ring neighbor of end_idx
+                    ]
+                    bond_atoms = tuple(
+                        [id_atom_map.get(a) for a in bond_atoms_idx]
                     )
-                    assert len(pb_atoms) == 6
-                    stereo = PlanarBond(
-                        pb_atoms,
-                        parity=0,
-                    )
-                elif common_ring_size_db1 is None or common_ring_size_db2 is None:
-                    raise RuntimeError(
-                        "Aromatic Atoms not in ring, please check the input structure"
-                    )
-                elif common_ring_size_db2 < common_ring_size_db1:
-                    pb_atoms = tuple(tuple([id_atom_map.get(a) for a in stereo_atoms]))
-                    assert len(pb_atoms) == 6
-                    stereo = PlanarBond(pb_atoms, parity=0)
-                elif common_ring_size_db1 < common_ring_size_db2:
-                    pb_atoms = tuple(
-                        [id_atom_map.get(stereo_atoms[i]) for i in (0, 1, 2, 3, 4, 5)]
-                    )
-                    assert len(pb_atoms) == 6
-                    stereo = PlanarBond(pb_atoms, parity=0)
+
+                    assert len(bond_atoms) == 6
+
+                    bond_stereo = PlanarBond(bond_atoms, 0)
+
                 else:
-                    raise RuntimeError(
-                        "Aromatic Atoms not in ring, please check the input structure"
+                    neighbors_begin_with_none = neighbors_begin + [None] * (
+                        2 - len(neighbors_begin)
                     )
+                    neighbors_end_with_none = neighbors_end + [None] * (
+                        2 - len(neighbors_end)
+                    )
+                    bond_atoms_idx = (
+                        *neighbors_begin_with_none,
+                        begin_idx,
+                        end_idx,
+                        *neighbors_end_with_none,
+                    )
+
+                    bond_atoms = tuple(
+                        [id_atom_map.get(a) for a in bond_atoms_idx]
+                    )
+                    assert len(bond_atoms) == 6, bond_atoms
+                    if self.stereo_complete:
+                        bond_stereo = PlanarBond(bond_atoms, 0)
+                    else:
+                        bond_stereo = PlanarBond(bond_atoms, None)
 
             else:
                 continue
-                stereo_atoms = [
-                    neighbors_begin[0],
-                    neighbors_begin[1],
-                    begin_idx,
-                    end_idx,
-                    neighbors_end[0],
-                    neighbors_end[1],
-                ]
-                pb_atoms = tuple([id_atom_map[a] for a in stereo_atoms])
-                assert len(pb_atoms) == 6
-                stereo = PlanarBond(pb_atoms, None)
 
-            graph.set_bond_stereo(stereo)
+            if not self.lone_pair_stereo and None in bond_stereo.atoms:
+                continue
+            elif isinstance(bond_stereo, (PlanarBond, AtropBond)):
+                if all(bond_stereo.atoms[a] is None for a in (0, 1)):
+                    continue
+                elif all(bond_stereo.atoms[a] is None for a in (4, 5)):
+                    continue
+            graph.set_bond_stereo(bond_stereo)
 
         return graph
 

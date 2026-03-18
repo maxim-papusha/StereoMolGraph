@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from stereomolgraph.algorithms.color_refine import (
-    numpy_int_multiset_hash,
+    color_refine_hash_crg,
     label_hash,
     color_refine_crg,
 )
@@ -48,8 +48,8 @@ class CondensedReactionGraph(MolGraph):
     def __hash__(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        color_array = color_refine_crg(self)
-        return int(numpy_int_multiset_hash(color_array))
+        else:
+            return color_refine_hash_crg(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -327,43 +327,36 @@ class CondensedReactionGraph(MolGraph):
         :param product_graph: product of the reaction
         :return: CondensedReactionGraph
         """
-
-        if set(reactant_graph.atoms) != set(product_graph.atoms):
-            raise ValueError("reactant and product have different atoms1")
-        for atom in reactant_graph.atoms:
-            if reactant_graph.get_atom_attribute(
-                atom, "atom_type"
-            ) != product_graph.get_atom_attribute(atom, "atom_type"):
-                raise ValueError(
-                    "reactant and product have different atom types"
-                )
-
+        
+        r_id_type = set(zip(reactant_graph.atoms, reactant_graph.atom_types))
+        p_id_type = set(zip(product_graph.atoms, product_graph.atom_types))
+        assert r_id_type == p_id_type
+        
         crg = cls()
 
-        atoms = {*reactant_graph.atoms, *product_graph.atoms}
-        for atom in atoms:
-            crg.add_atom(
-                atom,
-                atom_type=reactant_graph.get_atom_type(atom),
-            )
+        for atom, atom_type in zip(reactant_graph.atoms,
+                                   reactant_graph.atom_types):
+            crg.add_atom(atom,atom_type)
 
-        bonds = {
-            *[tuple(sorted(bond)) for bond in reactant_graph.bonds],
-            *[tuple(sorted(bond)) for bond in product_graph.bonds],
-        }
-
+        bonds = set(reactant_graph.bonds) | set(product_graph.bonds)
+            
         for bond in bonds:
-            if reactant_graph.has_bond(*bond) and product_graph.has_bond(
-                *bond
-            ):
+            if (reactant_graph.has_bond(*bond)
+                and product_graph.has_bond(*bond)):
                 crg.add_bond(*bond)
             elif reactant_graph.has_bond(*bond):
                 crg.add_broken_bond(*bond)
             elif product_graph.has_bond(*bond):
                 crg.add_formed_bond(*bond)
+
         if ts_graph is not None:
-            if set(crg.atoms) != set(ts_graph.atoms):
-                raise ValueError("ts_graph has different atoms")
+            ts_id_type = set(zip(ts_graph.atoms, ts_graph.atom_types))
+            assert r_id_type == ts_id_type
+            assert p_id_type == ts_id_type
+
+            assert set(ts_graph.bonds).issuperset(bonds), ("TS graph has to "
+                        "contain all bonds from reactant and product")
+
             for bond in ts_graph.bonds:
                 if bond not in crg.bonds:
                     crg.add_fleeting_bond(*bond)
