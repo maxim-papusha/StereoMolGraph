@@ -29,11 +29,7 @@ if TYPE_CHECKING:
 OInt = None | int
 "Optional Integer"
 
-A = TypeVar(
-    "A", bound=tuple[OInt, ...],
-    covariant=True,
-    default=tuple[OInt, ...]
-)
+A = TypeVar("A", bound=tuple[OInt, ...], covariant=True, default=tuple[OInt, ...])
 P = TypeVar(
     "P",
     covariant=True,
@@ -59,8 +55,11 @@ class Stereo(Protocol, Generic[A, P]):
         If 0 the orientation is defined and part of a achiral stereochemistry.
         If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
         """
+
     @property
-    def PERMUTATION_GROUP(self,) -> Iterable[A]:
+    def PERMUTATION_GROUP(
+        self,
+    ) -> Iterable[A]:
         """Defines all allowed permutations defined by the symmetry group under
         which the stereochemistry is invariant."""
         ...
@@ -115,8 +114,7 @@ class _StereoMixin(Generic[A, P]):
             )
         else:
             return (
-                tuple([self.atoms[i] for i in perm])
-                for perm in self.PERMUTATION_GROUP
+                tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
             )
 
     def invert(self) -> Self:
@@ -126,7 +124,7 @@ class _StereoMixin(Generic[A, P]):
             return self
         new_parity = -self.parity
         assert new_parity in (1, -1)
-        return self.__class__(self.atoms, new_parity) # type: ignore[return-value]
+        return self.__class__(self.atoms, new_parity)  # type: ignore[return-value]
 
     def _inverted_atoms(self) -> A:
         if self.inversion is None:
@@ -134,6 +132,27 @@ class _StereoMixin(Generic[A, P]):
         atoms = tuple([self.atoms[i] for i in self.inversion])
         assert len(atoms) == len(self.atoms) == len(self.inversion)
         return atoms  # type: ignore[return-value]
+
+    def canonical_form(self) -> tuple:
+        if self.parity == 1 or self.parity == 0:
+            canon_atoms = min(self._perm_atoms())
+            ret_parity = self.parity
+        elif self.parity == -1:
+            atoms = self._inverted_atoms()
+            canon_atoms = min(
+                tuple([atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
+            )
+            ret_parity = 1
+        elif self.parity is None:
+            canon_atoms = min(
+                tuple([self.atoms[i] for i in perm])
+                for perm in itertools.permutations(range(len(self.atoms)))
+            )
+            ret_parity = None
+        else:
+            raise RuntimeError("Parity should be 1, -1, 0 or None")
+
+        return (ret_parity, *canon_atoms)
 
     def __eq__(self, other: Any) -> bool:
         if not hasattr(other, "atoms") or not hasattr(other, "parity"):
@@ -151,9 +170,7 @@ class _StereoMixin(Generic[A, P]):
             if other.parity == 0:
                 return False
 
-            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
-                set_o_atoms
-            ):
+            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
             elif self.parity == other.parity:
@@ -162,17 +179,13 @@ class _StereoMixin(Generic[A, P]):
                 )
 
             elif self.parity * -1 == other.parity:
-                return any(
-                    other._inverted_atoms() == p for p in self._perm_atoms()
-                )
+                return any(other._inverted_atoms() == p for p in self._perm_atoms())
 
         if self.parity == 0:
             if other.parity in (1, -1):
                 return False
 
-            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(
-                set_o_atoms
-            ):
+            if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
             if other.parity is None:
@@ -199,10 +212,7 @@ class _StereoMixin(Generic[A, P]):
             return hash(perm)
         # else parity in (1, -1):
         perm = frozenset(
-            {
-                tuple([self.atoms[i] for i in perm])
-                for perm in self.PERMUTATION_GROUP
-            }
+            {tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP}
         )
 
         inverted_perm = frozenset(
@@ -221,7 +231,7 @@ class _StereoMixin(Generic[A, P]):
 
 
 class Tetrahedral(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a Tetrahedral
     Stereochemistry::
@@ -244,18 +254,18 @@ class Tetrahedral(
 
     inversion = (0, 2, 1, 3, 4)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4),
-            (0, 3, 1, 2, 4),
-            (0, 2, 3, 1, 4),
-            (0, 1, 4, 2, 3),
-            (0, 2, 1, 4, 3),
-            (0, 4, 2, 1, 3),
-            (0, 1, 3, 4, 2),
-            (0, 4, 1, 3, 2),
-            (0, 3, 4, 1, 2),
-            (0, 2, 4, 3, 1),
-            (0, 3, 2, 4, 1),
-            (0, 4, 3, 2, 1),
+        (0, 1, 2, 3, 4),
+        (0, 3, 1, 2, 4),
+        (0, 2, 3, 1, 4),
+        (0, 1, 4, 2, 3),
+        (0, 2, 1, 4, 3),
+        (0, 4, 2, 1, 3),
+        (0, 1, 3, 4, 2),
+        (0, 4, 1, 3, 2),
+        (0, 3, 4, 1, 2),
+        (0, 2, 4, 3, 1),
+        (0, 3, 2, 4, 1),
+        (0, 4, 3, 2, 1),
     )
 
     def get_isomers(self) -> set[Self]:
@@ -270,7 +280,7 @@ class Tetrahedral(
 
 
 class SquarePlanar(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     SquarePlanar Stereochemistry::
@@ -290,14 +300,14 @@ class SquarePlanar(
 
     inversion = None
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4),
-            (0, 2, 3, 4, 1),
-            (0, 3, 4, 1, 2),
-            (0, 4, 1, 2, 3),
-            (0, 4, 3, 2, 1),
-            (0, 3, 2, 1, 4),
-            (0, 2, 1, 4, 3),
-            (0, 1, 4, 3, 2),
+        (0, 1, 2, 3, 4),
+        (0, 2, 3, 4, 1),
+        (0, 3, 4, 1, 2),
+        (0, 4, 1, 2, 3),
+        (0, 4, 3, 2, 1),
+        (0, 3, 2, 1, 4),
+        (0, 2, 1, 4, 3),
+        (0, 1, 4, 3, 2),
     )
 
     def get_isomers(self) -> set[SquarePlanar]:
@@ -313,7 +323,7 @@ class SquarePlanar(
 
 
 class TrigonalBipyramidal(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[int, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""Represents all possible configurations of atoms for a
     TrigonalBipyramidal Stereochemistry::
@@ -337,12 +347,12 @@ class TrigonalBipyramidal(
 
     inversion = (0, 1, 2, 3, 5, 4)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (0, 1, 2, 5, 3, 4),
-            (0, 1, 2, 4, 5, 3),
-            (0, 2, 1, 3, 5, 4),
-            (0, 2, 1, 5, 4, 3),
-            (0, 2, 1, 4, 3, 5),
+        (0, 1, 2, 3, 4, 5),
+        (0, 1, 2, 5, 3, 4),
+        (0, 1, 2, 4, 5, 3),
+        (0, 2, 1, 3, 5, 4),
+        (0, 2, 1, 5, 4, 3),
+        (0, 2, 1, 4, 3, 5),
     )
 
     def get_isomers(self) -> set[Self]:
@@ -360,7 +370,7 @@ class TrigonalBipyramidal(
 
 class Octahedral(
     _StereoMixin[
-        tuple[OInt, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
+        tuple[int, OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]
     ],
 ):
     """Represents all possible configurations of atoms for a Octahedral
@@ -376,30 +386,30 @@ class Octahedral(
 
     inversion = (0, 2, 1, 3, 4, 5, 6)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5, 6),
-            (0, 1, 2, 6, 3, 4, 5),
-            (0, 1, 2, 5, 6, 3, 4),
-            (0, 1, 2, 4, 5, 6, 3),
-            (0, 2, 1, 4, 3, 6, 5),
-            (0, 2, 1, 5, 4, 3, 6),
-            (0, 2, 1, 6, 5, 4, 3),
-            (0, 2, 1, 3, 6, 5, 4),
-            (0, 3, 5, 2, 4, 1, 6),
-            (0, 3, 5, 6, 2, 4, 1),
-            (0, 3, 5, 1, 6, 2, 4),
-            (0, 3, 5, 4, 1, 6, 2),
-            (0, 5, 3, 1, 4, 2, 6),
-            (0, 5, 3, 6, 1, 4, 2),
-            (0, 5, 3, 2, 6, 1, 4),
-            (0, 5, 3, 4, 2, 6, 1),
-            (0, 4, 6, 3, 2, 5, 1),
-            (0, 4, 6, 1, 3, 2, 5),
-            (0, 4, 6, 5, 1, 3, 2),
-            (0, 4, 6, 2, 5, 1, 3),
-            (0, 6, 4, 3, 1, 5, 2),
-            (0, 6, 4, 2, 3, 1, 5),
-            (0, 6, 4, 5, 2, 3, 1),
-            (0, 6, 4, 1, 5, 2, 3),
+        (0, 1, 2, 3, 4, 5, 6),
+        (0, 1, 2, 6, 3, 4, 5),
+        (0, 1, 2, 5, 6, 3, 4),
+        (0, 1, 2, 4, 5, 6, 3),
+        (0, 2, 1, 4, 3, 6, 5),
+        (0, 2, 1, 5, 4, 3, 6),
+        (0, 2, 1, 6, 5, 4, 3),
+        (0, 2, 1, 3, 6, 5, 4),
+        (0, 3, 5, 2, 4, 1, 6),
+        (0, 3, 5, 6, 2, 4, 1),
+        (0, 3, 5, 1, 6, 2, 4),
+        (0, 3, 5, 4, 1, 6, 2),
+        (0, 5, 3, 1, 4, 2, 6),
+        (0, 5, 3, 6, 1, 4, 2),
+        (0, 5, 3, 2, 6, 1, 4),
+        (0, 5, 3, 4, 2, 6, 1),
+        (0, 4, 6, 3, 2, 5, 1),
+        (0, 4, 6, 1, 3, 2, 5),
+        (0, 4, 6, 5, 1, 3, 2),
+        (0, 4, 6, 2, 5, 1, 3),
+        (0, 6, 4, 3, 1, 5, 2),
+        (0, 6, 4, 2, 3, 1, 5),
+        (0, 6, 4, 5, 2, 3, 1),
+        (0, 6, 4, 1, 5, 2, 3),
     )
 
     def get_isomers(self) -> set[Octahedral]:
@@ -416,7 +426,7 @@ class Octahedral(
 
 
 class PlanarBond(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[0]],
+    _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt], None | Literal[0]],
 ):
     r""" Represents all possible configurations of atoms for a
     Planar Structure and should be used for aromatic and double bonds::
@@ -439,10 +449,10 @@ class PlanarBond(
 
     inversion = None
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (1, 0, 2, 3, 5, 4),
-            (4, 5, 3, 2, 0, 1),
-            (5, 4, 3, 2, 1, 0),
+        (0, 1, 2, 3, 4, 5),
+        (1, 0, 2, 3, 5, 4),
+        (4, 5, 3, 2, 0, 1),
+        (5, 4, 3, 2, 1, 0),
     )
 
     def get_isomers(self) -> set[PlanarBond]:
@@ -461,7 +471,7 @@ class PlanarBond(
 
 
 class AtropBond(
-    _StereoMixin[tuple[OInt, OInt, OInt, OInt, OInt, OInt], None | Literal[1, -1]],
+    _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""
     Represents all possible configurations of atoms for a
@@ -479,10 +489,10 @@ class AtropBond(
 
     inversion = (1, 0, 2, 3, 4, 5)
     PERMUTATION_GROUP = (
-            (0, 1, 2, 3, 4, 5),
-            (1, 0, 2, 3, 5, 4),
-            (4, 5, 3, 2, 1, 0),
-            (5, 4, 3, 2, 0, 1),
+        (0, 1, 2, 3, 4, 5),
+        (1, 0, 2, 3, 5, 4),
+        (4, 5, 3, 2, 1, 0),
+        (5, 4, 3, 2, 0, 1),
     )
 
     def get_isomers(self) -> set[AtropBond]:
@@ -498,3 +508,38 @@ class AtropBond(
         bond = frozenset(self.atoms[2:4])
         assert len(bond) == 2
         return bond
+
+
+class NonRotatableBond(
+    _StereoMixin[tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt],
+                 None | Literal[0]],
+):
+    r"""
+    Represents a bond that cannot freely rotate
+ 
+             0    5
+             |    |
+        1  ▷ 3 - 4 ◁ 6
+            ◀     ▶
+           2        7
+
+    """
+    parity = 0
+    inversion = None
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4, 5, 6, 7),
+                         (5, 7, 6, 4, 3, 0, 2, 1),
+                         (1, 2, 0, 3, 4, 6, 7, 5),
+                         (6, 5, 7, 4, 3, 1, 0, 2),
+                         (2, 0, 1, 3, 4, 7, 5, 6),
+                         (7, 6, 5, 4, 3, 2, 1, 0))
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[3:5])
+        assert len(bond) == 2
+        return bond
+

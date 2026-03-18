@@ -7,7 +7,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import os
 import sys
-
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +29,7 @@ author = "Maxim Papusha"
 
 nb_execution_mode: Literal["off", "force", "auto", "cache", "inline"] = "off"
 nb_execution_show_tb = True  # Show traceback in the output
-nb_execution_raise_on_error = True # Critical - makes exceptions fail the build
+nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
 
 nb_execution_allow_errors = False  # Don't allow errors in the output
 nb_execution_timeout = 300  # Timeout in seconds
@@ -47,13 +46,13 @@ extensions = [
     # MyST extensions
     "myst_nb",
     # Theme and UI extensions
-    "sphinx_rtd_theme",
     "sphinx_copybutton",
-    'sphinx.ext.intersphinx',
+    "sphinx.ext.intersphinx",
+    "pydata_sphinx_theme",
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 templates_path = ["_templates"]
@@ -63,11 +62,13 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
+html_logo = "_static/img/logo_smg_200px.png"
+html_favicon = "_static/img/favicon.png"
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
-    "bysource" #"groupwise"
+    "bysource"  # "groupwise"
 )
 # autodoc_class_signature = "separated"
 # Force type hints to be links when possible
