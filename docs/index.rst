@@ -1,6 +1,6 @@
 
 Stereochemistry-Aware Molecular and Reaction Graphs
-===================================================
+=====================================================
 
 .. image:: _static/img/logo_smg.png
    :align: center
@@ -23,17 +23,27 @@ DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
 
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Quickstart:
+   :maxdepth: 2
+   :caption: Getting Started
+   :hidden:
 
-   installation.rst
-   getting_started.rst
-   interoperability_rdkit.rst
+   installation
+   getting_started
+   interoperability_rdkit
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Code Reference:
-   
+   :maxdepth: 2
+   :caption: User Guide
+   :hidden:
+
+   theory
+   examples/menschutkin_xyz
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+   :hidden:
+
    reference/graph
    reference/algorithms
    reference/stereodescriptors
@@ -43,4 +53,3 @@ DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
    reference/ipython
    reference/periodic_table
    reference/experimental
-   

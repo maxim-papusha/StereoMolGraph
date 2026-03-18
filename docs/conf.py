@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 link_from = str(Path(__file__).resolve().parent.parent / "examples")
 link_to = str(Path(__file__).resolve().parent / "examples")
 
-os.symlink(link_from, link_to, target_is_directory=True)
+if not os.path.exists(link_to):
+    os.symlink(link_from, link_to, target_is_directory=True)
 
 
 project = "StereoMolGraph"
@@ -48,7 +49,6 @@ extensions = [
     # Theme and UI extensions
     "sphinx_copybutton",
     "sphinx.ext.intersphinx",
-    "pydata_sphinx_theme",
 ]
 
 intersphinx_mapping = {
@@ -64,7 +64,7 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_favicon = "_static/img/favicon.png"
+html_favicon = "_static/img/favicon.ico"
 
 html_theme_options = {
     "logo": {
@@ -88,7 +88,9 @@ html_theme_options = {
     ],
     "collapse_navigation": True,
     "navigation_depth": 2,
+    "header_links_before_dropdown": 4,
     "primary_sidebar_end": ["sidebar-ethical-ads", "theme-switcher"],
+    "navbar_align": "left",
 }
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
