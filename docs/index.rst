@@ -23,21 +23,12 @@ DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Getting Started
+   :maxdepth: 1
    :hidden:
 
-   installation
    getting_started
-   interoperability_rdkit
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-   :hidden:
-
-   theory
-   examples/menschutkin_xyz
+   tutorial
+   reference/index
 
 .. toctree::
    :maxdepth: 2
