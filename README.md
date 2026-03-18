@@ -5,13 +5,13 @@
 
 # StereoMolGraph #
 
-[![PyPI](https://img.shields.io/badge/PyPI-install%20StereoMolGraph-3775A9?style=flat-square&logo=pypi)](https://pypi.org/project/StereoMolGraph/)
-[![Python Versions](https://img.shields.io/badge/Python-3.10--3.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-d4a017?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
-[![Unit Tests](https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
+[![PyPI](https://img.shields.io/badge/PyPI-install%20StereoMolGraph-3775A9?style=for-the-badge&logo=pypi)](https://pypi.org/project/StereoMolGraph/)
+[![Python Versions](https://img.shields.io/badge/Python-3.10--3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-d4a017?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
+[![Unit Tests](https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=for-the-badge&label=tests)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
 
-[![Documentation](https://img.shields.io/badge/Documentation-8CA1AF?style=flat-square&logo=readthedocs&logoColor=white)](https://stereomolgraph.readthedocs.io)
-[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+[![Documentation](https://img.shields.io/badge/Documentation-8CA1AF?style=for-the-badge&logo=readthedocs&logoColor=white)](https://stereomolgraph.readthedocs.io)
+[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=for-the-badge)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
 
 StereoMolGraph (SMG) is a lightweight Python library for representing molecules and transition states with explicit, local stereochemistry. It provides:
 
