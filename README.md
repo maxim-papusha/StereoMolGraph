@@ -4,17 +4,17 @@
 </picture>
 
 # StereoMolGraph #
-[![View Documentation](https://img.shields.io/badge/📖-Documentation-8CA1AF)](https://stereomolgraph.readthedocs.io)
-[![Python Versions](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13|3.14-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
-![PyPI - Version](https://img.shields.io/pypi/v/StereoMolGraph?link=https%3A%2F%2Fpypi.org%2Fproject%2FStereoMolGraph)
-[![Documentation Status](https://readthedocs.org/projects/stereomolgraph/badge/?version=dev)](https://stereomolgraph.readthedocs.io/en/latest/?badge=dev)
-[![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?logo=github)](https://github.com/maxim-papusha/StereoMolGraph)
-[![Unit Tests](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml/badge.svg?branch=main&event=push)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
-[![DOI](https://img.shields.io/badge/DOI-10.26434/chemrxiv-2025-0g4wn-blue)](https://doi.org/10.26434/chemrxiv-2025-0g4wn)
-[![PyPI Downloads](https://static.pepy.tech/badge/stereomolgraph)](https://pepy.tech/projects/stereomolgraph)
 
-StereoMolGraph (SMG) is a lightweight Python library for representing molecules and transition states with explicit, local stereochemistry. It provides:
+[![PyPI](https://img.shields.io/pypi/v/StereoMolGraph?style=flat-square&logo=pypi&logoColor=white&color=3775A9)](https://pypi.org/project/StereoMolGraph/)
+[![Python](https://img.shields.io/pypi/pyversions/StereoMolGraph?style=flat-square&logo=python&logoColor=white&color=3776AB&label=Python)](https://pypi.org/project/StereoMolGraph/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-d4a017?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
+[![Unit Tests](https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml)
+
+[![Documentation](https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white)](https://stereomolgraph.readthedocs.io)
+[![GitHub](https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white)](https://github.com/maxim-papusha/StereoMolGraph)
+[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+
+StereoMolGraph (SMG) is a library for graph representation of molecules and reactions with a focus on Stereochemistry. It provides:
 
 - Graph types for molecules and reactions (with/without stereo and stereo changes)
 - Includes non tetrahedral stereocenters and changing stereochemistry in reactions
@@ -30,11 +30,6 @@ StereoMolGraph (SMG) is a lightweight Python library for representing molecules 
 - SMG focuses on the connectivity and stereochemistry. 
 - Stereochemistry describes relative spatial arrangement. No absolute stereochemistry.
 - Transparent: Simple 2D visualization in IPython notebooks
-
-
-## Examples
-
-Explore the working example notebooks in `docs/examples/` (executed in CI). For rendered examples and guides, see the documentation: https://stereomolgraph.readthedocs.io
 
 ## RDKit interoperability notes
 
@@ -56,13 +51,12 @@ Bug reports and feature requests are welcome — please open an issue on GitHub:
 
 - Issues: https://github.com/maxim-papusha/StereoMolGraph/issues
 
-If you have questions or ideas that don’t fit a template, you can still open an issue and tag it appropriately.
 
 ## Citation
 
 If you use StereoMolGraph in your work, please cite the Zenodo record:
 
-[![DOI](https://zenodo.org/badge/999259345.svg)](https://doi.org/10.5281/zenodo.16360310)
+[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
 
 ## License
 

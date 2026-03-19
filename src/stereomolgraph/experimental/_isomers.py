@@ -76,8 +76,8 @@ def generate_stereoisomers(
             if (stereo := graph.get_bond_stereo(b)) is not None
         )
 
-    seen_hash: set[int] = set()
-    enantiomers_seen_hash: set[int] = set()
+    seen: set[StereoMolGraph] = set()
+    enantiomers_seen: set[StereoMolGraph] = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -88,16 +88,15 @@ def generate_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo(b_stereo)
 
-        stereoisomer_hash = hash(stereoisomer)
-        if stereoisomer_hash not in seen_hash:
-            seen_hash.add(stereoisomer_hash)
+        if stereoisomer not in seen:
+            seen.add(stereoisomer)
             yield stereoisomer
 
-            if not enantiomers:
+            if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
-                enantiomer_hash = hash(enantiomer)
-                if enantiomer_hash not in enantiomers_seen_hash:
-                    enantiomers_seen_hash.add(enantiomer_hash)
+
+                if enantiomer != stereoisomer and enantiomer not in enantiomers_seen:
+                    enantiomers_seen.add(enantiomer)
                     yield enantiomer
 
 
@@ -164,8 +163,8 @@ def generate_fleeting_stereoisomers(
             and stereo.parity is None
         )
 
-    seen_isomers_hash = set()
-    seen_enantiomers_hash = set()
+    seen_isomers: set[StereoCondensedReactionGraph] = set()
+    seen_enantiomers: set[StereoCondensedReactionGraph] = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -176,14 +175,12 @@ def generate_fleeting_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
 
-        stereoisomer_hash = hash(stereoisomer)
-        if stereoisomer_hash not in seen_isomers_hash:
-            seen_isomers_hash.add(stereoisomer_hash)
+        if stereoisomer not in seen_isomers:
+            seen_isomers.add(stereoisomer)
             yield stereoisomer
 
-            if not enantiomers:
+            if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
-                enantiomer_hash = hash(enantiomer)
-                if enantiomer_hash not in seen_enantiomers_hash:
-                    seen_enantiomers_hash.add(enantiomer_hash)
+                if enantiomer != stereoisomer and enantiomer not in seen_enantiomers:
+                    seen_enantiomers.add(enantiomer)
                     yield enantiomer

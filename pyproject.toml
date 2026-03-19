@@ -59,7 +59,7 @@ dependencies = [
 [project.optional-dependencies]
 docs = ["rdkit>=2022.9.1,<2025",
        "sphinx>=8.2,<9;python_version>='3.11'",
-       "sphinx-rtd-theme",
+       "pydata-sphinx-theme",
        "myst-nb",
        "sphinx-autodoc-typehints",
        "sphinx-copybutton"]
