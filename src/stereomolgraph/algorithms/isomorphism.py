@@ -296,11 +296,13 @@ def vf2pp_all_isomorphisms(
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
-    """Find all isomorphisms between two graphs.
+    r"""Find all isomorphisms between two graphs.
 
-    Algorithms are based of VF2++.
-    [VF2++ is a fast algorithm for subgraph isomorphism](https://doi.org/10.1016/j.dam.2018.02.018)"""
-
+    Jüttner, A.; Madarasi, P.
+    VF2++—An Improved Subgraph Isomorphism Algorithm.
+    Discrete Appl. Math. 2018, 242, 69-81.
+    https://doi.org/10.1016/j.dam.2018.02.018.
+    """
     if params_state := _sanity_check_and_init(
         g1, g2, atom_labels, stereo, stereo_change, subgraph
     ):
