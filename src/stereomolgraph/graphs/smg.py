@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
+    color_refine_hash_smg,
     color_refine_smg,
     label_hash,
-    color_refine_hash_smg,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
+from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
@@ -61,7 +61,7 @@ class StereoMolGraph(MolGraph):
             self._atom_stereo = {}
             self._bond_stereo = {}
 
-    def __hash__(self) -> int:
+    def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         else:
@@ -76,24 +76,23 @@ class StereoMolGraph(MolGraph):
         o_color_array = color_refine_smg(other, atom_labels=o_labels)
         s_color_array = color_refine_smg(self, atom_labels=s_labels)
 
-        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
 
         return any(
-                vf2pp_all_isomorphisms(
-                    self,
-                    other,
-                    atom_labels=(s_colors, o_colors),
-                    stereo=True,
-                    stereo_change=False,
-                    subgraph=False,
-                )
+            vf2pp_all_isomorphisms(
+                self,
+                other,
+                atom_labels=(s_colors, o_colors),
+                stereo=True,
+                stereo_change=False,
+                subgraph=False,
             )
+        )
 
     def __str__(self) -> str:
         a_list = sorted(
-            (a, SYMBOLS[a_type])
-            for a, a_type in zip(self.atoms, self.atom_types)
+            (a, SYMBOLS[a_type]) for a, a_type in zip(self.atoms, self.atom_types)
         )
         b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
         repr_atom_stereo = self._atom_stereo
@@ -154,6 +153,7 @@ class StereoMolGraph(MolGraph):
         :param atom: Atoms to be used for chiral information
         :param stereo: Chiral information
         """
+        self._check_mutable()
         atom = atom_stereo.central_atom
         if atom in self._atom_attrs:
             assert atom in atom_stereo.atoms
@@ -166,6 +166,7 @@ class StereoMolGraph(MolGraph):
 
         :param atom: Atom to be used for stereo information
         """
+        self._check_mutable()
         del self._atom_stereo[atom]
 
     def get_bond_stereo(self, bond: Iterable[int]) -> None | BondStereo:
@@ -191,6 +192,7 @@ class StereoMolGraph(MolGraph):
         :param bond: Bond
         :param bond_stereo: Stereo information of the bond
         """
+        self._check_mutable()
 
         bond = Bond(bond_stereo.bond)
         if bond in self._bond_attrs:
@@ -203,6 +205,7 @@ class StereoMolGraph(MolGraph):
 
         :param bond: Bond
         """
+        self._check_mutable()
         del self._bond_stereo[Bond(bond)]
 
     def remove_atom(self, atom: int):
@@ -229,9 +232,7 @@ class StereoMolGraph(MolGraph):
         new_graph._bond_stereo = deepcopy(self._bond_stereo)
         return new_graph
 
-    def relabel_atoms(
-        self, mapping: dict[int, int], copy: bool = True
-    ) -> Self:
+    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
         """
         Relabels the atoms of the graph and the chiral information accordingly
 
@@ -248,9 +249,7 @@ class StereoMolGraph(MolGraph):
             new_atom_stereo_atoms = tuple(
                 mapping.get(atom, atom) for atom in stereo.atoms
             )
-            new_atom_stereo = stereo.__class__(
-                new_atom_stereo_atoms, stereo.parity
-            )
+            new_atom_stereo = stereo.__class__(new_atom_stereo_atoms, stereo.parity)
             new_atom_stereo_dict[new_central_atom] = new_atom_stereo
 
         for bond, bond_stereo in self._bond_stereo.items():
@@ -329,7 +328,8 @@ class StereoMolGraph(MolGraph):
 
     @classmethod
     def from_rdmol(
-        cls, rdmol: Chem.Mol,
+        cls,
+        rdmol: Chem.Mol,
         use_atom_map_number: bool = False,
         stereo_complete: bool = True,
     ) -> Self:
@@ -349,12 +349,13 @@ class StereoMolGraph(MolGraph):
         :return: StereoMolGraph
         """
         from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
+
         rd2smg = RDMol2StereoMolGraph(
             use_atom_map_number=use_atom_map_number,
             stereo_complete=stereo_complete,
             resonance=True,
             lone_pair_stereo=True,
-            )
+        )
         smg = rd2smg(rdmol)
         return cls(smg)
 

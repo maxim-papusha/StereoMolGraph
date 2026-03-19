@@ -50,13 +50,17 @@ class MolGraph:
     graph, iff. they are isomorphic and of the same type.
     """
 
-    __slots__ = ("_atom_attrs", "_neighbors", "_bond_attrs")
+    __slots__ = ("_atom_attrs", "_neighbors", "_bond_attrs", "_frozen", "_hash_cache")
 
     _atom_attrs: dict[AtomId, dict[str, Any]]
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
+    _frozen: bool
+    _hash_cache: int | None
 
     def __init__(self, mol_graph: Optional[MolGraph] = None):
+        self._frozen = False
+        self._hash_cache = None
         if mol_graph is not None:
             self._atom_attrs = deepcopy(mol_graph._atom_attrs)
             self._neighbors = deepcopy(mol_graph._neighbors)
@@ -130,10 +134,59 @@ class MolGraph:
     def __len__(self) -> int:
         return len(self._atom_attrs)
 
-    def __hash__(self) -> int:
+    def _check_mutable(self) -> None:
+        """Raises TypeError if the graph is frozen."""
+        if self._frozen:
+            raise TypeError(
+                f"Cannot mutate a frozen {self.__class__.__name__}. "
+                "Call .thaw() to make it mutable again."
+            )
+
+    def freeze(self) -> Self:
+        """Freeze the graph, making it immutable and hashable.
+
+        A frozen graph can be used in sets and as dict keys.
+        Mutation methods will raise :class:`TypeError` until
+        :meth:`thaw` is called.
+
+        :return: self (for chaining)
+        """
+        self._frozen = True
+        self._hash_cache = None  # recomputed lazily in __hash__
+        return self
+
+    def thaw(self) -> Self:
+        """Thaw a frozen graph, making it mutable again.
+
+        Invalidates the cached hash.  The graph becomes unhashable
+        until :meth:`freeze` is called again.
+
+        :return: self (for chaining)
+        """
+        self._frozen = False
+        self._hash_cache = None
+        return self
+
+    @property
+    def frozen(self) -> bool:
+        """Whether the graph is currently frozen (immutable)."""
+        return self._frozen
+
+    def _compute_hash(self) -> int:
+        """Compute the graph hash. Override in subclasses."""
         if self.n_atoms == 0:
             return hash(self.__class__)
         return color_refine_hash_mg(self)
+
+    def __hash__(self) -> int:
+        if not self._frozen:
+            raise TypeError(
+                f"Unhashable type: unfrozen {self.__class__.__name__!r}. "
+                "Call .freeze() before using in sets or as dict keys."
+            )
+        if self._hash_cache is None:
+            self._hash_cache = self._compute_hash()
+        return self._hash_cache
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -172,6 +225,7 @@ class MolGraph:
         :param atom: Atom ID
         :param atom_type: Atom Type
         """
+        self._check_mutable()
         atom_type = PERIODIC_TABLE[atom_type]
 
         self._atom_attrs[atom] = {"atom_type": atom_type, **attr}
@@ -182,6 +236,7 @@ class MolGraph:
         :param atom: Atom ID
         :raises: KeyError if atom is not in graph.
         """
+        self._check_mutable()
         del self._atom_attrs[atom]
         if nbr := self._neighbors.pop(atom, None):
             for n in nbr:
@@ -223,6 +278,7 @@ class MolGraph:
         :raises ValueError: The attribute "atom_type" can only have values of
                             type Element
         """
+        self._check_mutable()
         if attr == "atom_type":
             try:
                 value = PERIODIC_TABLE[value]
@@ -243,6 +299,7 @@ class MolGraph:
         :param attr: Attribute
         :raises ValueError: The attribute "atom_type" can not be deleted
         """
+        self._check_mutable()
         if attr == "atom_type":
             raise ValueError("atom_type can not be deleted")
         else:
@@ -280,6 +337,7 @@ class MolGraph:
         :param atom1: Atom1
         :param atom2: Atom2
         """
+        self._check_mutable()
         if atom1 not in self.atoms or atom2 not in self.atoms:
             raise ValueError("Atoms not in Graph")
         bond = Bond({atom1, atom2})
@@ -294,6 +352,7 @@ class MolGraph:
         :param atom1: Atom1
         :param atom2: Atom2
         """
+        self._check_mutable()
         bond = Bond((atom1, atom2))
         del self._bond_attrs[bond]
         self._neighbors[atom1].discard(atom2)
@@ -332,6 +391,7 @@ class MolGraph:
         :param attr: Attribute
         :param value: Value
         """
+        self._check_mutable()
         bond = Bond((atom1, atom2))
         if bond in self._bond_attrs:
             self._bond_attrs[bond][attr] = value
@@ -346,6 +406,7 @@ class MolGraph:
         :param atom2: Atom1
         :param attr: Attribute
         """
+        self._check_mutable()
         self._bond_attrs[Bond((atom1, atom2))].pop(attr)
 
     def get_bond_attributes(
@@ -395,9 +456,7 @@ class MolGraph:
             if a1 not in atomid_index_dict or a2 not in atomid_index_dict
         ]
         if dangling:
-            raise ValueError(
-                "Dangling bonds reference missing atoms: " + str(dangling)
-            )
+            raise ValueError("Dangling bonds reference missing atoms: " + str(dangling))
 
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
@@ -478,6 +537,7 @@ class MolGraph:
         if copy is True:
             new_graph = self.__class__()
         elif copy is False:
+            self._check_mutable()
             new_graph = self
 
         new_graph._atom_attrs = atom_attrs
@@ -545,7 +605,10 @@ class MolGraph:
         """
         :return: returns a copy of self
         """
-        return deepcopy(self)
+        new = deepcopy(self)
+        new._frozen = False
+        new._hash_cache = None
+        return new
 
     def bonds_from_bond_order_matrix(
         self,
@@ -563,6 +626,7 @@ class MolGraph:
                                    attributes, defaults to False
         """
 
+        self._check_mutable()
         if not np.shape(matrix) == (len(self), len(self)):
             raise ValueError(
                 "Matrix has the wrong shape. shape of matrix is "
