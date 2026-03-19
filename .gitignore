@@ -27,3 +27,7 @@ doc/source/about/credits.rst
 
 # ignore on purpose
 uv.lock
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml

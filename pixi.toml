@@ -1,0 +1,37 @@
+[workspace]
+authors = ["avcopan <avcopan@gmail.com>"]
+channels = ["conda-forge"]
+name = "StereoMolGraph"
+platforms = ["linux-64"]
+version = "0.1.0"
+preview = ["pixi-build"]
+
+[tasks]
+
+[dependencies]
+stereomolgraph = { path = "." }
+
+[package]
+name = "StereoMolGraph"
+version = "0.0.0b17"
+
+[package.build]
+backend = { name = "pixi-build-python", version = "*" }
+
+[package.build.config]
+ignore-pyproject-manifest = false
+ignore-pypi-mapping = false
+
+[feature.dev.dependencies]
+uv = "*"
+ipykernel = ">=7.2.0,<8"
+
+[environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default"}
+
+[feature.dev.tasks]
+# Manage pyproject.toml with uv
+uv = "uv"
+add = "uv add"
+remove = "uv remove"
