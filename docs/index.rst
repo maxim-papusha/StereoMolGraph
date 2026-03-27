@@ -68,7 +68,7 @@ To cite StereoMolGraph please use the following publication:
    :maxdepth: 1
    :hidden:
 
-   getting_started
+   installation
    tutorial/index
    reference/index
 
