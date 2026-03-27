@@ -37,10 +37,23 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 
 Welcome to the documentation for **StereoMolGraph**.
 
-This package provides a collection of :doc:`graph classes </reference/graphs/index>` for the representation of molecules and chemical reactions.
+This package provides a collection of :doc:`graph classes </reference/graphs/index>` for the representation of molecules and chemical reactions in a modular.
+The core focus is to allow the user to work with chiral molecules in a consistent way with a simple interface.
+All arising algorithmic difficulties are taken care of by the internal implementations.
+
+
 Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from :doc:`group-theoretical </theory/index>` principles.
 
 Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
+
+
+Magic Methods:
+--------------
+- \__eq\__ is based on isomorphism and includes Stereochemistry
+- \__hash\__ is based on morgan like Circular Stereo Algorithm (can have a few hash collisions)
+
+
+
 
 Citing
 ------
