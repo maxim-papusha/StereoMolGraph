@@ -50,7 +50,7 @@ Building on this formal foundation, a range of :doc:`graph algorithms </referenc
 Magic Methods:
 --------------
 - \__eq\__ is based on isomorphism and includes Stereochemistry [1]_
-- \__hash\__ is based on morgan like Circular Stereo Algorithm (can have a few hash collisions) [1]_
+- \__hash\__ is based on morgan like Circular Stereo Algorithm (can have a few hash collisions)
 
 
 
