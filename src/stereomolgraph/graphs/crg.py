@@ -5,18 +5,20 @@ from typing import TYPE_CHECKING
 
 from stereomolgraph.algorithms.color_refine import (
     color_refine_crg,
-    color_refine_hash_crg,
     label_hash,
+    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
 from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
-from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
+from stereomolgraph.graphs.mg import Bond, MolGraph
 
 if TYPE_CHECKING:
-    from typing import Any, Self
+    from typing import Any
 
+    import numpy as np
     from rdkit import Chem
+    from typing_extensions import Self
 
     from stereomolgraph.coords import Geometry
 
@@ -41,24 +43,25 @@ class CondensedReactionGraph(MolGraph):
     """
 
     __slots__: tuple[str, ...] = tuple()
-    _atom_attrs: dict[AtomId, dict[str, Any]]
-    _neighbors: dict[AtomId, set[AtomId]]
-    _bond_attrs: dict[Bond, dict[str, Any]]
+
+    __hash__ = MolGraph.__hash__
+
+    def _compute_colors(self) -> np.ndarray:
+        labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        return color_refine_crg(self, atom_labels=labels)
 
     def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         else:
-            return color_refine_hash_crg(self)
+            return int(numpy_int_multiset_hash(self._get_colors()))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
 
-        o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
-        s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
-        o_color_array = color_refine_crg(other, atom_labels=o_labels)
-        s_color_array = color_refine_crg(self, atom_labels=s_labels)
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
 
         o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
-    color_refine_hash_smg,
     color_refine_smg,
     label_hash,
+    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -28,9 +28,9 @@ from stereomolgraph.xyz2graph import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import Self
 
     from rdkit import Chem
+    from typing_extensions import Self
 
     from stereomolgraph.coords import Geometry
 
@@ -52,6 +52,8 @@ class StereoMolGraph(MolGraph):
     _atom_stereo: dict[int, AtomStereo]
     _bond_stereo: dict[Bond, BondStereo]
 
+    __hash__ = MolGraph.__hash__
+
     def __init__(self, mol_graph: None | MolGraph = None):
         super().__init__(mol_graph)
         if mol_graph and isinstance(mol_graph, StereoMolGraph):
@@ -61,20 +63,22 @@ class StereoMolGraph(MolGraph):
             self._atom_stereo = {}
             self._bond_stereo = {}
 
+    def _compute_colors(self) -> np.ndarray:
+        labels = label_hash(self, atom_labels=("atom_type",))
+        return color_refine_smg(self, atom_labels=labels)
+
     def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         else:
-            return color_refine_hash_smg(self)
+            return int(numpy_int_multiset_hash(self._get_colors()))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
 
-        o_labels = label_hash(other, atom_labels=("atom_type",))
-        s_labels = label_hash(self, atom_labels=("atom_type",))
-        o_color_array = color_refine_smg(other, atom_labels=o_labels)
-        s_color_array = color_refine_smg(self, atom_labels=s_labels)
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
 
         o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
@@ -223,11 +227,11 @@ class StereoMolGraph(MolGraph):
                 self.delete_bond_stereo(bond)
         super().remove_atom(atom)
 
-    def copy(self) -> Self:
+    def copy(self, frozen: bool = False) -> Self:
         """
         :return: returns a copy of self
         """
-        new_graph = super().copy()
+        new_graph = super().copy(frozen=frozen)
         new_graph._atom_stereo = deepcopy(self._atom_stereo)
         new_graph._bond_stereo = deepcopy(self._bond_stereo)
         return new_graph

@@ -10,25 +10,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
 
-def unique_generator(input_generator: Iterator) -> Iterator:
-    """
-    A generator that yields unique objects from another generator.
-
-    Args:
-        input_generator: A generator yielding hashable objects
-
-    Yields:
-        Only the first occurrence of each unique object from the
-        input generator
-    """
-    seen_hash = set()
-    for item in input_generator:
-        item_hash = hash(item)
-        if item_hash not in seen_hash:
-            seen_hash.add(item_hash)
-            yield item
-
-
 def generate_stereoisomers(
     graph: StereoMolGraph,
     enantiomers: bool = True,
@@ -89,14 +70,14 @@ def generate_stereoisomers(
             stereoisomer.set_bond_stereo(b_stereo)
 
         if stereoisomer not in seen:
-            seen.add(stereoisomer)
+            seen.add(stereoisomer.copy(frozen=True))
             yield stereoisomer
 
             if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
 
                 if enantiomer != stereoisomer and enantiomer not in enantiomers_seen:
-                    enantiomers_seen.add(enantiomer)
+                    enantiomers_seen.add(enantiomer.copy(frozen=True))
                     yield enantiomer
 
 
@@ -176,11 +157,11 @@ def generate_fleeting_stereoisomers(
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
 
         if stereoisomer not in seen_isomers:
-            seen_isomers.add(stereoisomer)
+            seen_isomers.add(stereoisomer.copy(frozen=True))
             yield stereoisomer
 
             if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
                 if enantiomer != stereoisomer and enantiomer not in seen_enantiomers:
-                    seen_enantiomers.add(enantiomer)
+                    seen_enantiomers.add(enantiomer.copy(frozen=True))
                     yield enantiomer

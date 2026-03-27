@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from stereomolgraph.algorithms.color_refine import (
-    color_refine_hash_mg,
     color_refine_mg,
     label_hash,
+    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -50,17 +50,26 @@ class MolGraph:
     graph, iff. they are isomorphic and of the same type.
     """
 
-    __slots__ = ("_atom_attrs", "_neighbors", "_bond_attrs", "_frozen", "_hash_cache")
+    __slots__ = (
+        "_atom_attrs",
+        "_neighbors",
+        "_bond_attrs",
+        "_frozen",
+        "_hash_cache",
+        "_color_cache",
+    )
 
     _atom_attrs: dict[AtomId, dict[str, Any]]
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
     _frozen: bool
     _hash_cache: int | None
+    _color_cache: np.ndarray | None
 
-    def __init__(self, mol_graph: Optional[MolGraph] = None):
-        self._frozen = False
+    def __init__(self, mol_graph: Optional[MolGraph] = None, frozen: bool = False):
+
         self._hash_cache = None
+        self._color_cache = None
         if mol_graph is not None:
             self._atom_attrs = deepcopy(mol_graph._atom_attrs)
             self._neighbors = deepcopy(mol_graph._neighbors)
@@ -69,6 +78,7 @@ class MolGraph:
             self._atom_attrs = defaultdict(dict)
             self._neighbors = defaultdict(set)
             self._bond_attrs = defaultdict(dict)
+        self._frozen = frozen
 
     @property
     def atoms(
@@ -134,49 +144,53 @@ class MolGraph:
     def __len__(self) -> int:
         return len(self._atom_attrs)
 
+    @property
+    def frozen(self) -> bool:
+        """Whether the graph is currently frozen (immutable)."""
+        return self._frozen
+
     def _check_mutable(self) -> None:
         """Raises TypeError if the graph is frozen."""
         if self._frozen:
             raise TypeError(
                 f"Cannot mutate a frozen {self.__class__.__name__}. "
-                "Call .thaw() to make it mutable again."
+                "Use .copy() to get a mutable copy."
             )
 
     def freeze(self) -> Self:
         """Freeze the graph, making it immutable and hashable.
 
         A frozen graph can be used in sets and as dict keys.
-        Mutation methods will raise :class:`TypeError` until
-        :meth:`thaw` is called.
+        Mutation methods will raise :class:`TypeError`.
+        Use :meth:`copy` to get a mutable copy.
 
         :return: self (for chaining)
         """
         self._frozen = True
         self._hash_cache = None  # recomputed lazily in __hash__
+        self._color_cache = None  # recomputed lazily
         return self
 
-    def thaw(self) -> Self:
-        """Thaw a frozen graph, making it mutable again.
+    def _compute_colors(self) -> np.ndarray:
+        """Compute the color refinement array. Override in subclasses."""
+        labels = label_hash(self, atom_labels=("atom_type",))
+        return color_refine_mg(self, atom_labels=labels)
 
-        Invalidates the cached hash.  The graph becomes unhashable
-        until :meth:`freeze` is called again.
-
-        :return: self (for chaining)
-        """
-        self._frozen = False
-        self._hash_cache = None
-        return self
-
-    @property
-    def frozen(self) -> bool:
-        """Whether the graph is currently frozen (immutable)."""
-        return self._frozen
+    def _get_colors(self) -> np.ndarray:
+        """Return color array, using cache for frozen graphs."""
+        if self._frozen and self._color_cache is not None:
+            return self._color_cache
+        colors = self._compute_colors()
+        if self._frozen:
+            self._color_cache = colors
+            colors.setflags(write=False)
+        return colors
 
     def _compute_hash(self) -> int:
         """Compute the graph hash. Override in subclasses."""
         if self.n_atoms == 0:
             return hash(self.__class__)
-        return color_refine_hash_mg(self)
+        return int(numpy_int_multiset_hash(self._get_colors()))
 
     def __hash__(self) -> int:
         if not self._frozen:
@@ -192,10 +206,8 @@ class MolGraph:
         if not isinstance(other, self.__class__):
             return NotImplemented
 
-        o_labels = label_hash(other, atom_labels=("atom_type",))
-        s_labels = label_hash(self, atom_labels=("atom_type",))
-        o_color_array = color_refine_mg(other, atom_labels=o_labels)
-        s_color_array = color_refine_mg(self, atom_labels=s_labels)
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
 
         o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
         s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
@@ -601,13 +613,14 @@ class MolGraph:
         new_graph._bond_attrs = bond_attrs
         return new_graph
 
-    def copy(self) -> Self:
+    def copy(self, frozen: bool = False) -> Self:
         """
         :return: returns a copy of self
         """
         new = deepcopy(self)
-        new._frozen = False
+        new._frozen = frozen
         new._hash_cache = None
+        new._color_cache = None
         return new
 
     def bonds_from_bond_order_matrix(
