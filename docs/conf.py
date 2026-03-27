@@ -7,7 +7,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import os
 import sys
-
 from pathlib import Path
 from typing import Literal
 
@@ -18,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 link_from = str(Path(__file__).resolve().parent.parent / "examples")
 link_to = str(Path(__file__).resolve().parent / "examples")
 
-os.symlink(link_from, link_to, target_is_directory=True)
+if not os.path.exists(link_to):
+    os.symlink(link_from, link_to, target_is_directory=True)
 
 
 project = "StereoMolGraph"
@@ -30,7 +30,7 @@ author = "Maxim Papusha"
 
 nb_execution_mode: Literal["off", "force", "auto", "cache", "inline"] = "off"
 nb_execution_show_tb = True  # Show traceback in the output
-nb_execution_raise_on_error = True # Critical - makes exceptions fail the build
+nb_execution_raise_on_error = True  # Critical - makes exceptions fail the build
 
 nb_execution_allow_errors = False  # Don't allow errors in the output
 nb_execution_timeout = 300  # Timeout in seconds
@@ -47,13 +47,12 @@ extensions = [
     # MyST extensions
     "myst_nb",
     # Theme and UI extensions
-    "sphinx_rtd_theme",
     "sphinx_copybutton",
-    'sphinx.ext.intersphinx',
+    "sphinx.ext.intersphinx",
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
+    # "python": ("https://docs.python.org/3", None),
 }
 
 templates_path = ["_templates"]
@@ -63,11 +62,40 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
+html_favicon = "_static/img/favicon.ico"
+
+html_theme_options = {
+    "logo": {
+        "text": "StereoMolGraph",
+        "image_light": "_static/img/logo_smg_200px.png",
+        "image_dark": "_static/img/logo_smg_200px.png",
+    },
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/maxim-papusha/StereoMolGraph",
+            "icon": "fa-brands fa-github",
+            "type": "fontawesome",
+        },
+        {
+            "name": "PyPi",
+            "url": "https://pypi.org/project/StereoMolGraph/#description",
+            "icon": "fa-brands fa-python",
+            "type": "fontawesome",
+        },
+    ],
+    "collapse_navigation": True,
+    "navigation_depth": 4,
+    "header_links_before_dropdown": 4,
+    "primary_sidebar_end": ["sidebar-ethical-ads"],
+    "navbar_align": "left",
+    "show_nav_level": 4,
+}
 
 autodoc_member_order: Literal["alphabetical", "bysource", "groupwise"] = (
-    "bysource" #"groupwise"
+    "bysource"  # "groupwise"
 )
 # autodoc_class_signature = "separated"
 # Force type hints to be links when possible

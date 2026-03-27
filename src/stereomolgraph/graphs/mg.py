@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Collection
 from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -31,7 +32,10 @@ if TYPE_CHECKING:
 
     from stereomolgraph.coords import Geometry
 
-    N = TypeVar("N", bound=int,)
+    N = TypeVar(
+        "N",
+        bound=int,
+    )
 
 AtomId: TypeAlias = int
 
@@ -90,11 +94,11 @@ class MolGraph:
     @property
     def bonds(
         self,
-    ) -> Sequence[Bond]:
+    ) -> Collection[Bond]:
         """
         :return: Returns all bonds in the MolGraph
         """
-        return self._bond_attrs.keys() # type: ignore Dicts keep the order!
+        return self._bond_attrs.keys()  # type: ignore Dicts keep the order!
 
     @property
     def bonds_with_attributes(
@@ -140,20 +144,19 @@ class MolGraph:
         o_color_array = color_refine_mg(other, atom_labels=o_labels)
         s_color_array = color_refine_mg(self, atom_labels=s_labels)
 
-        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
 
         return any(
-                vf2pp_all_isomorphisms(
-                    self,
-                    other,
-                    atom_labels=(s_colors, o_colors),
-                    stereo=False,
-                    stereo_change=False,
-                    subgraph=False,
-                )
+            vf2pp_all_isomorphisms(
+                self,
+                other,
+                atom_labels=(s_colors, o_colors),
+                stereo=False,
+                stereo_change=False,
+                subgraph=False,
             )
-
+        )
 
     def has_atom(self, atom: int) -> bool:
         """Returns True if the molecules contains an atom with this id.
@@ -163,9 +166,7 @@ class MolGraph:
         """
         return atom in self._atom_attrs
 
-    def add_atom(
-        self, atom: AtomId, atom_type: int | str | Element, **attr: Any
-    ):
+    def add_atom(self, atom: AtomId, atom_type: int | str | Element, **attr: Any):
         """Adds atom to the MolGraph
 
         :param atom: Atom ID
@@ -320,9 +321,7 @@ class MolGraph:
         else:
             raise ValueError(f"No Bond between {atom1} and {atom2}")
 
-    def set_bond_attribute(
-        self, atom1: AtomId, atom2: AtomId, attr: str, value: Any
-    ):
+    def set_bond_attribute(self, atom1: AtomId, atom2: AtomId, attr: str, value: Any):
         """
         sets the Attribute of the bond between Atom1 and Atom2.
         The Attribute "bond_order" can only have numerical values.
@@ -390,6 +389,16 @@ class MolGraph:
         matrix = np.zeros((n, n), dtype=np.int8)
         atomid_index_dict = {id: index for index, id in enumerate(self.atoms)}
 
+        dangling = [
+            (a1, a2)
+            for a1, a2 in self.bonds
+            if a1 not in atomid_index_dict or a2 not in atomid_index_dict
+        ]
+        if dangling:
+            raise ValueError(
+                "Dangling bonds reference missing atoms: " + str(dangling)
+            )
+
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
@@ -424,9 +433,7 @@ class MolGraph:
         return mol
 
     @classmethod
-    def from_rdmol(
-        cls, rdmol: Chem.Mol, use_atom_map_number: bool = False
-    ) -> Self:
+    def from_rdmol(cls, rdmol: Chem.Mol, use_atom_map_number: bool = False) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         Implicit Hydrogens are added to the graph.
@@ -443,17 +450,12 @@ class MolGraph:
         :return: StereoMolGraph
         """
         from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
-        
-        mg = mol_graph_from_rdmol(
-            cls, rdmol, use_atom_map_number=use_atom_map_number
-        )
-        assert isinstance(mg, cls), (
-            "MolGraph.from_rdmol did not return a MolGraph")
+
+        mg = mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
+        assert isinstance(mg, cls), "MolGraph.from_rdmol did not return a MolGraph"
         return mg
 
-    def relabel_atoms(
-        self, mapping: dict[int, int], copy: bool = True
-    ) -> Self:
+    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
         """Changes the atom labels according to mapping.
 
         :param mapping: dict used for map old atom labels to new atom labels
@@ -462,8 +464,7 @@ class MolGraph:
         :return: this object (self) or a new instance of self.__class__
         """
         atom_attrs = {
-            mapping.get(atom, atom): attrs
-            for atom, attrs in self._atom_attrs.items()
+            mapping.get(atom, atom): attrs for atom, attrs in self._atom_attrs.items()
         }
         neighbors = {
             mapping.get(atom, atom): {mapping.get(n, n) for n in neighbors}
@@ -618,9 +619,7 @@ class MolGraph:
         :return: Returns MolGraph
         """
         if not len(atom_types) == np.shape(matrix)[0] == np.shape(matrix)[1]:
-            raise ValueError(
-                "atom_types and matrix have to have the same length"
-            )
+            raise ValueError("atom_types and matrix have to have the same length")
         new_mol_graph = cls()
 
         for i, atom_type in enumerate(atom_types):
@@ -634,9 +633,7 @@ class MolGraph:
                 if include_bond_order is False:
                     new_mol_graph.add_bond(int(x_id), int(y_id))
                 elif include_bond_order is True:
-                    new_mol_graph.add_bond(
-                        int(x_id), int(y_id), bond_order=value
-                    )
+                    new_mol_graph.add_bond(int(x_id), int(y_id), bond_order=value)
 
         return new_mol_graph
 
@@ -675,27 +672,22 @@ class MolGraph:
     ) -> Self:
         return connectivity_from_geometry(cls, geo, switching_function)
 
-
-
     def is_isomorphic(self, other: Self) -> bool:
         return self == other
 
     def __str__(self) -> str:
         a_list = sorted(
-            [a, SYMBOLS[a_type]]
-            for a, a_type in zip(self.atoms, self.atom_types)
+            [a, SYMBOLS[a_type]] for a, a_type in zip(self.atoms, self.atom_types)
         )
         b_list = sorted(sorted(bond) for bond in self.bonds)
 
-
-        string = {self.__class__.__name__: {'Atoms': a_list, 'Bonds': b_list}}
+        string = {self.__class__.__name__: {"Atoms": a_list, "Bonds": b_list}}
         import json
+
         return json.dumps(string)
-        
-    
+
     def __repr__(self):
         return str(self)
 
     def _ipython_display_(self) -> None:
         print(self.__repr__())
-
