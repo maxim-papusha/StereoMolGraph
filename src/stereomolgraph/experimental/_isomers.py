@@ -164,6 +164,7 @@ def generate_fleeting_stereoisomers(
 
             if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
+                enantiomer.freeze()
                 if enantiomer != stereoisomer and enantiomer not in seen_enantiomers:
                     seen_enantiomers.add(enantiomer.copy(frozen=True))
                     yield enantiomer
