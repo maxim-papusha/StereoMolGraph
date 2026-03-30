@@ -335,7 +335,7 @@ class StereoMolGraph(MolGraph):
         cls,
         rdmol: Chem.Mol,
         use_atom_map_number: bool = False,
-        stereo_complete: bool = True,
+        stereo_complete: bool = False,
     ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.

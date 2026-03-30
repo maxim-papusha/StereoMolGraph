@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 def generate_stereoisomers(
     graph: StereoMolGraph,
-    enantiomers: bool = True,
+    enantiomers: bool = False,
     atoms: None | Iterable[AtomId] = None,
     bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoMolGraph]:
@@ -68,17 +68,18 @@ def generate_stereoisomers(
             stereoisomer.set_atom_stereo(a_stereo)
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo(b_stereo)
-
+        stereoisomer.freeze()
         if stereoisomer not in seen:
-            seen.add(stereoisomer.copy(frozen=True))
-            yield stereoisomer
+            seen.add(stereoisomer)
+            yield stereoisomer.copy(frozen=False)
 
             if enantiomers:
                 enantiomer = stereoisomer.enantiomer()
+                enantiomer.freeze()
 
                 if enantiomer != stereoisomer and enantiomer not in enantiomers_seen:
-                    enantiomers_seen.add(enantiomer.copy(frozen=True))
-                    yield enantiomer
+                    enantiomers_seen.add(enantiomer)
+                    yield enantiomer.copy(frozen=False)
 
 
 def generate_fleeting_stereoisomers(
@@ -156,6 +157,7 @@ def generate_fleeting_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
 
+        stereoisomer.freeze()
         if stereoisomer not in seen_isomers:
             seen_isomers.add(stereoisomer.copy(frozen=True))
             yield stereoisomer
