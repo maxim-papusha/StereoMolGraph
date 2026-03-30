@@ -8,9 +8,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
 from stereomolgraph.algorithms.color_refine import (
-    color_refine_hash_scrg,
     color_refine_scrg,
     label_hash,
+    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
@@ -22,7 +22,6 @@ from stereomolgraph.stereodescriptors import (
     AtomStereo,
     BondStereo,
     Stereo,
-    Tetrahedral,
 )
 from stereomolgraph.xyz2graph import (
     stero_from_geometry,
@@ -64,6 +63,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     _atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]]
     _bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]]
 
+    __hash__ = MolGraph.__hash__
+
     def __init__(self, mol_graph: Optional[MolGraph] = None):
         super().__init__(mol_graph)
         self._atom_stereo_change = defaultdict(ChangeDict[AtomStereo])
@@ -73,33 +74,35 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
             self._bond_stereo_change.update(mol_graph._bond_stereo_change)
 
-    def __hash__(self) -> int:
+    def _compute_colors(self) -> np.ndarray:
+        labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        return color_refine_scrg(self, atom_labels=labels)
+
+    def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
-        return color_refine_hash_scrg(self)
+        return int(numpy_int_multiset_hash(self._get_colors()))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
 
-        o_labels = label_hash(other, atom_labels=("atom_type", "reaction"))
-        s_labels = label_hash(self, atom_labels=("atom_type", "reaction"))
-        o_color_array = color_refine_scrg(other, atom_labels=o_labels)
-        s_color_array = color_refine_scrg(self, atom_labels=s_labels)
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
 
-        o_colors = {a: int(c) for a,c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a,c in zip(self.atoms, s_color_array)}
+        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
+        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
 
         return any(
-                vf2pp_all_isomorphisms(
-                    self,
-                    other,
-                    atom_labels=(s_colors, o_colors),
-                    stereo=True,
-                    stereo_change=True,
-                    subgraph=False,
-                )
+            vf2pp_all_isomorphisms(
+                self,
+                other,
+                atom_labels=(s_colors, o_colors),
+                stereo=True,
+                stereo_change=True,
+                subgraph=False,
             )
+        )
 
     @property
     def atom_stereo_changes(self) -> Mapping[AtomId, ChangeDict[AtomStereo]]:
@@ -149,6 +152,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         if (atom := atoms.pop()) not in self._atom_attrs:
             raise ValueError(f"Atom {atom} not in graph")
 
+        self._check_mutable()
         self._atom_stereo_change[atom] = ChangeDict[AtomStereo]()
         for stereo_change, atom_stereo in {
             Change.BROKEN: broken,
@@ -174,6 +178,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         if (bond := bonds.pop()) not in self._bond_attrs:
             raise ValueError(f"Bond {bond} not in graph")
 
+        self._check_mutable()
         self._bond_stereo_change[bond] = ChangeDict[BondStereo]()
         for stereo_change, bond_stereo in {
             Change.BROKEN: broken,
@@ -186,6 +191,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     def delete_atom_stereo_change(
         self, atom: AtomId, stereo_change: Optional[Change] = None
     ):
+        self._check_mutable()
         if stereo_change is None:
             del self._atom_stereo_change[atom]
         else:
@@ -194,6 +200,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
     def delete_bond_stereo_change(
         self, bond: Iterable[AtomId], stereo_change: Optional[Change] = None
     ):
+        self._check_mutable()
         bond = Bond(bond)
         if stereo_change is None:
             del self._bond_stereo_change[bond]
@@ -228,18 +235,16 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                 active_atoms.update(self.bonded_to(atom))
         return active_atoms
 
-    def copy(self) -> Self:
+    def copy(self, frozen: bool = False) -> Self:
         """
         :return: returns a copy of self
         """
-        new_graph = super().copy()
+        new_graph = super().copy(frozen=frozen)
         new_graph._atom_stereo_change = deepcopy(self._atom_stereo_change)
         new_graph._bond_stereo_change = deepcopy(self._bond_stereo_change)
         return new_graph
 
-    def relabel_atoms(
-        self, mapping: dict[AtomId, AtomId], copy: bool = True
-    ) -> Self:
+    def relabel_atoms(self, mapping: dict[AtomId, AtomId], copy: bool = True) -> Self:
         """
         Relabels the atoms of the graph and the chiral information accordingly
 
@@ -248,12 +253,10 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                      defaults to True
         :return: Returns the relabeled graph or None if copy is False
         """
-        relabeled_scrg = self.__class__(
-            super().relabel_atoms(mapping, copy=copy)
-        )
+        relabeled_scrg = self.__class__(super().relabel_atoms(mapping, copy=copy))
 
-        atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]] = (
-            defaultdict(ChangeDict[AtomStereo])
+        atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]] = defaultdict(
+            ChangeDict[AtomStereo]
         )
 
         for atom, stereo_change_dict in self._atom_stereo_change.items():
@@ -261,15 +264,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                 if atom_stereo is None:
                     continue
                 new_stereo = atom_stereo.__class__(
-                    tuple(
-                        mapping.get(atom, atom) for atom in atom_stereo.atoms
-                    ),
+                    tuple(mapping.get(atom, atom) for atom in atom_stereo.atoms),
                     atom_stereo.parity,
                 )
                 atom_stereo_change[mapping[atom]][stereo_change] = new_stereo
 
-        bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]] = (
-            defaultdict(ChangeDict[BondStereo])
+        bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]] = defaultdict(
+            ChangeDict[BondStereo]
         )
 
         for bond, stereo_change_dict in self._bond_stereo_change.items():
@@ -278,9 +279,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                     continue
                 new_bond = Bond(mapping[a] for a in bond)
                 new_stereo = bond_stereo.__class__(
-                    tuple(
-                        mapping.get(atom, atom) for atom in bond_stereo.atoms
-                    ),
+                    tuple(mapping.get(atom, atom) for atom in bond_stereo.atoms),
                     bond_stereo.parity,
                 )
                 bond_stereo_change[new_bond][stereo_change] = new_stereo
@@ -302,9 +301,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         :return: reactant
         """
 
-        reactant = StereoMolGraph(
-            super().reactant(keep_attributes=keep_attributes)
-        )
+        reactant = StereoMolGraph(super().reactant(keep_attributes=keep_attributes))
         reactant._atom_stereo = deepcopy(self._atom_stereo)
         reactant._bond_stereo = deepcopy(self._bond_stereo)
 
@@ -326,9 +323,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         :param keep_attributes: If attributes should be kept, defaults to True
         :return: product
         """
-        product = StereoMolGraph(
-            super().product(keep_attributes=keep_attributes)
-        )
+        product = StereoMolGraph(super().product(keep_attributes=keep_attributes))
         product._atom_stereo = deepcopy(self._atom_stereo)
         product._bond_stereo = deepcopy(self._bond_stereo)
 
@@ -421,8 +416,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                         Change.BROKEN,
                         Change.FORMED,
                     )
-                    if (stereo := stereo_change_dict[stereo_change])
-                    is not None
+                    if (stereo := stereo_change_dict[stereo_change]) is not None
                 ),
                 None,
             )
@@ -438,8 +432,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                         Change.BROKEN,
                         Change.FORMED,
                     )
-                    if (stereo := stereo_change_dict[stereo_change])
-                    is not None
+                    if (stereo := stereo_change_dict[stereo_change]) is not None
                 ),
                 None,
             )
@@ -469,12 +462,8 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         """
         graph = cls(super().compose(mol_graphs))
         for mol_graph in mol_graphs:
-            graph._atom_stereo_change.update(
-                cls(mol_graph)._atom_stereo_change
-            )
-            graph._bond_stereo_change.update(
-                cls(mol_graph)._bond_stereo_change
-            )
+            graph._atom_stereo_change.update(cls(mol_graph)._atom_stereo_change)
+            graph._bond_stereo_change.update(cls(mol_graph)._bond_stereo_change)
         return graph
 
     @classmethod
@@ -496,28 +485,24 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         :return: StereoCondensedReactionGraph
         """
 
-        scrg = super().from_graphs(
-            reactant_graph, product_graph, ts_graph
-        )
+        scrg = super().from_graphs(reactant_graph, product_graph, ts_graph)
 
         for atom in scrg.atoms:
             r_stereo = reactant_graph.get_atom_stereo(atom)
             p_stereo = product_graph.get_atom_stereo(atom)
             ts_stereo = ts_graph.get_atom_stereo(atom) if ts_graph else None
 
-            if (ts_stereo is not None and ts_stereo == r_stereo == p_stereo):
+            if ts_stereo is not None and ts_stereo == r_stereo == p_stereo:
                 scrg.set_atom_stereo(ts_stereo)
-            elif (ts_stereo is not None
-                  and ts_stereo != p_stereo
-                  and ts_stereo != r_stereo):
-                scrg.set_atom_stereo_change(formed=p_stereo,
-                                            broken=r_stereo,
-                                            fleeting=ts_stereo)
             elif (
-                r_stereo is not None
-                and p_stereo is not None
-                and r_stereo == p_stereo
+                ts_stereo is not None
+                and ts_stereo != p_stereo
+                and ts_stereo != r_stereo
             ):
+                scrg.set_atom_stereo_change(
+                    formed=p_stereo, broken=r_stereo, fleeting=ts_stereo
+                )
+            elif r_stereo is not None and p_stereo is not None and r_stereo == p_stereo:
                 scrg.set_atom_stereo(r_stereo)
 
             elif r_stereo is None and p_stereo is not None:
@@ -526,24 +511,22 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             elif p_stereo is None and r_stereo is not None:
                 scrg.set_atom_stereo_change(broken=r_stereo)
 
-            elif (
-                r_stereo is not None
-                and p_stereo is not None
-                and r_stereo != p_stereo
-            ):
+            elif r_stereo is not None and p_stereo is not None and r_stereo != p_stereo:
                 scrg.set_atom_stereo_change(formed=p_stereo, broken=r_stereo)
 
         for bond in scrg.bonds:
-            r_stereo = (reactant_graph.get_bond_stereo(bond)
-                        if bond in reactant_graph.bonds else None)
-            p_stereo = (product_graph.get_bond_stereo(bond)
-                        if bond in product_graph.bonds else None)
+            r_stereo = (
+                reactant_graph.get_bond_stereo(bond)
+                if bond in reactant_graph.bonds
+                else None
+            )
+            p_stereo = (
+                product_graph.get_bond_stereo(bond)
+                if bond in product_graph.bonds
+                else None
+            )
 
-            if (
-                r_stereo is not None
-                and p_stereo is not None
-                and r_stereo == p_stereo
-            ):
+            if r_stereo is not None and p_stereo is not None and r_stereo == p_stereo:
                 scrg.set_bond_stereo(r_stereo)
 
             elif r_stereo is None and p_stereo is not None:
@@ -552,11 +535,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             elif p_stereo is None and r_stereo is not None:
                 scrg.set_bond_stereo_change(broken=r_stereo)
 
-            elif (
-                r_stereo is not None
-                and p_stereo is not None
-                and r_stereo != p_stereo
-            ):
+            elif r_stereo is not None and p_stereo is not None and r_stereo != p_stereo:
                 scrg.set_bond_stereo_change(formed=p_stereo, broken=r_stereo)
 
         return scrg
@@ -587,23 +566,17 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         :return: CondensedReactionGraph
         """
 
-        reactant_graph = StereoMolGraph.from_geometry(
-            reactant_geo, switching_function
-        )
-        product_graph = StereoMolGraph.from_geometry(
-            product_geo, switching_function
-        )
+        reactant_graph = StereoMolGraph.from_geometry(reactant_geo, switching_function)
+        product_graph = StereoMolGraph.from_geometry(product_geo, switching_function)
 
         _crg = cls.from_graphs(
-                reactant_graph=reactant_graph,
-                product_graph=product_graph)
+            reactant_graph=reactant_graph, product_graph=product_graph
+        )
 
         ts_atom_stereo_graph = StereoMolGraph(_crg)
 
         if ts_geo is not None:
-            ts_atom_stereo_graph = stero_from_geometry(
-                ts_atom_stereo_graph, ts_geo
-            )
+            ts_atom_stereo_graph = stero_from_geometry(ts_atom_stereo_graph, ts_geo)
 
         reactant_atom_stereo_graph = StereoMolGraph.from_geometry(
             geo=reactant_geo, switching_function=switching_function
@@ -611,7 +584,6 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         product_atom_stereo_graph = StereoMolGraph.from_geometry(
             geo=product_geo, switching_function=switching_function
         )
-
 
         scrg = cls.from_graphs(
             reactant_graph=reactant_atom_stereo_graph,

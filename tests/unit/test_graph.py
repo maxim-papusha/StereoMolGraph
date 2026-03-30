@@ -293,13 +293,13 @@ class TestMolGraph:
         )
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
-        assert hash(enantiomer_graph1) == hash(enantiomer_graph2)
+        assert hash(enantiomer_graph1.copy(frozen=True)) == hash(enantiomer_graph2.copy(frozen=True))
 
     def test_hash_relabel(self, water_graph):
         relabel_water = water_graph.relabel_atoms(
             {0: 1, 1: 0, 2: 13}, copy=True
         )
-        assert hash(water_graph) == hash(relabel_water)
+        assert hash(water_graph.copy(frozen=True)) == hash(relabel_water.copy(frozen=True))
 
 
 class TestCondensedReactionGraph(TestMolGraph):
@@ -894,7 +894,7 @@ class TestStereoMolGraph(TestMolGraph):
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
         assert enantiomer_graph1._atom_stereo != enantiomer_graph2._atom_stereo
-        assert hash(enantiomer_graph1) != hash(enantiomer_graph2)
+        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(enantiomer_graph2.copy(frozen=True))
 
     def test_valid_stereo(self, chiral_product_graph1):
         assert chiral_product_graph1.is_stereo_valid()
@@ -1196,14 +1196,14 @@ class TestStereoCondensedReactionGraph(
     def test_hash_stereo_reaction(
         self, chiral_reaction_scrg1, chiral_reaction_scrg2
     ):
-        assert hash(chiral_reaction_scrg1) == hash(chiral_reaction_scrg2)
+        assert hash(chiral_reaction_scrg1.copy(frozen=True)) == hash(chiral_reaction_scrg2.copy(frozen=True))
 
     def test_hash_stereo_reaction_with_ts(
         self, chiral_reaction_chiral_ts_scrg1, chiral_reaction_chiral_ts_scrg2
     ):
-        assert hash(chiral_reaction_chiral_ts_scrg1) != hash(
-            chiral_reaction_chiral_ts_scrg2
+        assert hash(chiral_reaction_chiral_ts_scrg1.copy(frozen=True)) != hash(
+            chiral_reaction_chiral_ts_scrg2.copy(frozen=True)
         )
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
-        assert hash(enantiomer_graph1) != hash(enantiomer_graph2)
+        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(enantiomer_graph2.copy(frozen=True))
