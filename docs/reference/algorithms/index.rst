@@ -25,6 +25,5 @@ Algorithms
    :hidden:
 
    isomorphism
-   color_refine
 
 
