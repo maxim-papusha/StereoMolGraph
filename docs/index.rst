@@ -60,7 +60,7 @@ Citation
 
 If you use StereoMolGraph in your work, please cite:
 
-.. [#smg] Maxim Papusha, Kai Leonhard,
+.. [#smg] M. Papusha, K. Leonhard,
    *StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs*,
    *J. Chem. Inf. Model.* **2026**,
    `DOI: 10.1021/acs.jcim.5c02523 <https://doi.org/10.1021/acs.jcim.5c02523>`_
