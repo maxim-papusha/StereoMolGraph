@@ -1,7 +1,9 @@
 # Changelog
 
-## [0.1.0] - 2026-03-31
+## [Unreleased]
+
+### Changed
 - Graphs are immutable and hashable after .freeze()
 
-### Added
+## [0.0.1b]
 - Initial release
