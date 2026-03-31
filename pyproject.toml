@@ -10,7 +10,7 @@ stereomolgraph = ["py.typed"]
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.18b"
+version = "0.0.19b"
 readme = "README.md"
 requires-python = ">=3.10"
 
