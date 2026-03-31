@@ -1,5 +1,5 @@
 Isomorphism
 ===========
 
-.. automodule:: stereomolgraph.algorithms._isomorphism
+.. automodule:: stereomolgraph.algorithms.isomorphism
     :members:
