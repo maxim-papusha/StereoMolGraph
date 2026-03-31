@@ -52,8 +52,8 @@ Magic Methods
 
 StereoMolGraph implements the following magic methods:
 
-* ``__eq__``: based on graph isomorphism and stereochemical equivalence [#smg]_.
-* ``__hash__``: based on the Morgan-like Circular Stereo Algorithm.
+* ``__eq__``: based on :doc:`graph isomorphism </reference/algorithms/isomorphism>` and stereochemical equivalence [#smg]_.
+* ``__hash__``: based on :doc:`Circular Stereo Algorithm </reference/algorithms/color_refine>`.
 
 Citation
 ========
