@@ -1,8 +1,20 @@
 Algorithms
 ===========
 
-Some general information about algorithms.
-Maybe some nice images?
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: Color Refinement
+      :img-top: /_static/img/color_refine.png
+      :link: color_refine
+      :link-type: doc
+      :text-align: center
+
+   .. grid-item-card:: Isomorphism
+      :img-top: /_static/img/Isomorphism.png
+      :link: isomorphism
+      :link-type: doc
+      :text-align: center
 
 .. toctree::
    :maxdepth: 1
@@ -10,5 +22,4 @@ Maybe some nice images?
 
    color_refine
    isomorphism
-   bond_orders
 

@@ -55,6 +55,7 @@ extensions = [
     "myst_nb",
     # Theme and UI extensions
     "sphinx_copybutton",
+    "sphinx_design",
     "sphinx.ext.intersphinx",
 ]
 

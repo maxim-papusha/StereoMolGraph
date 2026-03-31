@@ -62,7 +62,8 @@ docs = ["rdkit>=2022.9.1,<2025",
        "pydata-sphinx-theme",
        "myst-nb",
        "sphinx-autodoc-typehints",
-       "sphinx-copybutton"]
+       "sphinx-copybutton",
+       "sphinx-design"]
 
 dev = ["pytest>=7.1.2",
        "hypothesis",
