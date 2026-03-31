@@ -47,22 +47,23 @@ Its treatment of stereochemistry is based on rigorously defined local :doc:`ster
 Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
 
-Magic Methods:
---------------
-- \__eq\__ is based on isomorphism and includes Stereochemistry [1]_
-- \__hash\__ is based on morgan like Circular Stereo Algorithm
+Magic Methods
+=============
 
+StereoMolGraph implements the following magic methods:
 
+* ``__eq__``: based on graph isomorphism and stereochemical equivalence [#smg]_.
+* ``__hash__``: based on the Morgan-like Circular Stereo Algorithm.
 
+Citation
+========
 
-Citing
-------
+If you use StereoMolGraph in your work, please cite:
 
-To cite StereoMolGraph please use the following publication:
-
-.. [1] Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs. *J.~Chem.~Inf.~Model.*~**2026**. 
-         DOI: 10.1021/acs.jcim.5c02523 <https://doi.org/10.1021/acs.jcim.5c02523>`_
-
+.. [#smg] Maxim Papusha and Kai Leonhard,
+   *StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs*,
+   *J. Chem. Inf. Model.* **2026**,
+   `DOI: 10.1021/acs.jcim.5c02523 <https://doi.org/10.1021/acs.jcim.5c02523>`_
 
 .. toctree::
    :maxdepth: 1
