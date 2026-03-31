@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 from stereomolgraph import StereoMolGraph
-from stereomolgraph.algorithms.color_refine import color_refine_smg
+from stereomolgraph.algorithms._color_refine import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 
 

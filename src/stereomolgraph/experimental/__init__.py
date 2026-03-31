@@ -8,7 +8,7 @@ from stereomolgraph import (
     StereoCondensedReactionGraph,
     StereoMolGraph,
 )
-from stereomolgraph.algorithms.color_refine import color_refine_smg
+from stereomolgraph.algorithms._color_refine import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.experimental._isomers import (
     generate_fleeting_stereoisomers,

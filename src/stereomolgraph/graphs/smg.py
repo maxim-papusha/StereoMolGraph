@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 
-from stereomolgraph.algorithms.color_refine import (
+from stereomolgraph.algorithms._color_refine import (
     color_refine_smg,
     label_hash,
     numpy_int_multiset_hash,
