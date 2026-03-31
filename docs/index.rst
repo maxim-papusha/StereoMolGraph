@@ -44,7 +44,7 @@ All arising algorithmic difficulties are taken care of by the internal implement
 
 Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from group-theoretical principles.
 
-Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
+Building on this formal foundation, a range of graph :doc:`algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
 
 Magic Methods
