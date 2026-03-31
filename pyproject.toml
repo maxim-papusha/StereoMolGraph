@@ -10,7 +10,7 @@ stereomolgraph = ["py.typed"]
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.0b17"
+version = "0.0.1"
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -93,4 +93,4 @@ Documentation = "https://stereomolgraph.readthedocs.io/"
 Repository = "https://github.com/maxim-papusha/StereoMolGraph.git"
 PyPi = "https://pypi.org/project/StereoMolGraph/"
 Zenodo = "https://doi.org/10.5281/zenodo.16360310"
-Publication = "https://doi.org/10.26434/chemrxiv-2025-0g4wn"
+Publication = "https://doi.org/10.1021/acs.jcim.5c02523"

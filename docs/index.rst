@@ -72,5 +72,6 @@ To cite StereoMolGraph please use the following publication:
    installation
    tutorial/index
    reference/index
+   changelog
 
 

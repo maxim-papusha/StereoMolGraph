@@ -20,6 +20,13 @@ link_to = str(Path(__file__).resolve().parent / "examples")
 if not os.path.exists(link_to):
     os.symlink(link_from, link_to, target_is_directory=True)
 
+# To include CHANGELOG.md in the documentation
+changelog_from = str(Path(__file__).resolve().parent.parent / "CHANGELOG.md")
+changelog_to = str(Path(__file__).resolve().parent / "changelog.md")
+
+if not os.path.exists(changelog_to):
+    os.symlink(changelog_from, changelog_to)
+
 
 project = "StereoMolGraph"
 copyright = "2025, Maxim Papusha"
