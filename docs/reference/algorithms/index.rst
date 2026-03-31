@@ -1,7 +1,7 @@
 Algorithms
 ===========
 
-.. grid:: 2
+.. grid:: 1
    :gutter: 1
 
    .. grid-item::
