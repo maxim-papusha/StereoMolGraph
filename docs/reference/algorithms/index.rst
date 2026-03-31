@@ -4,13 +4,10 @@ Algorithms
 .. grid:: 1
    :gutter: 1
 
-   .. grid-item::
+   .. grid-item-card:: Isomorphism
+      :link: isomorphism
+      :link-type: doc
       :text-align: center
-
-      .. image:: /_static/img/Isomorphism.png
-         :target: isomorphism.html
-         :width: 180px
-         :alt: Isomorphism
 
 .. toctree::
    :maxdepth: 1
