@@ -42,7 +42,7 @@ The core focus is to allow the user to work with chiral molecules in a consisten
 All arising algorithmic difficulties are taken care of by the internal implementations.
 
 
-Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from :doc:`group-theoretical </theory/index>` principles.
+Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from group-theoretical principles.
 
 Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
