@@ -1,7 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/img/logo_smg_dark.svg">
-  <img alt="Logo" src="docs/_static/img/logo_smg.svg">
-</picture>
+![Logo](https://raw.githubusercontent.com/maxim-papusha/StereoMolGraph/main/docs/_static/img/logo_smg.png)
 
 # StereoMolGraph #
 
