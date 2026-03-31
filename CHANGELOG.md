@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.0]
 
 ### Changed
 - Graphs are immutable and hashable after .freeze() and .copy() can create mutable copies.

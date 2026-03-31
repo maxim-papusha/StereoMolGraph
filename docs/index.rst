@@ -61,7 +61,7 @@ Citing
 To cite StereoMolGraph please use the following publication:
 
 .. [1] Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs.
-       *J. Chem. Inf. Model.* **2026**.
+..     *J. Chem. Inf. Model.* **2026**.
        `DOI: 10.1021/acs.jcim.5c02523 <https://doi.org/10.1021/acs.jcim.5c02523>`_
 
 
