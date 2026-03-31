@@ -50,7 +50,7 @@ Building on this formal foundation, a range of :doc:`graph algorithms </referenc
 Magic Methods:
 --------------
 - \__eq\__ is based on isomorphism and includes Stereochemistry [1]_
-- \__hash\__ is based on morgan like Circular Stereo Algorithm (can have a few hash collisions)
+- \__hash\__ is based on morgan like Circular Stereo Algorithm
 
 
 
@@ -60,8 +60,8 @@ Citing
 
 To cite StereoMolGraph please use the following publication:
 
-.. [1] Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs. *ChemRxiv.* **2026**.
-   DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
+.. [1] Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs. *J. Chem. Inf. Model.* **2026**.
+   DOI: https://doi.org/10.1021/acs.jcim.5c02523
 
 
 .. toctree::

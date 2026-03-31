@@ -12,7 +12,7 @@
 
 [![Documentation](https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white)](https://stereomolgraph.readthedocs.io)
 [![GitHub](https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white)](https://github.com/maxim-papusha/StereoMolGraph)
-[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+[![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
 
 StereoMolGraph (SMG) is a library for graph representation of molecules and reactions with a focus on Stereochemistry. It provides:
 
@@ -27,13 +27,13 @@ StereoMolGraph (SMG) is a library for graph representation of molecules and reac
 ## Design philosophy
 
 - Unopinionated about bond orders, charge and electronic state
-- SMG focuses on the connectivity and stereochemistry. 
+- SMG focuses just on the connectivity and stereochemistry. 
 - Stereochemistry describes relative spatial arrangement. No absolute stereochemistry.
 - Transparent: Simple 2D visualization in IPython notebooks
 
 ## RDKit interoperability notes
 
-- Hydrogens must be explicit for stereo-safe bidirectional conversion.
+- Hydrogens must be explicit for bidirectional conversion.
 - Supports tetrahedral and non tetrahedral stereochemistry during conversion.
 - Bond orders, charges, unpaired electrons and other properties are not used!
 
@@ -47,16 +47,22 @@ pip install stereomolgraph
 
 ## Feedback and support
 
-Bug reports and feature requests are welcome — please open an issue on GitHub:
+Bug reports are welcome — please open an issue on GitHub.
+Technical questions and feature requests can be added as discussions.
 
-- Issues: https://github.com/maxim-papusha/StereoMolGraph/issues
+Issues:
+- Bugreports: https://github.com/maxim-papusha/StereoMolGraph/issues
+
+Discussions:
+- Q&A: https://github.com/maxim-papusha/StereoMolGraph/discussions/new?category=q-a
+- Ideas: https://github.com/maxim-papusha/StereoMolGraph/discussions/new?category=ideas
 
 
 ## Citation
 
-If you use StereoMolGraph in your work, please cite the Zenodo record:
+If you use StereoMolGraph in your work, please cite the corresponding paper:
 
-[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+[![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
 
 ## License
 
