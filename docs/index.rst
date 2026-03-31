@@ -24,8 +24,8 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 .. |tests| image:: https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests
    :target: https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml
 
-.. |doi| image:: https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square
-   :target: https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn
+.. |doi| image:: https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square
+   :target: https://doi.org/10.1021/acs.jcim.5c02523
 
 .. |docs| image:: https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white
    :target: https://stereomolgraph.readthedocs.io
