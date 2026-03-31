@@ -298,10 +298,18 @@ def vf2pp_all_isomorphisms(
 ) -> Iterator[dict[AtomId, AtomId]]:
     r"""Find all isomorphisms between two graphs.
 
-    Jüttner, A.; Madarasi, P.
-    VF2++—An Improved Subgraph Isomorphism Algorithm.
-    Discrete Appl. Math. 2018, 242, 69-81.
-    https://doi.org/10.1016/j.dam.2018.02.018.
+    Defined in: https://doi.org/10.1021/acs.jcim.5c02523
+
+    :param g1: First graph
+    :param g2: Second graph
+    :param atom_labels: Optional precomputed atom labels for both graphs, if none
+                        defaults to color refinement.
+    :param stereo: Whether to consider stereochemistry in the isomorphism
+    :param stereo_change: Whether to consider stereochemistry changes in the isomorphism
+    :param subgraph: Whether to find subgraph isomorphisms instead of graph isomorphisms
+                     (Currently only limited support and not well tested.)
+    :return: An iterator of all isomorphisms, where each isomorphism is represented as a
+             dictionary mapping atom ids of g1 to atom ids of g2.
     """
     if params_state := _sanity_check_and_init(
         g1, g2, atom_labels, stereo, stereo_change, subgraph
