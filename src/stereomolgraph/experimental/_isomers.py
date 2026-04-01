@@ -16,20 +16,22 @@ def generate_stereoisomers(
     atoms: None | Iterable[AtomId] = None,
     bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoMolGraph]:
-    """Generates all unique stereoisomers of a StereoMolGraph by generation of
-    all combinations of parities. Only includes stereocenters which have a
-    parity of None. If a parity is set, it is not changed.
+    """
+    Generate all unique stereoisomers of a StereoMolGraph.
 
-    If include_enantiomers is True, both enantiomers of a stereoisomer are
-    included, if it is False, only one enantiomer is included.
+    Stereoisomers are constructed by enumerating all combinations of
+    stereochemical parities. Only stereocenters with undefined parity
+    (``None``) are considered; predefined parities remain unchanged.
 
-    Args:
-        enantiomers: If True, both enantiomers are included
-        atoms: Optional subset of atoms to consider for stereoisomerism
-        bonds: Optional subset of bonds to consider for stereoisomerism
+    If ``enantiomers`` is ``False``, both enantiomers of each stereoisomer
+    are returned. Otherwise, only one representative per enantiomeric pair
+    is included.
 
-    Yields:
-        StereoMolGraph: Each unique stereoisomer (and enantiomer if requested)
+    :param enantiomers: Whether to remove enantiomers.
+    :param atoms: Optional subset of atoms to consider for stereoisomerism.
+    :param bonds: Optional subset of bonds to consider for stereoisomerism.
+
+    :yields: Unique stereoisomers of the input graph.
     """
     if atoms is None:
         atom_stereos = (
@@ -73,7 +75,7 @@ def generate_stereoisomers(
             seen.add(stereoisomer)
             yield stereoisomer.copy(frozen=False)
 
-            if enantiomers:
+            if not enantiomers:
                 enantiomer = stereoisomer.enantiomer()
                 enantiomer.freeze()
 
