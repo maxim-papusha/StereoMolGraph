@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from collections import Counter, deque
+from collections import Counter
 from typing import cast
 
 from stereomolgraph import Bond, StereoMolGraph
@@ -12,11 +12,12 @@ from stereomolgraph.experimental.new_stereodescriptors import (
     NonRotatableBond23,
     NonRotatableBond33,
 )
-from stereomolgraph.stereodescriptors import OInt, Tetrahedral, _StereoMixin
+from stereomolgraph.stereodescriptors import OInt, Tetrahedral
 
 BondAutoCls = int  # bond automorphism class
 MappingId = int
 NonRotatableBond33Atoms = tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt]
+NonRotatableBond = NonRotatableBond33 | NonRotatableBond23 | NonRotatableBond13
 
 
 def bond_equivalence_classes(graph: StereoMolGraph) -> dict[Bond, int]:
@@ -52,25 +53,6 @@ def bond_equivalence_classes(graph: StereoMolGraph) -> dict[Bond, int]:
     }
 
     return bond_auto_int
-
-
-def topological_symmetry_number(graph: StereoMolGraph) -> int:
-    """
-    Calculated from the number of graph isomorphisms which conserve the
-    stereo information.
-    symmetry_number = internal_symmetry_number * rotational_symmetry_number
-    """
-
-    if any(stereo.parity is None for stereo in graph.stereo.values()):
-        raise NotImplementedError(
-            "all stereocenters have to be defined to calculate the symmetry number"
-        )
-    mappings = vf2pp_all_isomorphisms(
-        graph,
-        graph,
-        stereo=True,
-    )
-    return deque(enumerate(mappings, 1), maxlen=1)[0][0]
 
 
 def _require_complete_stereo(graph: StereoMolGraph) -> None:
@@ -177,7 +159,7 @@ def _bond_state(
             for stereo_atoms in s2._perm_atoms()
             if stereo_atoms[1] == a1 and stereo_atoms[2] == unique_right
         )
-        nrb_set.add(NonRotatableBond33(atoms=(*left, a1, a2, *right), parity=0))
+        nrb_set.add(NonRotatableBond33(atoms=(*left, a1, a2, *right), parity=1))
 
     elif len(left_auto_classes) == 1 or len(right_auto_classes) == 1:
         s1 = graph.get_atom_stereo(a1)
@@ -195,7 +177,7 @@ def _bond_state(
             for stereo_atoms in s2._perm_atoms()
             if stereo_atoms[1] == a1
         )
-        nrb_set.add(NonRotatableBond33(atoms=(*left, a1, a2, *right), parity=0))
+        nrb_set.add(NonRotatableBond33(atoms=(*left, a1, a2, *right), parity=1))
     else:
         return None
 
@@ -222,7 +204,7 @@ def _map_non_rotatable_bond(
         NonRotatableBond33Atoms,
         tuple(atom if atom is None else mapping[atom] for atom in non_rot_bond.atoms),
     )
-    return NonRotatableBond33(atoms=mapped_atoms, parity=0)
+    return NonRotatableBond33(atoms=mapped_atoms, parity=1)
 
 
 def _bond_state_counter(
@@ -426,20 +408,17 @@ def bond_symmetry_number(graph: StereoMolGraph, bond: Bond) -> int:
         a1, a2 = a2, a1
         nbrs1, nbrs2 = nbrs2, nbrs1
 
-    atoms = (*nbrs1, a1, a2, *nbrs2)
     if len(nbrs1) == 3 and len(nbrs2) == 3:
-        assert len(atoms) == 8
-        s = NonRotatableBond33(atoms=atoms, parity=1)
+        s = NonRotatableBond33(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 2 and len(nbrs2) == 3:
-        assert len(atoms) == 7
-        s = NonRotatableBond23(atoms=atoms, parity=1)
+        s = NonRotatableBond23(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 1 and len(nbrs2) == 3:
-        assert len(atoms) == 6
-        s = NonRotatableBond13(atoms=atoms, parity=1)
+        s = NonRotatableBond13(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     else:
         raise NotImplementedError
 
-    unique_reorderings: set[_StereoMixin] = set()
+    # diff nrbs1
+    unique_reorderings: set[NonRotatableBond] = set()
     bond_class = s.__class__
 
     for mapping in mappings:
@@ -448,7 +427,7 @@ def bond_symmetry_number(graph: StereoMolGraph, bond: Bond) -> int:
         map_nrbrs1 = tuple(mapping[nbr] for nbr in nbrs1)
         map_nrbrs2 = tuple(mapping[nbr] for nbr in nbrs2)
 
-        if any(map_nrbr not in nbrs1 for map_nrbr in map_nrbrs1) or any(
+        if (map_nrbr not in nbrs1 for map_nrbr in map_nrbrs1) or any(
             map_nrbr not in nbrs2 for map_nrbr in map_nrbrs2
         ):
             continue
@@ -457,82 +436,3 @@ def bond_symmetry_number(graph: StereoMolGraph, bond: Bond) -> int:
         unique_reorderings.add(reordering)
 
     return len(unique_reorderings)
-
-
-def bond_key(bond: Bond) -> tuple[int, ...]:
-    return tuple(sorted(bond))
-
-
-def working_bond_symmetry_numbers(graph: StereoMolGraph) -> dict[Bond, int]:
-    working: dict[Bond, int] = {}
-    for bond in sorted(graph.bonds, key=bond_key):
-        try:
-            working[bond] = bond_symmetry_number(graph, bond)
-        except (NotImplementedError, AssertionError):
-            continue
-    return working
-
-
-def bond_automorphism_classes_for_bonds(
-    graph: StereoMolGraph,
-    candidate_bonds: set[Bond],
-) -> tuple[frozenset[Bond], ...]:
-    if not candidate_bonds:
-        return tuple()
-
-    parent: dict[Bond, Bond] = {bond: bond for bond in candidate_bonds}
-    rank: dict[Bond, int] = {bond: 0 for bond in candidate_bonds}
-
-    def find(bond: Bond) -> Bond:
-        root = bond
-        while parent[root] != root:
-            root = parent[root]
-        while parent[bond] != bond:
-            next_bond = parent[bond]
-            parent[bond] = root
-            bond = next_bond
-        return root
-
-    def union(bond1: Bond, bond2: Bond) -> None:
-        root1 = find(bond1)
-        root2 = find(bond2)
-        if root1 == root2:
-            return
-        if rank[root1] < rank[root2]:
-            root1, root2 = root2, root1
-        parent[root2] = root1
-        if rank[root1] == rank[root2]:
-            rank[root1] += 1
-
-    for mapping in vf2pp_all_isomorphisms(graph, graph, stereo=True):
-        for bond in candidate_bonds:
-            mapped_bond = Bond(mapping[atom] for atom in bond)
-            if mapped_bond in parent:
-                union(bond, mapped_bond)
-
-    classes: dict[Bond, set[Bond]] = {}
-    for bond in candidate_bonds:
-        root = find(bond)
-        classes.setdefault(root, set()).add(bond)
-
-    return tuple(frozenset(bond_class) for bond_class in classes.values())
-
-
-def bond_automorphism_classes_by_symmetry(
-    graph: StereoMolGraph,
-    working_by_bond: None | dict[Bond, int] = None,
-) -> dict[int, tuple[tuple[tuple[int, int], ...], ...]]:
-    if working_by_bond is None:
-        working_by_bond = working_bond_symmetry_numbers(graph)
-
-    classes_by_sym: dict[int, list[tuple[tuple[int, int], ...]]] = {}
-    for bond_class in bond_automorphism_classes_for_bonds(graph, set(working_by_bond)):
-        representative = next(iter(bond_class))
-        sym_value = working_by_bond[representative]
-        class_key = tuple(sorted(bond_key(bond) for bond in bond_class))
-        classes_by_sym.setdefault(sym_value, []).append(class_key)
-
-    return {
-        sym_value: tuple(sorted(bond_classes))
-        for sym_value, bond_classes in classes_by_sym.items()
-    }
