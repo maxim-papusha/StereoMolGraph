@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from stereomolgraph import StereoCondensedReactionGraph, StereoMolGraph
 from stereomolgraph.experimental import (
     generate_fleeting_stereoisomers,
@@ -18,7 +20,7 @@ def _undefined_tetrahedral_graph() -> StereoMolGraph:
     for atom in (1, 2, 3, 4):
         graph.add_bond(0, atom)
 
-    graph.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), None))
+    graph.set_atom_stereo(cast(Any, Tetrahedral((0, 1, 2, 3, 4), None)))
     return graph
 
 
@@ -33,7 +35,7 @@ def _undefined_fleeting_tetrahedral_graph() -> StereoCondensedReactionGraph:
     for atom in (1, 2, 3, 4):
         graph.add_bond(0, atom)
 
-    graph.set_atom_stereo_change(fleeting=Tetrahedral((0, 1, 2, 3, 4), None))
+    graph.set_atom_stereo_change(fleeting=cast(Any, Tetrahedral((0, 1, 2, 3, 4), None)))
     return graph
 
 
@@ -45,7 +47,13 @@ def test_generate_stereoisomers_enantiomers_false_no_duplicates():
 
     assert len(stereoisomers) == 2
     assert len(unique_isomers) == 2
-    assert {g.get_atom_stereo(0).parity for g in stereoisomers} == {1, -1}
+    parities = set()
+    for graph in stereoisomers:
+        stereo = graph.get_atom_stereo(0)
+        assert stereo is not None
+        parities.add(stereo.parity)
+
+    assert parities == {1, -1}
 
 
 def test_generate_stereoisomers_enantiomers_true_one_representative():
@@ -58,23 +66,29 @@ def test_generate_stereoisomers_enantiomers_true_one_representative():
     assert len(unique_isomers) == 1
 
 
-def test_generate_fleeting_stereoisomers_enantiomers_true_no_duplicates():
+def test_generate_fleeting_stereoisomers_enantiomers_false_no_duplicates():
     graph = _undefined_fleeting_tetrahedral_graph()
 
-    stereoisomers = list(generate_fleeting_stereoisomers(graph, enantiomers=True))
+    stereoisomers = list(generate_fleeting_stereoisomers(graph, enantiomers=False))
     unique_isomers = {g.copy(frozen=True) for g in stereoisomers}
 
     assert len(stereoisomers) == 2
     assert len(unique_isomers) == 2
-    assert {
-        g.get_atom_stereo_change(0)[Change.FLEETING].parity for g in stereoisomers
-    } == {1, -1}
+    parities = set()
+    for graph in stereoisomers:
+        stereo_change = graph.get_atom_stereo_change(0)
+        assert stereo_change is not None
+        fleeting = stereo_change[Change.FLEETING]
+        assert fleeting is not None
+        parities.add(fleeting.parity)
+
+    assert parities == {1, -1}
 
 
-def test_generate_fleeting_stereoisomers_enantiomers_false_one_representative():
+def test_generate_fleeting_stereoisomers_enantiomers_true_one_representative():
     graph = _undefined_fleeting_tetrahedral_graph()
 
-    stereoisomers = list(generate_fleeting_stereoisomers(graph, enantiomers=False))
+    stereoisomers = list(generate_fleeting_stereoisomers(graph, enantiomers=True))
     unique_isomers = {g.copy(frozen=True) for g in stereoisomers}
 
     assert len(stereoisomers) == 1
