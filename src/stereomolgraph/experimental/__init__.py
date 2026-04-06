@@ -15,7 +15,6 @@ from stereomolgraph.experimental._isomers import (
     generate_stereoisomers,
 )
 from stereomolgraph.experimental._json import STEREO_CLASSES, JSONHandler
-from stereomolgraph.experimental._sym_num import topological_symmetry_number
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (

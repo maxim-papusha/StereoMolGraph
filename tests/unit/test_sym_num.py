@@ -1,7 +1,7 @@
 import rdkit.Chem  # type: ignore
 
 from stereomolgraph import StereoMolGraph
-from stereomolgraph.experimental._sym_num import (
+from stereomolgraph.experimental._sym_num_old import (
     external_symmetry_number,
     external_symmetry_number_bond,
     external_symmetry_number_per_rotatable_bond,

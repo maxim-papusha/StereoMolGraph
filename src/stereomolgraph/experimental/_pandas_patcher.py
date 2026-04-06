@@ -45,6 +45,22 @@ def _get_renderer_for_frame(frame) -> str:
     return "image" if _render_images_in_all_dataframes else "text"
 
 
+def _is_missing(value) -> bool:
+    if value is None:
+        return True
+    if pd is None:
+        return False
+    try:
+        missing = pd.isna(value)
+    except Exception:
+        return False
+    try:
+        return bool(missing)
+    except Exception:
+        # Array-like outputs from pd.isna are not treated as missing scalar values.
+        return False
+
+
 def _column_contains_mol(series, max_scan: int = 50) -> bool:
     if pd is None:
         return False
@@ -52,7 +68,7 @@ def _column_contains_mol(series, max_scan: int = 50) -> bool:
         return False
     seen = 0
     for value in series.values:
-        if pd.isna(value):
+        if _is_missing(value):
             continue
         if isinstance(value, _MOL_TYPES):
             return True
@@ -118,7 +134,7 @@ def _index_level_contains_mol(
         values = index
     seen = 0
     for value in values:
-        if pd.isna(value):
+        if _is_missing(value):
             continue
         if isinstance(value, _MOL_TYPES):
             return True
