@@ -1,6 +1,5 @@
 from collections import defaultdict
 from copy import deepcopy
-from io import StringIO
 from itertools import permutations
 
 import numpy as np
@@ -21,7 +20,6 @@ from stereomolgraph.graphs.scrg import ChangeDict
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 from stereomolgraph.stereodescriptors import (
     AtropBond,
-    Octahedral,
     PlanarBond,
     SquarePlanar,
     Tetrahedral,
@@ -60,11 +58,7 @@ class TestMolGraph:
 
     @pytest.fixture
     def chiral_product_geo1(self, data_path):
-        filepath = (
-            data_path
-            / "disrot_reaction"
-            / "(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
-        )
+        filepath = data_path / "disrot_reaction" / "(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
 
         return Geometry.from_xyz_file(filepath)
 
@@ -74,9 +68,7 @@ class TestMolGraph:
 
     @pytest.fixture
     def chiral_product_geo2(self, data_path):
-        filepath = (
-            data_path / "conrot_reaction/(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
-        )
+        filepath = data_path / "conrot_reaction/(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
         return Geometry.from_xyz_file(filepath)
 
     @pytest.fixture
@@ -167,9 +159,7 @@ class TestMolGraph:
         assert mol_graph.get_bond_attributes(0, 1) == {"bond_order": 1}
 
     def test_get_bonds_with_attributes(self, mol_graph):
-        assert mol_graph.bonds_with_attributes == {
-            Bond({0, 1}): {"bond_order": 1}
-        }
+        assert mol_graph.bonds_with_attributes == {Bond({0, 1}): {"bond_order": 1}}
 
     def test_connectivity_matrix(self, mol_graph):
         assert np.array_equal(
@@ -180,12 +170,8 @@ class TestMolGraph:
     def test_relabel_atoms(self, enantiomer_graph1):
         mapping = {0: 15, 5: 10, 3: 99}
         enantiomer_graph1.relabel_atoms(mapping, copy=False)
-        assert all(
-            atom in enantiomer_graph1.atoms for atom in mapping.values()
-        )
-        assert all(
-            atom not in enantiomer_graph1.atoms for atom in mapping.keys()
-        )
+        assert all(atom in enantiomer_graph1.atoms for atom in mapping.values())
+        assert all(atom not in enantiomer_graph1.atoms for atom in mapping.keys())
 
     def test_relabel_atoms_copy(self, enantiomer_graph1):
         mapping = {0: 15, 5: 10, 3: 99}
@@ -254,20 +240,20 @@ class TestMolGraph:
 
     def test_to_rdmol(self, water_graph):
         rdmol, _ = water_graph._to_rdmol()
-        assert tuple([
-            Atom.GetAtomicNum() for Atom in rdmol.GetAtoms()
-        ]) == water_graph.atom_types
+        assert (
+            tuple([Atom.GetAtomicNum() for Atom in rdmol.GetAtoms()])
+            == water_graph.atom_types
+        )
         assert {
             Bond((rd_b.GetBeginAtomIdx(), rd_b.GetEndAtomIdx()))
             for rd_b in rdmol.GetBonds()
         } == {Bond(b) for b in water_graph.bonds}
+
     @pytest.mark.parametrize(
         "inchi",
         [
             (r"InChI=1S/C3H8O/c1-3(2)4/h3-4H,1-2H3"),
-            (
-                r"InChI=1S/C8H10N4O2/c1-10-4-9-6-5(10)7(13)12(3)8(14)11(6)2/h4H,1-3H3"
-            ),
+            (r"InChI=1S/C8H10N4O2/c1-10-4-9-6-5(10)7(13)12(3)8(14)11(6)2/h4H,1-3H3"),
         ],
         ids=["isopropanol", "caffeine"],
     )
@@ -286,20 +272,18 @@ class TestMolGraph:
         chiral_reactant_graph,
     ):
         assert chiral_product_graph1 == chiral_product_graph2
-        assert (
-            chiral_product_graph1
-            != chiral_reactant_graph
-            != chiral_product_graph2
-        )
+        assert chiral_product_graph1 != chiral_reactant_graph != chiral_product_graph2
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
-        assert hash(enantiomer_graph1.copy(frozen=True)) == hash(enantiomer_graph2.copy(frozen=True))
+        assert hash(enantiomer_graph1.copy(frozen=True)) == hash(
+            enantiomer_graph2.copy(frozen=True)
+        )
 
     def test_hash_relabel(self, water_graph):
-        relabel_water = water_graph.relabel_atoms(
-            {0: 1, 1: 0, 2: 13}, copy=True
+        relabel_water = water_graph.relabel_atoms({0: 1, 1: 0, 2: 13}, copy=True)
+        assert hash(water_graph.copy(frozen=True)) == hash(
+            relabel_water.copy(frozen=True)
         )
-        assert hash(water_graph.copy(frozen=True)) == hash(relabel_water.copy(frozen=True))
 
 
 class TestCondensedReactionGraph(TestMolGraph):
@@ -423,9 +407,7 @@ class TestCondensedReactionGraph(TestMolGraph):
                 crg_copy.delete_bond_attribute(*bond, attr=bond_attr)
         for atom, attr_dict in crg_copy.atoms_with_attributes.items():
             to_delete = [
-                atom_attr
-                for atom_attr in attr_dict.keys()
-                if atom_attr != "atom_type"
+                atom_attr for atom_attr in attr_dict.keys() if atom_attr != "atom_type"
             ]
             for atom_attr in to_delete:
                 crg_copy.delete_atom_attribute(atom, atom_attr)
@@ -460,9 +442,7 @@ class TestCondensedReactionGraph(TestMolGraph):
                 crg_copy.delete_bond_attribute(*bond, attr=bond_attr)
         for atom, attr_dict in crg_copy.atoms_with_attributes.items():
             to_delete = [
-                atom_attr
-                for atom_attr in attr_dict.keys()
-                if atom_attr != "atom_type"
+                atom_attr for atom_attr in attr_dict.keys() if atom_attr != "atom_type"
             ]
             for atom_attr in to_delete:
                 crg_copy.delete_atom_attribute(atom, atom_attr)
@@ -474,15 +454,11 @@ class TestCondensedReactionGraph(TestMolGraph):
 
     @pytest.fixture
     def chiral_reaction_scrg1(self, chiral_reactant_geo, chiral_product_geo1):
-        return self._TestClass.from_geometries(
-            chiral_reactant_geo, chiral_product_geo1
-        )
+        return self._TestClass.from_geometries(chiral_reactant_geo, chiral_product_geo1)
 
     @pytest.fixture
     def chiral_reaction_scrg2(self, chiral_reactant_geo, chiral_product_geo2):
-        return self._TestClass.from_geometries(
-            chiral_reactant_geo, chiral_product_geo2
-        )
+        return self._TestClass.from_geometries(chiral_reactant_geo, chiral_product_geo2)
 
     def test_reverse_reaction(self, chiral_reaction_scrg1):
         reversed_reaction = chiral_reaction_scrg1.reverse_reaction()
@@ -551,9 +527,7 @@ class TestTetrahedral:
     def test_from_permuted_coords(self, enantiomer_geos):
         coords = enantiomer_geos[0].coords
         different_perms = {
-            atom_stereo_from_coords(
-                atoms := (3, *perm), coords.take(atoms, axis=0)
-            )
+            atom_stereo_from_coords(atoms := (3, *perm), coords.take(atoms, axis=0))
             for perm in permutations((0, 1, 2, 4))
         }
         assert len(different_perms) == 1
@@ -575,6 +549,15 @@ class TestTetrahedral:
         stereo1 = Tetrahedral((6, 0, 1, 2, 3), 1)
         stereo2 = Tetrahedral((6, 1, 2, 0, 3), 1)
         assert set(stereo1._perm_atoms()) == set(stereo2._perm_atoms())
+
+    def test_is_immutable(self):
+        stereo = Tetrahedral((6, 0, 1, 2, 3), 1)
+
+        with pytest.raises(AttributeError):
+            stereo.parity = -1
+
+        with pytest.raises(AttributeError):
+            stereo.atoms = (6, 1, 0, 2, 3)
 
 
 class TestTrigonalBipyramidal:
@@ -696,12 +679,10 @@ class TestStereoMolGraph(TestMolGraph):
         }
         expected2 = {Bond((0, 2)): PlanarBond((1, 14, 0, 2, 4, 5), 0)}
         assert all(
-            key in chiral_product_graph1._atom_stereo
-            for key in set(expected.keys())
+            key in chiral_product_graph1._atom_stereo for key in set(expected.keys())
         )
         assert all(
-            key in expected
-            for key in set(chiral_product_graph1._atom_stereo.keys())
+            key in expected for key in set(chiral_product_graph1._atom_stereo.keys())
         )
         assert all(
             expected[key] == value
@@ -771,13 +752,17 @@ class TestStereoMolGraph(TestMolGraph):
 
     @pytest.mark.parametrize(
         "inchi",
-        [   (r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"),
+        [
+            (
+                r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"
+            ),
             (r"InChI=1S/CHBrClF/c2-1(3)4/h1H/t1-/m0/s1"),
             (r"InChI=1S/C2H2Cl2/c3-1-2-4/h1-2H/b2-1+"),
             (r"InChI=1S/C2H2Cl2/c3-1-2-4/h1-2H/b2-1-"),
             (r"InChI=1S/C4H6/c1-3-4-2/h3-4H,1-2H2"),
         ],
-        ids=["alpha-D-gulopyranose",
+        ids=[
+            "alpha-D-gulopyranose",
             "(R)-Bromochlorofluoromethane",
             "Trans-1,2-Dichloroethylene",
             "Cis-1,2-Dichloroethylene",
@@ -789,11 +774,15 @@ class TestStereoMolGraph(TestMolGraph):
 
     @pytest.mark.parametrize(
         "inchi",
-        [   (r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"),
-         (r"InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H"),
+        [
+            (
+                r"InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1"
+            ),
+            (r"InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H"),
         ],
-        ids=["alpha-D-gulopyranose",
-        "benzene",
+        ids=[
+            "alpha-D-gulopyranose",
+            "benzene",
         ],
     )
     def test_from_rdmol_eq_from_geometry(self, inchi):
@@ -878,14 +867,10 @@ class TestStereoMolGraph(TestMolGraph):
 
     def test_atom_stereo_is_isomorphic(self, chiral_product_graph1):
         isomorphic_graph = chiral_product_graph1.copy()
-        isomorphic_graph.relabel_atoms(
-            {0: 1, 1: 0, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
-        )
+        isomorphic_graph.relabel_atoms({0: 1, 1: 0, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7})
         assert chiral_product_graph1.is_isomorphic(isomorphic_graph)
 
-    def test_isomorphic_enantiomers(
-        self, enantiomer_graph1, enantiomer_graph2
-    ):
+    def test_isomorphic_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
         assert not enantiomer_graph1.is_isomorphic(enantiomer_graph2)
 
     def test_enantiomer(self, enantiomer_graph1, enantiomer_graph2):
@@ -894,7 +879,9 @@ class TestStereoMolGraph(TestMolGraph):
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
         assert enantiomer_graph1._atom_stereo != enantiomer_graph2._atom_stereo
-        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(enantiomer_graph2.copy(frozen=True))
+        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(
+            enantiomer_graph2.copy(frozen=True)
+        )
 
     def test_valid_stereo(self, chiral_product_graph1):
         assert chiral_product_graph1.is_stereo_valid()
@@ -902,12 +889,9 @@ class TestStereoMolGraph(TestMolGraph):
     def test_inchi_coords(self):
         pytest.skip("RDKit construction tests moved to test_rdkit_conversion.py")
 
-class TestStereoCondensedReactionGraph(
-    TestStereoMolGraph, TestCondensedReactionGraph
-):
-    _TestClass: type[StereoCondensedReactionGraph] = (
-        StereoCondensedReactionGraph
-    )
+
+class TestStereoCondensedReactionGraph(TestStereoMolGraph, TestCondensedReactionGraph):
+    _TestClass: type[StereoCondensedReactionGraph] = StereoCondensedReactionGraph
 
     @pytest.fixture
     def chiral_ts_geo1(self, data_path):
@@ -925,8 +909,7 @@ class TestStereoCondensedReactionGraph(
             if value in (None, Change.FORMED)
         }
         assert (
-            crg.product(keep_attributes=True)._atom_stereo
-            == expected_mol_atom_stereo
+            crg.product(keep_attributes=True)._atom_stereo == expected_mol_atom_stereo
         )
 
     def test_product_without_attributes(self, crg):
@@ -937,8 +920,7 @@ class TestStereoCondensedReactionGraph(
             if value in (None, Change.FORMED)
         }
         assert (
-            crg.product(keep_attributes=True)._atom_stereo
-            == expected_mol_atom_stereo
+            crg.product(keep_attributes=True)._atom_stereo == expected_mol_atom_stereo
         )
 
     def test_reactant_with_attributes(self, crg):
@@ -949,8 +931,7 @@ class TestStereoCondensedReactionGraph(
             if value in (None, Change.BROKEN)
         }
         assert (
-            crg.product(keep_attributes=True)._atom_stereo
-            == expected_mol_atom_stereo
+            crg.product(keep_attributes=True)._atom_stereo == expected_mol_atom_stereo
         )
 
     def test_reactant_without_attributes(self, crg):
@@ -961,8 +942,7 @@ class TestStereoCondensedReactionGraph(
             if value in (None, Change.BROKEN)
         }
         assert (
-            crg.product(keep_attributes=True)._atom_stereo
-            == expected_mol_atom_stereo
+            crg.product(keep_attributes=True)._atom_stereo == expected_mol_atom_stereo
         )
 
     def test_from_composed_chiral_molgraphs(
@@ -1013,9 +993,7 @@ class TestStereoCondensedReactionGraph(
             data_path / "methylamine_phosgenation_trans_ts.xyz"
         )
 
-        scrg = self._TestClass.from_geometries(
-            reactant_geo, product_geo, ts_geo
-        )
+        scrg = self._TestClass.from_geometries(reactant_geo, product_geo, ts_geo)
 
         atoms = {
             0: {"atom_type": PTOE["H"]},
@@ -1047,12 +1025,8 @@ class TestStereoCondensedReactionGraph(
         atom_stereo_change = defaultdict(
             ChangeDict,
             {
-                1: ChangeDict(
-                    {Change.BROKEN: Tetrahedral((1, 0, 2, 3, 7), 1)}
-                ),
-                3: ChangeDict(
-                    {Change.BROKEN: Tetrahedral((3, 1, 4, 5, 6), 1)}
-                ),
+                1: ChangeDict({Change.BROKEN: Tetrahedral((1, 0, 2, 3, 7), 1)}),
+                3: ChangeDict({Change.BROKEN: Tetrahedral((3, 1, 4, 5, 6), 1)}),
             },
         )
         bond_stereo_change = defaultdict(
@@ -1079,18 +1053,12 @@ class TestStereoCondensedReactionGraph(
         product_geo = Geometry.from_xyz_file(
             data_path / "fluoro_chloro_bromomethane_s.xyz"
         )
-        ts_geo = Geometry.from_xyz_file(
-            data_path / "fluoro_chloro_bromomethane_ts.xyz"
-        )
+        ts_geo = Geometry.from_xyz_file(data_path / "fluoro_chloro_bromomethane_ts.xyz")
 
-        scrg = self._TestClass.from_geometries(
-            reactant_geo, product_geo, ts_geo
-        )
+        scrg = self._TestClass.from_geometries(reactant_geo, product_geo, ts_geo)
         return scrg
 
-    def test_creation_from_xyz_atom_stereocenter_inversion(
-        self, scrg_stereo_inversion
-    ):
+    def test_creation_from_xyz_atom_stereocenter_inversion(self, scrg_stereo_inversion):
         scrg = scrg_stereo_inversion
         assert scrg.get_atom_stereo_change(0) == {
             Change.BROKEN: Tetrahedral((0, 1, 2, 3, 4), -1),
@@ -1111,9 +1079,7 @@ class TestStereoCondensedReactionGraph(
 
     def test_relabel_reaction_atoms_copy(self, scrg_stereo_inversion):
         scrg = scrg_stereo_inversion
-        new_scrg = scrg.relabel_atoms(
-            {0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=True
-        )
+        new_scrg = scrg.relabel_atoms({0: 11, 1: 10, 2: 20, 3: 30, 4: 40}, copy=True)
         assert new_scrg.get_atom_stereo_change(11) == {
             Change.BROKEN: Tetrahedral((11, 10, 20, 30, 40), -1),
             Change.FLEETING: SquarePlanar((11, 40, 20, 30, 10), 0),
@@ -1174,14 +1140,8 @@ class TestStereoCondensedReactionGraph(
         )
 
         double_reverset_reaction = reversed_reaction.reverse_reaction()
-        assert (
-            chiral_reaction_scrg1.atom_stereo
-            == double_reverset_reaction.atom_stereo
-        )
-        assert (
-            chiral_reaction_scrg1.bond_stereo
-            == double_reverset_reaction.bond_stereo
-        )
+        assert chiral_reaction_scrg1.atom_stereo == double_reverset_reaction.atom_stereo
+        assert chiral_reaction_scrg1.bond_stereo == double_reverset_reaction.bond_stereo
         assert (
             chiral_reaction_scrg1.bond_stereo_changes
             == double_reverset_reaction.bond_stereo_changes
@@ -1193,10 +1153,10 @@ class TestStereoCondensedReactionGraph(
 
         assert double_reverset_reaction == chiral_reaction_scrg1
 
-    def test_hash_stereo_reaction(
-        self, chiral_reaction_scrg1, chiral_reaction_scrg2
-    ):
-        assert hash(chiral_reaction_scrg1.copy(frozen=True)) == hash(chiral_reaction_scrg2.copy(frozen=True))
+    def test_hash_stereo_reaction(self, chiral_reaction_scrg1, chiral_reaction_scrg2):
+        assert hash(chiral_reaction_scrg1.copy(frozen=True)) == hash(
+            chiral_reaction_scrg2.copy(frozen=True)
+        )
 
     def test_hash_stereo_reaction_with_ts(
         self, chiral_reaction_chiral_ts_scrg1, chiral_reaction_chiral_ts_scrg2
@@ -1206,4 +1166,6 @@ class TestStereoCondensedReactionGraph(
         )
 
     def test_hash_enantiomers(self, enantiomer_graph1, enantiomer_graph2):
-        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(enantiomer_graph2.copy(frozen=True))
+        assert hash(enantiomer_graph1.copy(frozen=True)) != hash(
+            enantiomer_graph2.copy(frozen=True)
+        )

@@ -60,7 +60,6 @@ def generate_stereoisomers(
         )
 
     seen: set[StereoMolGraph] = set()
-    enantiomers_seen: set[StereoMolGraph] = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -71,17 +70,20 @@ def generate_stereoisomers(
         for b_stereo in b_stereos:
             stereoisomer.set_bond_stereo(b_stereo)
         stereoisomer.freeze()
-        if stereoisomer not in seen:
-            seen.add(stereoisomer)
-            yield stereoisomer.copy(frozen=False)
+        if stereoisomer in seen:
+            continue
 
-            if not enantiomers:
-                enantiomer = stereoisomer.enantiomer()
-                enantiomer.freeze()
+        enantiomer = stereoisomer.enantiomer()
+        enantiomer.freeze()
 
-                if enantiomer != stereoisomer and enantiomer not in enantiomers_seen:
-                    enantiomers_seen.add(enantiomer)
-                    yield enantiomer.copy(frozen=False)
+        seen.add(stereoisomer)
+        seen.add(enantiomer)
+
+        yield stereoisomer.copy(frozen=False)
+
+        # enantiomers=False means include both members of each enantiomeric pair.
+        if not enantiomers and enantiomer != stereoisomer:
+            yield enantiomer.copy(frozen=False)
 
 
 def generate_fleeting_stereoisomers(
@@ -90,20 +92,24 @@ def generate_fleeting_stereoisomers(
     atoms: None | Iterable[AtomId] = None,
     bonds: None | Iterable[Bond] = None,
 ) -> Iterator[StereoCondensedReactionGraph]:
-    """Generates fleeting stereoisomers of a reaction graph.
+    """
+    Generate all unique fleeting stereoisomers of a
+    StereoCondensedReactionGraph.
 
-    Only includes stereocenters which have a parity of None for the
-    fleeting change.
-    If a parity is set, it is not changed.
+    Stereoisomers are constructed by enumerating all combinations of
+    fleeting stereochemical parities. Only fleeting stereocenters with
+    undefined parity (``None``) are considered; predefined parities remain
+    unchanged.
 
-    Args:
-        graph: The reaction graph to generate isomers from
-        enantiomers: If True, both enantiomers are included (default: True)
-        atoms: Optional subset of atoms to consider for stereoisomerism
-        bonds: Optional subset of bonds to consider for stereoisomerism
+    If ``enantiomers`` is ``False``, both enantiomers of each fleeting
+    stereoisomer are returned. Otherwise, only one representative per
+    enantiomeric pair is included.
 
-    Yields:
-        StereoCondensedReactionGraph: Each unique fleeting stereoisomer
+    :param enantiomers: Whether to remove enantiomers.
+    :param atoms: Optional subset of atoms to consider for stereoisomerism.
+    :param bonds: Optional subset of bonds to consider for stereoisomerism.
+
+    :yields: Unique fleeting stereoisomers of the input graph.
     """
     if atoms is None:
         atom_stereos = (
@@ -147,8 +153,7 @@ def generate_fleeting_stereoisomers(
             and stereo.parity is None
         )
 
-    seen_isomers: set[StereoCondensedReactionGraph] = set()
-    seen_enantiomers: set[StereoCondensedReactionGraph] = set()
+    seen: set[StereoCondensedReactionGraph] = set()
 
     for a_stereos, b_stereos in itertools.product(
         itertools.product(*atom_stereos), itertools.product(*bond_stereos)
@@ -160,13 +165,16 @@ def generate_fleeting_stereoisomers(
             stereoisomer.set_bond_stereo_change(fleeting=b_stereo)
 
         stereoisomer.freeze()
-        if stereoisomer not in seen_isomers:
-            seen_isomers.add(stereoisomer.copy(frozen=True))
-            yield stereoisomer
+        if stereoisomer in seen:
+            continue
 
-            if enantiomers:
-                enantiomer = stereoisomer.enantiomer()
-                enantiomer.freeze()
-                if enantiomer != stereoisomer and enantiomer not in seen_enantiomers:
-                    seen_enantiomers.add(enantiomer.copy(frozen=True))
-                    yield enantiomer
+        enantiomer = stereoisomer.enantiomer()
+        enantiomer.freeze()
+
+        seen.add(stereoisomer)
+        seen.add(enantiomer)
+
+        yield stereoisomer
+
+        if not enantiomers and enantiomer != stereoisomer:
+            yield enantiomer
