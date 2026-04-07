@@ -209,6 +209,8 @@ def bond_symmetry_number(graph: StereoMolGraph, bond: Bond) -> int:
         s = NonRotatableBond23(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 1 and len(nbrs2) == 3:
         s = NonRotatableBond13(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
+    elif len(nbrs1) == 2 and len(nbrs2) == 2:
+        s = PlanarBond(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
     else:
         raise NotImplementedError
 
