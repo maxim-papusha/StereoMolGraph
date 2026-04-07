@@ -453,17 +453,19 @@ def _stereo_feasibility(
 ) -> bool:
     s1 = [
         stereo.__class__(
-            atoms=tuple([state.mapping[a] for a in stereo.atoms]),
+            atoms=tuple(
+                [state.mapping[a] if a is not None else None for a in stereo.atoms]
+            ),
             parity=stereo.parity,
         )
         for stereo in params.g1_stereo[u]
-        if all([a in state.mapping for a in stereo.atoms])
+        if all([a in state.mapping or a is None for a in stereo.atoms])
     ]
 
     s2 = [
         stereo
         for stereo in params.g2_stereo[v]
-        if all([a in state.inverted_mapping for a in stereo.atoms])
+        if all([a in state.inverted_mapping or a is None for a in stereo.atoms])
     ]
 
     if len(s2) != len(s1):
@@ -486,14 +488,16 @@ def _stereo_change_feasibility(
         (
             stereo_change,
             stereo.__class__(
-                atoms=tuple([state.mapping[a] for a in stereo.atoms]),
+                atoms=tuple(
+                    [state.mapping[a] if a is not None else None for a in stereo.atoms]
+                ),
                 parity=stereo.parity,
             ),
         )
         for stereo_change, stereo_list in params.g1_stereo_changes[u].items()
         for stereo in stereo_list
         if stereo is not None  # type: ignore
-        and all([a in state.mapping for a in stereo.atoms])
+        and all([a in state.mapping or a is None for a in stereo.atoms])
     }
 
     s2 = {
@@ -501,7 +505,7 @@ def _stereo_change_feasibility(
         for stereo_change, stereo_list in params.g2_stereo_changes[u].items()
         for stereo in stereo_list
         if stereo is not None  # type: ignore
-        and all([a in state.inverted_mapping for a in stereo.atoms])
+        and all([a in state.inverted_mapping or a is None for a in stereo.atoms])
     }
 
     if s1 == s2:
