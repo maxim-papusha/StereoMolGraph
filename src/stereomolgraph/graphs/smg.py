@@ -336,6 +336,8 @@ class StereoMolGraph(MolGraph):
         rdmol: Chem.Mol,
         use_atom_map_number: bool = False,
         stereo_complete: bool = False,
+        resonance: bool = True,
+        lone_pair_stereo: bool = True,
     ) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
@@ -357,8 +359,8 @@ class StereoMolGraph(MolGraph):
         rd2smg = RDMol2StereoMolGraph(
             use_atom_map_number=use_atom_map_number,
             stereo_complete=stereo_complete,
-            resonance=True,
-            lone_pair_stereo=True,
+            resonance=resonance,
+            lone_pair_stereo=lone_pair_stereo,
         )
         smg = rd2smg(rdmol)
         return cls(smg)

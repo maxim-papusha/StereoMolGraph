@@ -75,9 +75,10 @@ class RDMol2StereoMolGraph:
         if not self.resonance:
             return smg
 
-        flags = (
-            Chem.ALLOW_INCOMPLETE_OCTETS | Chem.UNCONSTRAINED_CATIONS | Chem.KEKULE_ALL
-        )
+        flags = 0  # (
+        # Chem.ALLOW_INCOMPLETE_OCTETS |
+        # Chem.UNCONSTRAINED_CATIONS
+        # | Chem.KEKULE_ALL)
 
         has_radicals = any(
             atom.GetNumRadicalElectrons() > 0 for atom in rdmol.GetAtoms()
