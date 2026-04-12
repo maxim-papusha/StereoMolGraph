@@ -338,14 +338,14 @@ def stereo_mol_graph_to_rdmol(
                     map_num_idx_dict[b_stereo.atoms[0]],
                     map_num_idx_dict[b_stereo.atoms[4]],
                 )
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOCIS)
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
 
             elif (a1, a2) == (new_a2, new_a1):
                 rd_bond.SetStereoAtoms(
                     map_num_idx_dict[b_stereo.atoms[4]],
                     map_num_idx_dict[b_stereo.atoms[0]],
                 )
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOCIS)
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
 
             else:
                 raise Exception(f"something wrong with {b_stereo}")
