@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, NamedTuple
 
-from stereomolgraph.algorithms._color_refine import label_hash
+from stereomolgraph.algorithms.circular import label_hash
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping

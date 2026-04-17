@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from stereomolgraph.algorithms._color_refine import (
+from stereomolgraph.algorithms.circular import (
     color_refine_mg,
     label_hash,
     numpy_int_multiset_hash,

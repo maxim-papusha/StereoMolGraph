@@ -1,5 +1,5 @@
 Color Refinement
 ================
 
-.. automodule:: stereomolgraph.algorithms._color_refine
+.. automodule:: stereomolgraph.algorithms.circular
     :members:
