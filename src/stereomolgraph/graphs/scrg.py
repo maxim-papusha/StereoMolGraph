@@ -7,7 +7,7 @@ from copy import deepcopy
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic
 
-from stereomolgraph.algorithms._color_refine import (
+from stereomolgraph.algorithms.circular import (
     color_refine_scrg,
     label_hash,
     numpy_int_multiset_hash,
