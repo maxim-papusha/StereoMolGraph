@@ -724,6 +724,7 @@ class TestStereoMolGraph(TestMolGraph):
         assert stereo_atoms2 == {1, 4} or stereo_atoms2 == {0, 5}
         assert db2.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREOZ  # type: ignore
 
+        assert g3.get_bond_stereo((2, 3)).parity is None
         db3 = rdmol_g3.GetBondBetweenAtoms(2, 3)
 
         assert db3.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREONONE  # type: ignore

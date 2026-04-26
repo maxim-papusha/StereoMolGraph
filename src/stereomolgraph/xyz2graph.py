@@ -244,22 +244,29 @@ def _octahedral_from_coords(
     cis_atoms0 = planar_groups[0].difference(trans_atoms)
 
     cis_atoms1 = planar_groups[1].difference(trans_atoms)
-    assert len(trans_atoms) == 2
-    assert len(cis_atoms0) == 2
-    assert len(cis_atoms1) == 2
-    assert cis_atoms0 | cis_atoms1 == planar_groups[2]
+    if len(trans_atoms) != 2:
+        return None
+    if len(cis_atoms0) != 2 or len(cis_atoms1) != 2:
+        return None
+    if cis_atoms0 | cis_atoms1 != planar_groups[2]:
+        return None
 
-    a1, a2 = trans_atoms
-    a3, a5 = cis_atoms0
-    a4, a6 = cis_atoms1
+    a1, a2 = sorted(trans_atoms)
+    a3, a5 = sorted(cis_atoms0)
+    a4, a6 = sorted(cis_atoms1)
 
 
 
     parity = int(handedness(coords[[a1, a3, a4, a2]]))
     parity2 = int(handedness(coords[[a1, a3, a6, a2]]))
-    assert parity2 == -parity
-    assert parity == 1 or parity == -1
-    return Octahedral((atoms[0], atoms[a1], atoms[a2], atoms[a3], atoms[a4], atoms[a5], atoms[a6]), parity)
+    if parity2 != -parity:
+        return None
+    if parity not in (1, -1):
+        return None
+    return Octahedral(
+        (atoms[0], atoms[a1], atoms[a2], atoms[a3], atoms[a4], atoms[a5], atoms[a6]),
+        parity,
+    )
 
 
 def _planar_bond_from_coords(

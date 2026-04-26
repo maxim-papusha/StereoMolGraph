@@ -81,18 +81,14 @@ class MolGraph:
         self._frozen = frozen
 
     @property
-    def atoms(
-        self,
-    ) -> Collection[AtomId]:
+    def atoms(self) -> Collection[AtomId]:
         """
         :return: Returns all atoms of the molecule
         """
         return self._atom_attrs.keys()
 
     @property
-    def atom_types(
-        self,
-    ) -> tuple[Element, ...]:
+    def atom_types(self) -> tuple[Element, ...]:
         """
         :return: Returns all atom types in the MolGraph
         """
@@ -106,36 +102,28 @@ class MolGraph:
         return MappingProxyType(self._atom_attrs)
 
     @property
-    def bonds(
-        self,
-    ) -> Collection[Bond]:
+    def bonds(self) -> Collection[Bond]:
         """
         :return: Returns all bonds in the MolGraph
         """
         return self._bond_attrs.keys()  # type: ignore Dicts keep the order!
 
     @property
-    def bonds_with_attributes(
-        self,
-    ) -> Mapping[Bond, dict[str, Any]]:
+    def bonds_with_attributes(self) -> Mapping[Bond, dict[str, Any]]:
         """
         :return: Returns all bonds in the MolGraph with their attributes
         """
         return MappingProxyType(self._bond_attrs)
 
     @property
-    def neighbors(
-        self,
-    ) -> Mapping[AtomId, set[AtomId]]:
+    def neighbors(self) -> Mapping[AtomId, frozenset[AtomId]]:
         """
         :return: Returns all neighbors of the atoms in the MolGraph
         """
-        return MappingProxyType(self._neighbors)
+        return MappingProxyType({a: frozenset(self._neighbors[a]) for a in self.atoms})
 
     @property
-    def n_atoms(
-        self,
-    ) -> int:
+    def n_atoms(self) -> int:
         """
         :return: Returns number of atoms in the MolGraph
         """

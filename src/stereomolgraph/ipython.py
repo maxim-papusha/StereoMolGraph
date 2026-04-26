@@ -72,9 +72,9 @@ class View2D(NamedTuple):
         )
         map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
 
-        if not self.generate_bond_orders:
-            for bond in mol.GetBonds():
-                bond.SetBondType(Chem.BondType.SINGLE)
+        # if not self.generate_bond_orders:
+        #    for bond in mol.GetBonds():
+        #        bond.SetBondType(Chem.BondType.SINGLE)
 
         if self.show_atom_numbers:
             for atom in mol.GetAtoms():
@@ -101,6 +101,16 @@ class View2D(NamedTuple):
         if not self.show_h:
             mol = Chem.RemoveHs(mol, implicitOnly=False, sanitize=False)
 
+        Chem.rdDepictor.Compute2DCoords(
+            mol,  # type: ignore
+            clearConfs=True,
+            sampleSeed=42,
+            nSample=100,
+            permuteDeg4Nodes=True,
+            useRingTemplates=True,
+        )
+        Chem.rdDepictor.StraightenDepiction(mol)  # type: ignore
+
         if isinstance(graph, StereoMolGraph) and not self.generate_bond_orders:
             for db in graph.bond_stereo.values():
                 if (
@@ -112,6 +122,7 @@ class View2D(NamedTuple):
                     a2 = map_num_idx_dict[db.atoms[3]]
                     rd_bond = mol.GetBondBetweenAtoms(a1, a2)
                     rd_bond.SetBondType(Chem.BondType.AROMATIC)
+                    rd_bond.SetIsAromatic(False)
 
         if isinstance(graph, CondensedReactionGraph):
             for bond in graph.get_formed_bonds():
@@ -188,16 +199,6 @@ class View2D(NamedTuple):
         ),
     ) -> str:
         mol, ht = self._to_mol(graph)
-
-        Chem.rdDepictor.Compute2DCoords(
-            mol,  # type: ignore
-            clearConfs=True,
-            sampleSeed=42,
-            nSample=100,
-            permuteDeg4Nodes=True,
-            useRingTemplates=True,
-        )
-        Chem.rdDepictor.StraightenDepiction(mol)  # type: ignore
 
         drawer = Draw.rdMolDraw2D.MolDraw2DSVG(self.width, self.height)
 

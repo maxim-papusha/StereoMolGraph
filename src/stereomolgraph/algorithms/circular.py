@@ -98,7 +98,7 @@ def label_hash(
     return np.array(atom_hash, dtype=np.int64)
 
 
-def _circular_generator(
+def circular_generator(
     mg: MolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
@@ -167,7 +167,7 @@ def _circular_generator(
         yield atom_hash_view
 
 
-def _circular_stereo_generator(
+def circular_stereo_generator(
     smg: StereoMolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
@@ -427,27 +427,27 @@ def _reaction_generator(
         yield hash_view
 
 
-def _reaction_circular_generator(
+def reaction_circular_generator(
     graph: CondensedReactionGraph,
     max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
     return _reaction_generator(
         graph=graph,
-        generator=_circular_generator,
+        generator=circular_generator,
         atom_labels=atom_labels,
         max_iter=max_iter,
     )
 
 
-def _stereo_reaction_circular_generator(
+def reaction_circular_stereo_generator(
     graph: StereoCondensedReactionGraph,
     max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
     return _reaction_generator(
         graph=graph,
-        generator=_circular_stereo_generator,
+        generator=circular_stereo_generator,
         atom_labels=atom_labels,
         max_iter=max_iter,
     )
@@ -495,7 +495,7 @@ def color_refine_mg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=_circular_generator,
+        generator=circular_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -508,7 +508,7 @@ def color_refine_smg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=_circular_stereo_generator,
+        generator=circular_stereo_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -521,7 +521,7 @@ def color_refine_crg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=_reaction_circular_generator,
+        generator=reaction_circular_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -534,7 +534,7 @@ def color_refine_scrg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=_stereo_reaction_circular_generator,
+        generator=reaction_circular_stereo_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -588,24 +588,47 @@ def circular_fingerprint(
     accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
-    gen = _circular_generator(graph)
+    """Build a circular fingerprint for a molecular graph.
+
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
+    gen = circular_generator(graph)
 
     all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
 
     if include_hydrogens:
         for colors, _r in zip(gen, range(radius + 1)):
-            all_colors.append(colors)
+            all_colors.append(colors.copy() if accumulate else colors)
 
     elif not include_hydrogens:
         non_hydrogens = np.array(
             [i for i, atom_type in enumerate(graph.atom_types) if atom_type != 1]
         )
         for colors, _r in zip(gen, range(radius + 1)):
+            # colors is always copied because of fancy indexing
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
+
+    fp = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(fp, n_bits, count=count)
+    elif not n_bits and not count:
+        fp = np.unique(fp, sorted=False)
     return fp
 
 
@@ -617,22 +640,45 @@ def circular_stereo_fingerprint(
     accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
-    gen = _circular_stereo_generator(graph)
+    """Build a circular stereo fingerprint for a molecular graph.
+
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
+    gen = circular_stereo_generator(graph)
 
     all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
 
     if include_hydrogens:
         for colors, _r in zip(gen, range(radius + 1)):
-            all_colors.append(colors)
+            all_colors.append(colors.copy() if accumulate else colors)
 
     elif not include_hydrogens:
         non_hydrogens = np.array(
             [i for i, atom_type in enumerate(graph.atom_types) if atom_type != 1]
         )
         for colors, _r in zip(gen, range(radius + 1)):
+            # colors is always copied because of fancy indexing
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
+
+    fp = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(fp, n_bits, count=count)
+    elif not n_bits and not count:
+        fp = np.unique(fp, sorted=False)
     return fp

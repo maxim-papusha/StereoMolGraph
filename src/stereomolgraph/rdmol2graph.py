@@ -131,8 +131,32 @@ class RDMol2StereoMolGraph:
 
             res_smg = self.smg_from_rdmol(res_mol)
             for bond, bond_stereo in res_smg.bond_stereo.items():
-                if bond not in smg.bond_stereo:
+                if (already_set := smg.get_bond_stereo(bond)) is None:
                     smg.set_bond_stereo(bond_stereo)
+                elif bond_stereo.parity is not None and already_set.parity is None:
+                    smg.set_bond_stereo(bond_stereo)
+
+            if self.stereo_complete:
+                default_parity = {
+                    Tetrahedral: 1,
+                    SquarePlanar: 0,
+                    TrigonalBipyramidal: 1,
+                    Octahedral: 1,
+                    PlanarBond: 0,
+                    AtropBond: 1,
+                }
+                for _atom, atom_stereo in res_smg.atom_stereo.items():
+                    if atom_stereo.parity is None:
+                        new_atom_stereo = atom_stereo.__class__(
+                            atom_stereo.atoms, default_parity[type(atom_stereo)]
+                        )
+                        smg.set_atom_stereo(new_atom_stereo)
+                for _bond, bond_stereo in res_smg.bond_stereo.items():
+                    if bond_stereo.parity is None:
+                        new_bond_stereo = bond_stereo.__class__(
+                            bond_stereo.atoms, default_parity[type(bond_stereo)]
+                        )
+                        smg.set_bond_stereo(new_bond_stereo)
         return smg
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
@@ -198,13 +222,7 @@ class RDMol2StereoMolGraph:
                     for i in range(5)
                 )  # extends with "None" if less than 4 neighbors
                 assert len(stereo_atoms) == 5
-
-                if not self.stereo_complete:
-                    atom_stereo = Tetrahedral(stereo_atoms, None)
-                elif self.stereo_complete:
-                    atom_stereo = Tetrahedral(stereo_atoms, parity=1)
-                else:
-                    raise RuntimeError("This should never happen")
+                atom_stereo = Tetrahedral(stereo_atoms, None)
 
             elif chiral_tag == Chem.ChiralType.CHI_SQUAREPLANAR:
                 sp_order: tuple[int, int, int, int]
@@ -432,10 +450,7 @@ class RDMol2StereoMolGraph:
 
                     bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
                     assert len(bond_atoms) == 6, bond_atoms
-                    if self.stereo_complete:
-                        bond_stereo = PlanarBond(bond_atoms, 0)
-                    else:
-                        bond_stereo = PlanarBond(bond_atoms, None)
+                    bond_stereo = PlanarBond(bond_atoms, None)
 
             else:
                 continue
