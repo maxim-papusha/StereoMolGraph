@@ -7,9 +7,16 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import ClassVar, Literal
 
-import rdkit.Chem as Chem  # type: ignore
+import rdkit.Chem as Chem
+from rdkit.Chem import rdChemReactions
 
-from stereomolgraph import AtomId, MolGraph, StereoMolGraph
+from stereomolgraph import (
+    AtomId,
+    CondensedReactionGraph,
+    MolGraph,
+    StereoCondensedReactionGraph,
+    StereoMolGraph,
+)
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     AtropBond,
@@ -20,6 +27,17 @@ from stereomolgraph.stereodescriptors import (
     Tetrahedral,
     TrigonalBipyramidal,
 )
+
+
+def _validate_atom_map_numbers(rdmols: tuple[Chem.Mol, ...], *, side: str) -> set[int]:
+    atom_map_numbers = [
+        atom.GetAtomMapNum() for rdmol in rdmols for atom in rdmol.GetAtoms()
+    ]
+    if any(atom_map_num == 0 for atom_map_num in atom_map_numbers):
+        raise ValueError(f"{side} atoms must all have atom map numbers")
+    if len(set(atom_map_numbers)) != len(atom_map_numbers):
+        raise ValueError(f"{side} atom map numbers must be unique")
+    return set(atom_map_numbers)
 
 
 def mol_graph_from_rdmol(
@@ -69,7 +87,12 @@ class RDMol2StereoMolGraph:
     _radical_resonance_as_cation: bool = True
     _min_trans_ring_size: int = 7
 
-    def __call__(self, rdmol: Chem.Mol) -> StereoMolGraph:
+    def __call__(
+        self, rdmol: Chem.Mol | rdChemReactions.ChemicalReaction
+    ) -> StereoMolGraph | StereoCondensedReactionGraph:
+        if isinstance(rdmol, rdChemReactions.ChemicalReaction):
+            return self.scrg_from_rdrxn(rdmol)
+
         smg = self.smg_from_rdmol(rdmol)
 
         if not self.resonance:
@@ -136,28 +159,112 @@ class RDMol2StereoMolGraph:
                 elif bond_stereo.parity is not None and already_set.parity is None:
                     smg.set_bond_stereo(bond_stereo)
 
-            if self.stereo_complete:
-                default_parity = {
-                    Tetrahedral: 1,
-                    SquarePlanar: 0,
-                    TrigonalBipyramidal: 1,
-                    Octahedral: 1,
-                    PlanarBond: 0,
-                    AtropBond: 1,
-                }
-                for _atom, atom_stereo in res_smg.atom_stereo.items():
-                    if atom_stereo.parity is None:
-                        new_atom_stereo = atom_stereo.__class__(
-                            atom_stereo.atoms, default_parity[type(atom_stereo)]
-                        )
-                        smg.set_atom_stereo(new_atom_stereo)
-                for _bond, bond_stereo in res_smg.bond_stereo.items():
-                    if bond_stereo.parity is None:
-                        new_bond_stereo = bond_stereo.__class__(
-                            bond_stereo.atoms, default_parity[type(bond_stereo)]
-                        )
-                        smg.set_bond_stereo(new_bond_stereo)
+        if self.stereo_complete:
+            default_parity = {
+                Tetrahedral: 1,
+                SquarePlanar: 0,
+                TrigonalBipyramidal: 1,
+                Octahedral: 1,
+                PlanarBond: 0,
+                AtropBond: 1,
+            }
+            for _atom, atom_stereo in smg.atom_stereo.items():
+                if atom_stereo.parity is None:
+                    new_atom_stereo = atom_stereo.__class__(
+                        atom_stereo.atoms, default_parity[type(atom_stereo)]
+                    )
+                    smg.set_atom_stereo(new_atom_stereo)
+            for _bond, bond_stereo in smg.bond_stereo.items():
+                if bond_stereo.parity is None:
+                    new_bond_stereo = bond_stereo.__class__(
+                        bond_stereo.atoms, default_parity[type(bond_stereo)]
+                    )
+                    smg.set_bond_stereo(new_bond_stereo)
         return smg
+
+    def crg_from_rdrxn(
+        self, rdrxn: rdChemReactions.ChemicalReaction
+    ) -> CondensedReactionGraph:
+        """Create a CondensedReactionGraph from an RDKit reaction object."""
+
+        reactant_rdmols = tuple(rdrxn.GetReactants())
+        product_rdmols = tuple(rdrxn.GetProducts())
+        if not reactant_rdmols or not product_rdmols:
+            raise ValueError("Reaction must contain reactant and product templates")
+
+        reactant_maps = _validate_atom_map_numbers(reactant_rdmols, side="Reactant")
+        product_maps = _validate_atom_map_numbers(product_rdmols, side="Product")
+        if reactant_maps != product_maps:
+            raise ValueError("Reactant and product atom map numbers must match")
+
+        reactant_graphs = tuple(
+            mol_graph_from_rdmol(MolGraph, reactant_rdmol, use_atom_map_number=True)
+            for reactant_rdmol in reactant_rdmols
+        )
+        product_graphs = tuple(
+            mol_graph_from_rdmol(MolGraph, product_rdmol, use_atom_map_number=True)
+            for product_rdmol in product_rdmols
+        )
+
+        reactant_graph = (
+            reactant_graphs[0]
+            if len(reactant_graphs) == 1
+            else MolGraph.compose(reactant_graphs)
+        )
+        product_graph = (
+            product_graphs[0]
+            if len(product_graphs) == 1
+            else MolGraph.compose(product_graphs)
+        )
+
+        return CondensedReactionGraph.from_graphs(
+            reactant_graph=reactant_graph,
+            product_graph=product_graph,
+        )
+
+    def scrg_from_rdrxn(
+        self, rdrxn: rdChemReactions.ChemicalReaction
+    ) -> StereoCondensedReactionGraph:
+        """Create a StereoCondensedReactionGraph from an RDKit reaction object."""
+
+        reactant_rdmols = tuple(rdrxn.GetReactants())
+        product_rdmols = tuple(rdrxn.GetProducts())
+        if not reactant_rdmols or not product_rdmols:
+            raise ValueError("Reaction must contain reactant and product templates")
+
+        reactant_maps = _validate_atom_map_numbers(reactant_rdmols, side="Reactant")
+        product_maps = _validate_atom_map_numbers(product_rdmols, side="Product")
+        if reactant_maps != product_maps:
+            raise ValueError("Reactant and product atom map numbers must match")
+
+        rdmol2smg = RDMol2StereoMolGraph(
+            stereo_complete=self.stereo_complete,
+            use_atom_map_number=True,
+            lone_pair_stereo=self.lone_pair_stereo,
+            resonance=self.resonance,
+        )
+        reactant_graphs = tuple(
+            rdmol2smg(reactant_rdmol) for reactant_rdmol in reactant_rdmols
+        )
+        product_graphs = tuple(
+            rdmol2smg(product_rdmol) for product_rdmol in product_rdmols
+        )
+
+        reactant_graph = (
+            reactant_graphs[0]
+            if len(reactant_graphs) == 1
+            else StereoMolGraph.compose(reactant_graphs)
+        )
+        product_graph = (
+            product_graphs[0]
+            if len(product_graphs) == 1
+            else StereoMolGraph.compose(product_graphs)
+        )
+
+        return StereoCondensedReactionGraph.from_graphs(
+            reactant_graph=reactant_graph,
+            product_graph=product_graph,
+        )
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
         if rdmol is None:
@@ -376,7 +483,8 @@ class RDMol2StereoMolGraph:
                 bond.GetBondType() == Chem.rdchem.BondType.DOUBLE
                 and rd_bond_stereo == Chem.BondStereo.STEREONONE
             ):
-                # Find rings with bond begin_idx-end_idx, sort by aromatic first then size
+                # Find rings with bond begin_idx-end_idx, sort by aromatic first
+                # then size.
                 rings = [
                     (
                         all(

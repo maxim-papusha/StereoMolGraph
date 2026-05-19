@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from rdkit import Chem  # type: ignore
+import rdkit.Chem.rdDepictor as rdDepictor
+from rdkit import Chem
 from rdkit.Chem import Draw  # type: ignore
 
 from stereomolgraph import (
@@ -13,7 +14,7 @@ from stereomolgraph import (
     StereoMolGraph,
 )
 from stereomolgraph.graphs.scrg import Change
-from stereomolgraph.stereodescriptors import PlanarBond
+from stereomolgraph.stereodescriptors import PlanarBond, Tetrahedral
 
 
 def default_repr_svg(self: MolGraph) -> str:
@@ -101,15 +102,30 @@ class View2D(NamedTuple):
         if not self.show_h:
             mol = Chem.RemoveHs(mol, implicitOnly=False, sanitize=False)
 
-        Chem.rdDepictor.Compute2DCoords(
-            mol,  # type: ignore
+        rdDepictor.Compute2DCoords(
+            mol,
             clearConfs=True,
             sampleSeed=42,
             nSample=100,
             permuteDeg4Nodes=True,
             useRingTemplates=True,
         )
-        Chem.rdDepictor.StraightenDepiction(mol)  # type: ignore
+        rdDepictor.StraightenDepiction(mol)
+
+        if isinstance(graph, StereoMolGraph) and not self.generate_bond_orders:
+            # RDKit only wedges tetrahedral stereo on single bonds; the
+            # default no-bond-order path leaves them as UNSPECIFIED.
+            for atom_stereo in graph.atom_stereo.values():
+                if (
+                    not isinstance(atom_stereo, Tetrahedral)
+                    or atom_stereo.parity is None
+                ):
+                    continue
+
+                atom_idx = map_num_idx_dict[atom_stereo.atoms[0]]
+                for bond in mol.GetAtomWithIdx(atom_idx).GetBonds():
+                    if bond.GetBondType() == Chem.BondType.UNSPECIFIED:
+                        bond.SetBondType(Chem.BondType.SINGLE)
 
         if isinstance(graph, StereoMolGraph) and not self.generate_bond_orders:
             for db in graph.bond_stereo.values():
