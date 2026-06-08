@@ -59,15 +59,11 @@ def set_bond_orders(
     allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
-    bond_order_mat, atomic_charges, unpaired_electrons = connectivity2bond_orders(
-        atom_types=graph.atom_types,
-        connectivity_matrix=graph.connectivity_matrix(),
+    bo = connectivity2bond_orders(
+        graph=graph,
         allow_charged_fragments=allow_charged_fragments,
         charge=charge,
     )
-
-    # Map atom identifiers to their position in the connectivity matrix
-    atom_idx_in_matrix = {map_num: i for i, map_num in enumerate(graph.atoms)}
 
     # Map atom identifiers to RDKit indices in the constructed molecule
     map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
@@ -76,20 +72,17 @@ def set_bond_orders(
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[atom_idx_in_matrix[atom1]][
-            atom_idx_in_matrix[atom2]
-        ]
+        bond_order = bo.bond_order.get(bond, 0)
 
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
         ).SetBondType(bond_type_dict[bond_order])
 
-    for i, atomic_charge in enumerate(atomic_charges):
-        if atomic_charge:
-            mol.GetAtomWithIdx(i).SetFormalCharge(int(atomic_charge))
-    for i, unpaired_e in enumerate(unpaired_electrons):
-        if unpaired_e:
-            mol.GetAtomWithIdx(i).SetNumRadicalElectrons(unpaired_e)
+    for rd_idx, atom_id in idx_map_num_dict.items():
+        if allow_charged_fragments and (charge := bo.charges.get(atom_id, 0)):
+            mol.GetAtomWithIdx(rd_idx).SetFormalCharge(int(charge))
+        if unpaired := bo.unpaired_electrons.get(atom_id, 0):
+            mol.GetAtomWithIdx(rd_idx).SetNumRadicalElectrons(unpaired)
 
     return mol
 
