@@ -19,7 +19,7 @@ from stereomolgraph.stereodescriptors import (
 
 if TYPE_CHECKING:
     from stereomolgraph.graphs.crg import CondensedReactionGraph
-    from stereomolgraph.graphs.mg import MolGraph
+    from stereomolgraph.graphs.mg import AtomId, MolGraph, RDKitAtomId
     from stereomolgraph.graphs.smg import StereoMolGraph
 
 
@@ -55,7 +55,7 @@ bond_type_dict = {
 def set_bond_orders(
     graph: MolGraph,
     mol: Chem.rdchem.RWMol,
-    idx_map_num_dict: dict[int, int],
+    idx_map_num_dict: dict[RDKitAtomId, AtomId],
     allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
@@ -70,7 +70,9 @@ def set_bond_orders(
     atom_idx_in_matrix = {map_num: i for i, map_num in enumerate(graph.atoms)}
 
     # Map atom identifiers to RDKit indices in the constructed molecule
-    map_num_idx_dict = {map_num: idx for idx, map_num in idx_map_num_dict.items()}
+    map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
+        map_num: idx for idx, map_num in idx_map_num_dict.items()
+    }
 
     for bond in graph.bonds:
         atom1, atom2 = bond
@@ -97,7 +99,7 @@ def mol_graph_to_rdmol(
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,
-) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
     mol = Chem.RWMol()
 
     atom_types_strings = []
@@ -139,7 +141,7 @@ def stereo_mol_graph_to_rdmol(
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,
-) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
     """
     Creates a RDKit mol object using the connectivity of the mol graph.
     Stereochemistry is added to the mol object.
@@ -159,7 +161,9 @@ def stereo_mol_graph_to_rdmol(
         charge=charge,
     )
 
-    map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
+    map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
+        v: k for k, v in idx_map_num_dict.items()
+    }
 
     for atom in graph.atoms:
         a_stereo = graph.get_atom_stereo(atom)
@@ -403,7 +407,7 @@ def stereo_mol_graph_to_rdmol(
 def set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
-    idx_map_num_dict: dict[int, int],
+    idx_map_num_dict: dict[RDKitAtomId, AtomId],
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,

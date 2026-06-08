@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
 
     A = TypeVar("A", bound=tuple[int, ...], covariant=True)
     P = TypeVar("P", bound=None | Literal[1, 0, -1], covariant=True)
@@ -313,7 +314,7 @@ class StereoMolGraph(MolGraph):
         generate_bond_orders: bool = False,
         allow_charged_fragments: bool = False,
         charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
         """
         Creates a RDKit mol object using the connectivity of the mol graph.
         Stereochemistry is added to the mol object.

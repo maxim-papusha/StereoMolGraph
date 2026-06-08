@@ -12,6 +12,7 @@ from stereomolgraph import (
     StereoCondensedReactionGraph,
     StereoMolGraph,
 )
+from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
 from stereomolgraph.graphs.scrg import Change
 from stereomolgraph.stereodescriptors import PlanarBond
 
@@ -70,7 +71,9 @@ class View2D(NamedTuple):
         mol, idx_map_num_dict = graph._to_rdmol(
             generate_bond_orders=self.generate_bond_orders
         )
-        map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
+        map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
+            v: k for k, v in idx_map_num_dict.items()
+        }
 
         if not self.generate_bond_orders:
             for bond in mol.GetBonds():
