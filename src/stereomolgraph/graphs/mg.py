@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 AtomId: TypeAlias = int
 
+RDKitAtomId: TypeAlias = int
+
 Bond: TypeAlias = frozenset[AtomId]
 
 
@@ -465,7 +467,7 @@ class MolGraph:
         generate_bond_orders: bool = False,
         allow_charged_fragments: bool = False,
         charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
         return mol_graph_to_rdmol(
             self,
             generate_bond_orders=generate_bond_orders,

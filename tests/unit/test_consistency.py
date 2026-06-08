@@ -146,7 +146,7 @@ class TestRDKitConversion:
         rdmol = rdkit.Chem.AddHs(rdmol)
         smg = rdmol2graph(rdmol)
         rdmol2, _ = smg._to_rdmol(
-            generate_bond_orders=True, allow_charged_fragments=True
+            generate_bond_orders=True, allow_charged_fragments=False
         )
         rdkit.Chem.SanitizeMol(
             rdmol2, sanitizeOps=rdkit.Chem.SanitizeFlags.SANITIZE_ALL

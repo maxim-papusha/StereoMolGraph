@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
 
 
 class Change(Enum):
@@ -200,7 +201,7 @@ class CondensedReactionGraph(MolGraph):
         generate_bond_orders: bool = False,
         allow_charged_fragments: bool = False,
         charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
         mol, idx_map_num_dict = mol_graph_to_rdmol(
             graph=self,
             generate_bond_orders=False,

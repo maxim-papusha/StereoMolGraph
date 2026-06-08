@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from rdkit import Chem
 
     from stereomolgraph.coords import GeometryProtocol
+    from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
 
 # Self is included in typing from 3.11
 if sys.version_info >= (3, 11):
@@ -423,7 +424,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         generate_bond_orders: bool = False,
         allow_charged_fragments: bool = False,
         charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
         ts_smg = StereoMolGraph(self)  # bond change is now just a bond
 
         for _atom, stereo_change_dict in self.atom_stereo_changes.items():
