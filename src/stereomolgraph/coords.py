@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
-from collections import deque
+from collections.abc import Callable, Mapping, Sequence
 from itertools import combinations
-from typing import TYPE_CHECKING
+from os import PathLike
+from typing import Literal, Protocol, TextIO, TypeVar, runtime_checkable
 
 import numpy as np
 
@@ -15,22 +16,32 @@ from stereomolgraph.periodic_table import (
     ElementLike,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
-    from os import PathLike
-    from typing import Literal, TextIO, TypeVar
+NP_FLOAT = TypeVar("NP_FLOAT", bound=np.dtype[np.floating], contravariant=True)
+N = TypeVar("N", bound=int)
+ONE = Literal[1]
+THREE = Literal[3]
+FOUR = Literal[4]
 
-    NP_FLOAT = TypeVar(
-        "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
-    )
-    N = TypeVar("N", bound=int)
-    ONE = Literal[1]
-    THREE = Literal[3]
-    FOUR = Literal[4]
 
-def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
-               threshold: float = 0.35
-               ) -> np.bool_:
+@runtime_checkable
+class GeometryProtocol(Protocol):
+    """Protocol for geometry-like objects used throughout StereoMolGraph.
+
+    Implementations must provide atom types and Cartesian coordinates in the
+    same atom order.
+
+    :ivar atom_types: Atom types for each atom in the geometry.
+    :ivar coords: Cartesian coordinates with shape ``(n_atoms, 3)`` in
+        Angstrom.
+    """
+
+    atom_types: tuple[int, ...]
+    coords: np.ndarray[tuple[int, Literal[3]], np.dtype[np.floating]]
+
+
+def are_planar(
+    points: np.ndarray[tuple[N, THREE], NP_FLOAT], threshold: float = 0.35
+) -> np.bool_:
     """Checks if all atoms are in one plane
 
     Checks if the all atoms are planar within a given threshold.
@@ -65,8 +76,9 @@ def are_planar(points: np.ndarray[tuple[N, THREE], NP_FLOAT],
 
     # orthogonal distances
     distances = np.abs(X @ n)
-    
+
     return np.bool_(np.all(distances <= threshold))
+
 
 def are_planar_volume(
     coords: np.ndarray[tuple[FOUR, THREE], NP_FLOAT], threshold: float = 3.0
@@ -75,7 +87,7 @@ def are_planar_volume(
         raise NotImplementedError(
             "are_planar_volume is not implemented for more than 4 points"
         )
-        #for comb in combinations(range(coords.shape[-2]), 4):
+        # for comb in combinations(range(coords.shape[-2]), 4):
         #    if not are_planar_volume(coords[..., list(comb), :],
         #                               threshold=threshold):
         #        return np.array([False], dtype=np.bool_)
@@ -173,9 +185,7 @@ def pairwise_distances(
         raise ValueError("Last dimension must be size 3 for 3D coordinates")
 
     # Compute differences using broadcasting
-    diff = (
-        coords[..., :, None, :] - coords[..., None, :, :]
-    )  # shape (..., N, N, 3)
+    diff = coords[..., :, None, :] - coords[..., None, :, :]  # shape (..., N, N, 3)
 
     # Square differences and sum along last dimension
     np.square(diff, out=diff)  # in-place squaring
@@ -210,7 +220,7 @@ class Geometry:
             (0, 3), dtype=np.float64
         ),
     ):
-        self.coords = np.array(coords, dtype=np.float64)
+        self.coords = np.array(coords, dtype=np.float64, order="F")
         self.atom_types = tuple([PERIODIC_TABLE[atom] for atom in atom_types])
 
         assert (
@@ -242,7 +252,7 @@ class Geometry:
     @classmethod
     def _parse_one_xyz_structure(cls, stream: TextIO) -> Geometry | None:
         """Parse a single XYZ structure from current stream position.
-        
+
         :param stream: File-like object positioned at start of a structure
         :return: Geometry object or None if end of stream
         """
@@ -250,27 +260,29 @@ class Geometry:
         n_atoms_line = stream.readline()
         if not n_atoms_line or not n_atoms_line.strip():
             return None
-        
+
         try:
             n_atoms = int(n_atoms_line.strip())
         except ValueError:
             return None
-        
+
         # Read and discard the comment line
         if not stream.readline():
             raise ValueError("Unexpected end of file at comment line")
-        
+
         # Read and parse atom lines
         dt = np.dtype([("atom", "U5"), ("x", "f8"), ("y", "f8"), ("z", "f8")])
         atom_lines = [stream.readline() for _ in range(n_atoms)]
-        
+
         if not all(atom_lines):
             raise ValueError("Unexpected end of file while reading atoms")
-        
-        atom_data = np.loadtxt(io.StringIO("".join(atom_lines)), dtype=dt, comments=None)
+
+        atom_data = np.loadtxt(
+            io.StringIO("".join(atom_lines)), dtype=dt, comments=None
+        )
         atom_types = [PERIODIC_TABLE[atom] for atom in atom_data["atom"]]
         coords = np.column_stack((atom_data["x"], atom_data["y"], atom_data["z"]))
-        
+
         return cls(atom_types=atom_types, coords=coords)
 
     @classmethod
@@ -288,7 +300,7 @@ class Geometry:
     @classmethod
     def from_xyz_file_multi(cls, path: PathLike[str] | str) -> tuple[Geometry, ...]:
         """Create multiple Geometries from an XYZ file containing multiple structures.
-        
+
         :param path: Path to XYZ file containing one or more structures
         :return: Tuple of Geometry objects
         """
@@ -298,7 +310,7 @@ class Geometry:
     @classmethod
     def from_xyz_multi(cls, xyz_string: str) -> tuple[Geometry, ...]:
         """Create multiple Geometries from an XYZ-format string containing multiple structures.
-        
+
         :param xyz_string: XYZ-format string containing one or more structures
         :return: Tuple of Geometry objects
         """
@@ -307,7 +319,7 @@ class Geometry:
     @classmethod
     def _from_xyz_stream_multi(cls, stream: TextIO) -> tuple[Geometry, ...]:
         """Core parser for multiple XYZ structures from a file-like stream.
-        
+
         :param stream: File-like object containing XYZ data
         :return: Tuple of Geometry objects
         """
@@ -367,7 +379,7 @@ class _DefaultFuncDict(dict[tuple[Element, Element], float]):
         self.default_func = default_func
 
     def __missing__(self, key: tuple[Element, Element]) -> float:
-        
+
         if (ret := self.get((key[1], key[0]), None)) is not None:
             pass
         else:
@@ -396,14 +408,13 @@ class BondsFromDistance:
             [tuple[Element, Element]], float
         ] = CONNECTIVITY_CUTOFF_FUNC,
     ):
-        self.connectivity_cutoff = _DefaultFuncDict(
-            default_func=connectivity_cutoff
-        )
+        self.connectivity_cutoff = _DefaultFuncDict(default_func=connectivity_cutoff)
 
     def __call__(
         self, distance: float, atom_types: tuple[ElementLike, ElementLike]
     ) -> Literal[0, 1]:
-        elements = (PERIODIC_TABLE[atom_types[0]],
+        elements = (
+            PERIODIC_TABLE[atom_types[0]],
             PERIODIC_TABLE[atom_types[1]],
         )
         return 1 if distance < self.connectivity_cutoff[elements] else 0
@@ -417,8 +428,7 @@ class BondsFromDistance:
             assert atom in PERIODIC_TABLE
         elements = [PERIODIC_TABLE[atom] for atom in atom_types]
         return np.where(
-            pairwise_distances(coords)
-            < self.connectivity_cutoff.array(elements),
+            pairwise_distances(coords) < self.connectivity_cutoff.array(elements),
             1,
             0,
         )

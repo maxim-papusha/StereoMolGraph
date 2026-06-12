@@ -521,24 +521,33 @@ class AtropBond(
         return bond
 
 
-class NonRotatableBond(
+class HinderedBond33(
     _StereoMixin[
-        tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[0]
+        tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]
     ],
 ):
     r"""
-    Represents a bond that cannot freely rotate
+    Represents a bond that cannot freely rotate::
 
+            parity = 1
              0    5
              |    |
         1  ▷ 3 - 4 ◁ 6
             ◀     ▶
            2        7
 
+            parity = -1
+             0    5
+             |    |
+        1  ▷ 3 - 4 ◁ 7
+            ◀     ▶
+           2        6
+
+
     """
 
     parity = 0
-    inversion = None
+    inversion = (0, 2, 1, 3, 4, 5, 7, 6)
     _bond: Bond
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5, 6, 7),
@@ -557,3 +566,111 @@ class NonRotatableBond(
         bond = frozenset(self.atoms[3:5])
         assert len(bond) == 2
         return bond
+
+
+class HinderedBond23(
+    _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]],
+):
+    r"""
+    Represents a bond that cannot freely rotate::
+            parity = 1
+           0     4
+            \    |
+             2 - 3 ◁ 5
+            /     ▶
+           1        6
+
+            parity = -1
+           0     4
+            \    |
+             2 - 3 ◁ 6
+            /     ▶
+           1        5
+    """
+
+    parity = 0
+    inversion = (0, 1, 2, 3, 4, 6, 5)
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4, 5, 6),)
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[2:4])
+        assert len(bond) == 2
+        return bond
+
+
+class HinderedBond13(
+    _StereoMixin[tuple[OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]],
+):
+    r"""
+    Represents a bond that cannot freely rotate::
+            parity = 1
+          0     3
+           \    |
+            1 - 2 ◁ 4
+                  ▶
+                   5
+
+            parity = -1
+          0     3
+           \    |
+            1 - 2 ◁ 5
+                  ▶
+                   4
+    """
+
+    parity = 0
+    inversion = (0, 1, 2, 3, 5, 4)
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4, 5),)
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[1:3])
+        assert len(bond) == 2
+        return bond
+
+
+class HinderedBond12(
+    _StereoMixin[tuple[OInt, int, int, OInt, OInt], None | Literal[0]],
+):
+    r"""
+    Represents a bond that cannot freely rotate::
+            parity = 1
+          0         3
+           \      /
+            1 - 2
+                  \
+                   4
+    """
+
+    parity = 0
+    inversion = None
+    _bond: Bond
+    PERMUTATION_GROUP = ((0, 1, 2, 3, 4),)
+
+    def get_isomers(self) -> set[Self]:
+        return {self}
+
+    @property
+    def bond(self) -> Bond:
+        bond = frozenset(self.atoms[1:3])
+        assert len(bond) == 2
+        return bond
+
+
+HinderedBond = (
+    HinderedBond33
+    | HinderedBond23
+    | HinderedBond13
+    | HinderedBond12
+    | PlanarBond
+    | AtropBond
+)

@@ -7,6 +7,7 @@ import numpy as np
 
 from stereomolgraph.coords import (
     BondsFromDistance,
+    GeometryProtocol,
     angle_from_coords,
     are_planar,
     handedness,
@@ -24,21 +25,19 @@ if TYPE_CHECKING:
     from typing import Literal, TypeVar
 
     from stereomolgraph import MolGraph, StereoMolGraph
-    from stereomolgraph.coords import BondsFromDistance, Geometry
+    from stereomolgraph.coords import BondsFromDistance
 
     N = TypeVar("N", bound=int, covariant=True)
     MG = TypeVar("MG", bound=MolGraph, covariant=True)
     SMG = TypeVar("SMG", bound=StereoMolGraph, covariant=True)
-    NP_FLOAT = TypeVar(
-        "NP_FLOAT", bound=np.dtype[np.floating], contravariant=True
-    )
+    NP_FLOAT = TypeVar("NP_FLOAT", bound=np.dtype[np.floating], contravariant=True)
 
     THREE = Literal[3]
 
 
 def connectivity_from_geometry(
     cls: type[MG],
-    geo: Geometry,
+    geo: GeometryProtocol,
     switching_function: BondsFromDistance = BondsFromDistance(),
 ) -> MG:
     """
@@ -60,9 +59,9 @@ def connectivity_from_geometry(
 
 def stero_from_geometry(
     smg: SMG,
-    geo: Geometry,
+    geo: GeometryProtocol,
 ) -> SMG:
-    for atom in range(geo.n_atoms):
+    for atom in range(len(geo.atom_types)):
         first_nbrs = smg.bonded_to(atom)
         atom_stereo_tup = (atom, *first_nbrs)
         atom_stereo = atom_stereo_from_coords(
@@ -132,8 +131,7 @@ def _tetrahedral_from_coords(
     orientation = handedness(coords.take(indeces, axis=0))
     int_orientation = int(orientation)
     assert int_orientation in (1, -1), (
-        f"Orientation {orientation} is not valid for Tetrahedral "
-        "stereochemistry."
+        f"Orientation {orientation} is not valid for Tetrahedral stereochemistry."
     )
     return Tetrahedral(atoms, int_orientation)
 
@@ -184,23 +182,23 @@ def _trigonal_bipyramidal_from_coords(
         return None
 
     lst = np.array(
-        [[i, 0, j] for i, j in itertools.combinations(indices, 2)],
-        dtype=np.int8)
+        [[i, 0, j] for i, j in itertools.combinations(indices, 2)], dtype=np.int8
+    )
 
     # The atoms with the largest angle are the axial atoms
     angles = angle_from_coords(coords[lst])
 
     # Sort by angle (largest to smallest) and iterate until we find valid axial atoms
     sorted_indices = np.argsort(angles)[::-1]
-    
+
     for idx in sorted_indices:
         i, j = lst[idx][[0, 2]]  # potential axial atoms
         i, j = int(i), int(j)
-        
+
         equatorial = [a for a in indices if a not in (i, j)]
         i_rotation = -1 * handedness(coords.take([*equatorial, i], axis=0))
         j_rotation = handedness(coords.take([*equatorial, j], axis=0))
-        
+
         if int(i_rotation) == int(j_rotation):
             break
     else:
@@ -254,8 +252,6 @@ def _octahedral_from_coords(
     a1, a2 = sorted(trans_atoms)
     a3, a5 = sorted(cis_atoms0)
     a4, a6 = sorted(cis_atoms1)
-
-
 
     parity = int(handedness(coords[[a1, a3, a4, a2]]))
     parity2 = int(handedness(coords[[a1, a3, a6, a2]]))

@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from typing_extensions import override
+
 from stereomolgraph.algorithms.circular import (
     color_refine_crg,
     label_hash,
@@ -10,7 +12,6 @@ from stereomolgraph.algorithms.circular import (
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
 from stereomolgraph.graphs.mg import Bond, MolGraph
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from rdkit import Chem
     from typing_extensions import Self
 
-    from stereomolgraph.coords import Geometry
+    from stereomolgraph.coords import GeometryProtocol
 
 
 class Change(Enum):
@@ -46,16 +47,19 @@ class CondensedReactionGraph(MolGraph):
 
     __hash__ = MolGraph.__hash__
 
+    @override
     def _compute_colors(self) -> np.ndarray:
         labels = label_hash(self, atom_labels=("atom_type", "reaction"))
         return color_refine_crg(self, atom_labels=labels)
 
+    @override
     def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         else:
             return int(numpy_int_multiset_hash(self._get_colors()))
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -63,20 +67,18 @@ class CondensedReactionGraph(MolGraph):
         o_color_array = other._get_colors()
         s_color_array = self._get_colors()
 
-        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
-
         return any(
             vf2pp_all_isomorphisms(
                 self,
                 other,
-                atom_labels=(s_colors, o_colors),
+                atom_labels=(s_color_array, o_color_array),
                 stereo=False,
                 stereo_change=False,
                 subgraph=False,
             )
         )
 
+    @override
     def add_bond(self, atom1: int, atom2: int, **attr: Any):
         """
         Adds a bond between atom1 and atom2.
@@ -88,6 +90,7 @@ class CondensedReactionGraph(MolGraph):
             raise TypeError("reaction bond has to have reaction attribute")
         super().add_bond(atom1, atom2, **attr)
 
+    @override
     def set_bond_attribute(self, atom1: int, atom2: int, attr: str, value: Any):
         """
         sets the Attribute of the bond between Atom1 and Atom2.
@@ -198,21 +201,7 @@ class CondensedReactionGraph(MolGraph):
                 active_atoms.update(self._neighbors[atom])
         return active_atoms
 
-    def _to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        mol, idx_map_num_dict = mol_graph_to_rdmol(
-            graph=self,
-            generate_bond_orders=False,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=0,
-        )
-        set_crg_bond_orders(graph=self, mol=mol, idx_map_num_dict=idx_map_num_dict)
-        return mol, idx_map_num_dict
-
+    @override
     def to_rdmol(
         self,
         generate_bond_orders: bool = False,
@@ -279,7 +268,7 @@ class CondensedReactionGraph(MolGraph):
                 product.add_bond(*bond, **attrs)
         return product
 
-    def _ts(self, keep_attributes: bool = True) -> MolGraph:
+    def ts(self) -> MolGraph:
         return MolGraph(self)
 
     def reverse_reaction(self) -> Self:
@@ -354,9 +343,9 @@ class CondensedReactionGraph(MolGraph):
     @classmethod
     def from_geometries(
         cls,
-        reactant_geo: Geometry,
-        product_geo: Geometry,
-        ts_geo: Geometry | None = None,
+        reactant_geo: GeometryProtocol,
+        product_geo: GeometryProtocol,
+        ts_geo: GeometryProtocol | None = None,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """Creates a CondensedReactionGraph from reactant

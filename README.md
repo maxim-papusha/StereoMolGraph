@@ -61,6 +61,9 @@ If you use StereoMolGraph in your work, please cite the corresponding paper:
 
 [![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
 
+[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15002723%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
+
+
 ## License
 
 MIT License — see `LICENSE`.
