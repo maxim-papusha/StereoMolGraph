@@ -220,7 +220,7 @@ class Geometry:
             (0, 3), dtype=np.float64
         ),
     ):
-        self.coords = np.array(coords, dtype=np.float64)
+        self.coords = np.array(coords, dtype=np.float64, order="F")
         self.atom_types = tuple([PERIODIC_TABLE[atom] for atom in atom_types])
 
         assert (

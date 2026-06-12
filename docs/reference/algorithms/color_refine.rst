@@ -1,5 +1,5 @@
-Circular Algorithm
-==================
+Color Refinement
+================
 
 .. automodule:: stereomolgraph.algorithms.circular
     :members:

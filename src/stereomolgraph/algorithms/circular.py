@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -107,7 +107,9 @@ def circular_generator(
     This algorithm refines the atom coloring based on their connectivity.
     Identical to the Weisfeiler-Lehman (1-WL) algorithm.
 
-    :param mg: MolGraph object containing the atoms and their connectivity."""
+    :param mg: MolGraph object containing the atoms and their connectivity.
+    :param max_iter: Maximum number of iterations for refinement.
+        Default is None, which means it will run until convergence."""
     n_atoms = len(mg.atoms)
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
@@ -393,17 +395,23 @@ def _reaction_generator(
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
     max_iter: int | None = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
+    if hasattr(graph, "atom_stereo_changes") and hasattr(graph, "bond_stereo_changes"):
+        ts = cast("StereoCondensedReactionGraph", graph).ts(
+            infer_non_fleeting_stereo=False
+        )
+    else:
+        ts = graph.ts()
+
     n_atoms = graph.n_atoms
     reactant = graph.reactant()
     product = graph.product()
-    ts = graph._ts()
     assert n_atoms == reactant.n_atoms
     assert n_atoms == product.n_atoms
     assert n_atoms == ts.n_atoms
     color_iters = [
-        generator(graph.reactant(), atom_labels=atom_labels),
-        generator(graph.product(), atom_labels=atom_labels),
-        generator(graph._ts(), atom_labels=atom_labels),
+        generator(reactant, atom_labels=atom_labels),
+        generator(product, atom_labels=atom_labels),
+        generator(ts, atom_labels=atom_labels),
     ]
 
     stacked: np.ndarray | None = None

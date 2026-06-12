@@ -1,0 +1,4 @@
+# Keep GitHub language statistics focused on the package source.
+docs/** linguist-documentation=true
+examples/**/*.ipynb linguist-detectable=false
+**/*.egg-info/** linguist-generated=true
