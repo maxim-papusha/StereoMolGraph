@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TypeAlias
 
 import rdkit.Chem as Chem  # type: ignore
 
 from stereomolgraph.algorithms._bond_orders import connectivity2bond_orders
+from stereomolgraph.graphs.crg import CondensedReactionGraph
+from stereomolgraph.graphs.mg import AtomId, MolGraph
+from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
+from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -17,11 +21,7 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
 )
 
-if TYPE_CHECKING:
-    from stereomolgraph.graphs.crg import CondensedReactionGraph
-    from stereomolgraph.graphs.mg import AtomId, MolGraph, RDKitAtomId
-    from stereomolgraph.graphs.smg import StereoMolGraph
-
+RDKitAtomId: TypeAlias = int
 
 bond_type_dict = {
     0.5: Chem.BondType.HYDROGEN,
@@ -431,3 +431,109 @@ def set_crg_bond_orders(
             mol.GetBondBetweenAtoms(a1, a2).SetBondType(bond_type_dict[bond_order])
 
     return mol
+
+
+def condensed_reaction_graph_to_rdmol(
+    graph: CondensedReactionGraph,
+    generate_bond_orders: bool = False,
+    allow_charged_fragments: bool = False,
+    charge: int = 0,
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
+    """Convert a CondensedReactionGraph to an RDKit molecule.
+
+    :param graph: CondensedReactionGraph to convert
+    :param generate_bond_orders: If True, compute bond orders for the CRG
+    :param allow_charged_fragments: If True, allow charged fragments
+    :param charge: Total charge of the molecule
+    :return: RDKit molecule and index-to-atom-id mapping
+    """
+    mol, idx_map_num_dict = mol_graph_to_rdmol(
+        graph=graph,
+        generate_bond_orders=False,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=0,
+    )
+
+    if generate_bond_orders:
+        mol = set_crg_bond_orders(
+            graph=graph,
+            mol=mol,
+            idx_map_num_dict=idx_map_num_dict,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
+
+    return mol, idx_map_num_dict
+
+
+def stereo_condensed_reaction_graph_to_rdmol(
+    graph: StereoCondensedReactionGraph,
+    generate_bond_orders: bool = False,
+    allow_charged_fragments: bool = False,
+    charge: int = 0,
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
+    """Convert a StereoCondensedReactionGraph to an RDKit molecule.
+
+    The stereo changes are merged into a flat StereoMolGraph which is then
+    converted via :func:`stereo_mol_graph_to_rdmol`.
+
+    :param graph: StereoCondensedReactionGraph to convert
+    :param generate_bond_orders: If True, compute bond orders for the SCRG
+    :param allow_charged_fragments: If True, allow charged fragments
+    :param charge: Total charge of the molecule
+    :return: RDKit molecule and index-to-atom-id mapping
+    """
+    from stereomolgraph.graphs.crg import Change
+    from stereomolgraph.graphs.smg import StereoMolGraph
+
+    ts_smg = StereoMolGraph(graph)  # bond change is now just a bond
+
+    for _atom, stereo_change_dict in graph.atom_stereo_changes.items():
+        atom_stereo = next(
+            (
+                stereo
+                for stereo_change in (
+                    Change.FLEETING,
+                    Change.BROKEN,
+                    Change.FORMED,
+                )
+                if (stereo := stereo_change_dict[stereo_change]) is not None
+            ),
+            None,
+        )
+        if atom_stereo:
+            ts_smg.set_atom_stereo(atom_stereo)
+
+    for _bond, stereo_change_dict in graph.bond_stereo_changes.items():
+        bond_stereo = next(
+            (
+                stereo
+                for stereo_change in (
+                    Change.FLEETING,
+                    Change.BROKEN,
+                    Change.FORMED,
+                )
+                if (stereo := stereo_change_dict[stereo_change]) is not None
+            ),
+            None,
+        )
+        if bond_stereo:
+            ts_smg.set_bond_stereo(bond_stereo)
+
+    mol, idx_map_num_dict = stereo_mol_graph_to_rdmol(
+        ts_smg,
+        generate_bond_orders=False,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
+    )
+    if generate_bond_orders:
+        mol = set_crg_bond_orders(
+            graph=graph,
+            mol=mol,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+            idx_map_num_dict=idx_map_num_dict,
+        )
+    return mol, idx_map_num_dict

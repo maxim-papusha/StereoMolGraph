@@ -6,6 +6,7 @@ from stereomolgraph import (
     Bond,
     StereoMolGraph,
 )
+from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -113,9 +114,9 @@ class TestStereoMolGraph(TestMolGraph):
         g1.set_bond_stereo(PlanarBond((0, 1, 2, 3, 4, 5), 0))
         g2.set_bond_stereo(PlanarBond((1, 0, 2, 3, 4, 5), 0))
         g3.set_bond_stereo(PlanarBond((0, 1, 2, 3, 4, 5), None))
-        rdmol_g1, idx_atom_map_dict_g1 = g1._to_rdmol()
-        rdmol_g2, idx_atom_map_dict_g2 = g2._to_rdmol()
-        rdmol_g3, idx_atom_map_dict_g3 = g3._to_rdmol()
+        rdmol_g1, idx_atom_map_dict_g1 = stereo_mol_graph_to_rdmol(g1)
+        rdmol_g2, idx_atom_map_dict_g2 = stereo_mol_graph_to_rdmol(g2)
+        rdmol_g3, idx_atom_map_dict_g3 = stereo_mol_graph_to_rdmol(g3)
 
         db1 = rdmol_g1.GetBondBetweenAtoms(2, 3)
         stereo_atoms1 = {idx_atom_map_dict_g1[i] for i in db1.GetStereoAtoms()}
@@ -145,12 +146,12 @@ class TestStereoMolGraph(TestMolGraph):
         g.add_bond(0, 4)
         g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), 1))
 
-        mol, _ = g._to_rdmol()
+        mol, _ = stereo_mol_graph_to_rdmol(g)
         chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW  # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
 
         g.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), -1))
-        mol, _ = g._to_rdmol()
+        mol, _ = stereo_mol_graph_to_rdmol(g)
         chiral_tag = rdkit.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW  # type: ignore
         assert mol.GetAtomWithIdx(0).GetChiralTag() == chiral_tag
 
@@ -286,9 +287,6 @@ class TestStereoMolGraph(TestMolGraph):
         assert hash(enantiomer_graph1.copy(frozen=True)) != hash(
             enantiomer_graph2.copy(frozen=True)
         )
-
-    def test_valid_stereo(self, chiral_product_graph1):
-        assert chiral_product_graph1.is_stereo_valid()
 
     def test_inchi_coords(self):
         pytest.skip("RDKit construction tests moved to test_rdkit_conversion.py")

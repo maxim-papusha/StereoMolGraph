@@ -12,7 +12,14 @@ from stereomolgraph import (
     StereoCondensedReactionGraph,
     StereoMolGraph,
 )
-from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
+from stereomolgraph.graph2rdmol import (
+    RDKitAtomId,
+    condensed_reaction_graph_to_rdmol,
+    mol_graph_to_rdmol,
+    stereo_condensed_reaction_graph_to_rdmol,
+    stereo_mol_graph_to_rdmol,
+)
+from stereomolgraph.graphs.mg import AtomId
 from stereomolgraph.graphs.scrg import Change
 from stereomolgraph.stereodescriptors import PlanarBond
 
@@ -68,8 +75,18 @@ class View2D(NamedTuple):
             | StereoCondensedReactionGraph
         ),
     ) -> tuple[Chem.Mol, _HighlightTuple]:
-        mol, idx_map_num_dict = graph._to_rdmol(
-            generate_bond_orders=self.generate_bond_orders
+        match graph:
+            case StereoCondensedReactionGraph():
+                to_rdmol = stereo_condensed_reaction_graph_to_rdmol
+            case CondensedReactionGraph():
+                to_rdmol = condensed_reaction_graph_to_rdmol
+            case StereoMolGraph():
+                to_rdmol = stereo_mol_graph_to_rdmol
+            case _:
+                to_rdmol = mol_graph_to_rdmol
+        mol, idx_map_num_dict = to_rdmol(
+            graph,
+            generate_bond_orders=self.generate_bond_orders,
         )
         map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
             v: k for k, v in idx_map_num_dict.items()
