@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from typing_extensions import override
+
 from stereomolgraph.algorithms.circular import (
     color_refine_crg,
     label_hash,
@@ -10,7 +12,6 @@ from stereomolgraph.algorithms.circular import (
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.graph2rdmol import mol_graph_to_rdmol, set_crg_bond_orders
 from stereomolgraph.graphs.mg import Bond, MolGraph
 
 if TYPE_CHECKING:
@@ -21,7 +22,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from stereomolgraph.coords import GeometryProtocol
-    from stereomolgraph.graphs.mg import AtomId, RDKitAtomId
 
 
 class Change(Enum):
@@ -47,16 +47,19 @@ class CondensedReactionGraph(MolGraph):
 
     __hash__ = MolGraph.__hash__
 
+    @override
     def _compute_colors(self) -> np.ndarray:
         labels = label_hash(self, atom_labels=("atom_type", "reaction"))
         return color_refine_crg(self, atom_labels=labels)
 
+    @override
     def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         else:
             return int(numpy_int_multiset_hash(self._get_colors()))
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -75,6 +78,7 @@ class CondensedReactionGraph(MolGraph):
             )
         )
 
+    @override
     def add_bond(self, atom1: int, atom2: int, **attr: Any):
         """
         Adds a bond between atom1 and atom2.
@@ -86,6 +90,7 @@ class CondensedReactionGraph(MolGraph):
             raise TypeError("reaction bond has to have reaction attribute")
         super().add_bond(atom1, atom2, **attr)
 
+    @override
     def set_bond_attribute(self, atom1: int, atom2: int, attr: str, value: Any):
         """
         sets the Attribute of the bond between Atom1 and Atom2.
@@ -196,31 +201,7 @@ class CondensedReactionGraph(MolGraph):
                 active_atoms.update(self._neighbors[atom])
         return active_atoms
 
-    def _to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
-        mol, idx_map_num_dict = mol_graph_to_rdmol(
-            graph=self,
-            generate_bond_orders=False,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=0,
-        )
-
-        if generate_bond_orders:
-            mol = set_crg_bond_orders(
-                graph=self,
-                mol=mol,
-                idx_map_num_dict=idx_map_num_dict,
-                generate_bond_orders=generate_bond_orders,
-                allow_charged_fragments=allow_charged_fragments,
-                charge=charge,
-            )
-
-        return mol, idx_map_num_dict
-
+    @override
     def to_rdmol(
         self,
         generate_bond_orders: bool = False,

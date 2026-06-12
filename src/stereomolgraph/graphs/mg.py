@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import (
+    Collection,
+    Iterable,
+    Mapping,
+    Sequence,
+)
 from copy import deepcopy
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import Any, Optional, TypeAlias
 
 import numpy as np
+from rdkit import Chem  # type: ignore
+from typing_extensions import Self
 
 from stereomolgraph.algorithms.circular import (
     color_refine_mg,
@@ -14,32 +21,11 @@ from stereomolgraph.algorithms.circular import (
     numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
+from stereomolgraph.coords import BondsFromDistance, GeometryProtocol
 from stereomolgraph.periodic_table import PERIODIC_TABLE, SYMBOLS, Element
 from stereomolgraph.xyz2graph import connectivity_from_geometry
 
-if TYPE_CHECKING:
-    from collections.abc import (
-        Collection,
-        Iterable,
-        Mapping,
-        Sequence,
-    )
-    from typing import Any, Optional, Self, TypeAlias, TypeVar
-
-    from rdkit import Chem  # type: ignore
-
-    from stereomolgraph.coords import GeometryProtocol
-
-    N = TypeVar(
-        "N",
-        bound=int,
-    )
-
 AtomId: TypeAlias = int
-
-RDKitAtomId: TypeAlias = int
 
 Bond: TypeAlias = frozenset[AtomId]
 
@@ -462,26 +448,16 @@ class MolGraph:
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
         return matrix
 
-    def _to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
-        return mol_graph_to_rdmol(
-            self,
-            generate_bond_orders=generate_bond_orders,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=charge,
-        )
-
     def to_rdmol(
         self,
         generate_bond_orders: bool = True,
         allow_charged_fragments: bool = False,
         charge: int = 0,
     ) -> Chem.rdchem.Mol:
-        mol, _ = self._to_rdmol(
+        from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
+
+        mol, _ = mol_graph_to_rdmol(
+            self,
             generate_bond_orders=generate_bond_orders,
             allow_charged_fragments=allow_charged_fragments,
             charge=charge,
@@ -491,7 +467,7 @@ class MolGraph:
         return mol
 
     @classmethod
-    def from_rdmol(cls, rdmol: Chem.Mol, use_atom_map_number: bool = False) -> Self:
+    def from_rdmol(cls, rdmol: Chem.Mol) -> Self:
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         Implicit Hydrogens are added to the graph.
@@ -503,13 +479,11 @@ class MolGraph:
         the substituents.
 
         :param rdmol: RDKit Mol object
-        :param use_atom_map_number: If the atom map number should be used
-                                    instead of the atom index
         :return: StereoMolGraph
         """
         from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
 
-        mg = mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
+        mg = mol_graph_from_rdmol(cls, rdmol)
         assert isinstance(mg, cls), "MolGraph.from_rdmol did not return a MolGraph"
         return mg
 

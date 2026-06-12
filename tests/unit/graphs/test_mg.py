@@ -6,6 +6,7 @@ from stereomolgraph import (
     MolGraph,
 )
 from stereomolgraph.coords import Geometry
+from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
 from stereomolgraph.periodic_table import PERIODIC_TABLE as PTOE
 
 REACTION_SMILES_4007 = (
@@ -227,7 +228,7 @@ class TestMolGraph:
         )
 
     def test_to_rdmol(self, water_graph):
-        rdmol, _ = water_graph._to_rdmol()
+        rdmol, _ = mol_graph_to_rdmol(water_graph)
         assert (
             tuple([Atom.GetAtomicNum() for Atom in rdmol.GetAtoms()])
             == water_graph.atom_types
