@@ -10,11 +10,17 @@ from stereomolgraph import (
 )
 from stereomolgraph.algorithms.circular import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.experimental._embed import EmbedParameters, SMG2Geo
 from stereomolgraph.experimental._isomers import (
     generate_fleeting_stereoisomers,
     generate_stereoisomers,
 )
 from stereomolgraph.experimental._json import STEREO_CLASSES, JSONHandler
+from stereomolgraph.experimental._rsmiles import (
+    RSMILES2StereoCondensedReactionGraph,
+    crg_from_rsmiles,
+    scrg_from_rsmiles,
+)
 from stereomolgraph.graphs.crg import Change
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
