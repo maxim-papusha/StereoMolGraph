@@ -124,7 +124,7 @@ class SMG2Geo:
         :raises ValueError: if RDKit cannot embed the molecule
         """
         # --- Convert SMG ÔåÆ RDKit molecule -----------------------------------
-        rw_mol, idx_map = stereo_mol_graph_to_rdmol(smg)
+        rw_mol, idx_map = stereo_mol_graph_to_rdmol(smg, generate_bond_orders=True)
         mol: Chem.Mol = rw_mol.GetMol()
         mol.UpdatePropertyCache(strict=False)
         Chem.GetSymmSSSR(mol)
