@@ -10,7 +10,6 @@ from stereomolgraph import (
 )
 from stereomolgraph.algorithms.circular import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.experimental._embed import EmbedParameters, SMG2Geo
 from stereomolgraph.experimental._isomers import (
     generate_fleeting_stereoisomers,
     generate_stereoisomers,
