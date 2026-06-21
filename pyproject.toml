@@ -73,14 +73,15 @@ dev = ["pytest>=7.1.2",
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "-m 'not hypothesis and not example'"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::RuntimeWarning",
     ]
 markers = [
-    "unit: marks unit tests (deselect with '-m \"not unit\"')",
-    "example: marks testing of examples folder (deselect with '-m \"not example\"')",
-    "hypothesis: marks property based testing with hypothesis (deselect with '-m \"not hypothesis\"')",
+    "unit: marks unit tests (selected by default)",
+    "example: marks testing of examples folder (opt-in, use '-m example')",
+    "hypothesis: marks property based testing with hypothesis (opt-in, use '-m hypothesis')",
 ]
 
 [tool.ruff.lint]
