@@ -112,6 +112,7 @@ def topological_symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
     mappings = vf2pp_all_isomorphisms(
         graph, graph, stereo=True, atom_labels=(atom_labels, atom_labels)
     )
+    # most efficient way to get the len of a generator
     return deque(enumerate(mappings, 1), maxlen=1)[0][0]
 
 
@@ -186,33 +187,16 @@ def external_symmetry_number(
     for mapping in mappings:
         mapping[None] = None
 
-    # atom_eq_classes: dict[AtomId | None, set[AtomId | None]]
-    atom_eq_classes = atom_automorphism_classes(graph, mappings=mappings)
-    atom_eq_classes[None] = {None}
     bond_eq_classes = bond_automorphism_classes(graph, mappings=mappings)
-
-    def group_by_eq(atoms: Iterable[OInt]) -> list[set[OInt]]:
-        groups: list[set[OInt]] = []
-        for a in atoms:
-            for g in groups:
-                if any(a in atom_eq_classes[b] for b in g):
-                    g.add(a)
-                    break
-            else:
-                groups.append({a})
-        return groups
 
     def ordered_tetrahedral_neighbors(
         stereo: Tetrahedral,
         bonded_atom: AtomId,
         *,
         is_left: bool,
-        unique_neighbor: OInt = None,
     ) -> tuple[OInt, OInt, OInt]:
         for permuted_atoms in stereo._perm_atoms():
             if permuted_atoms[1] != bonded_atom:
-                continue
-            if unique_neighbor is not None and permuted_atoms[2] != unique_neighbor:
                 continue
 
             ordered_neighbors = (
@@ -234,16 +218,6 @@ def external_symmetry_number(
         raise ValueError(
             f"Could not order tetrahedral neighbors for atom {stereo.central_atom}"
         )
-
-    def singled_out_neighbor(groups: list[set[OInt]]) -> OInt:
-        if len(groups) != 2:
-            return None
-
-        singleton_group = next((group for group in groups if len(group) == 1), None)
-        if singleton_group is None:
-            return None
-
-        return next(iter(singleton_group))
 
     hindered_bonds: dict[Bond, HinderedBond] = {}
 
@@ -276,40 +250,13 @@ def external_symmetry_number(
 
         # e. Assign HinderedBond33 for two tetrahedral atoms
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
-            eq_cls1 = group_by_eq(set(stereo1.atoms[1:5]) - {a2})
-            eq_cls2 = group_by_eq(set(stereo2.atoms[1:5]) - {a1})
-
-            if len(eq_cls2) > len(eq_cls1):
-                a1, a2 = a2, a1
-                stereo1, stereo2 = stereo2, stereo1
-                eq_cls1, eq_cls2 = eq_cls2, eq_cls1
-
             assert stereo1.parity is not None and stereo2.parity is not None
             parity = stereo1.parity * stereo2.parity
-            pattern1 = tuple(sorted((len(group) for group in eq_cls1), reverse=True))
-            pattern2 = tuple(sorted((len(group) for group in eq_cls2), reverse=True))
 
-            # i. Form HinderedBond33, sorting external neighbors to ensure consistency
-            #    with tetrahedral stereochemistry
-            left_unique_neighbor = (
-                singled_out_neighbor(eq_cls1) if pattern1 == (2, 1) else None
-            )
-            right_unique_neighbor = (
-                singled_out_neighbor(eq_cls2) if pattern2 == (2, 1) else None
-            )
-
-            left3 = ordered_tetrahedral_neighbors(
-                stereo1,
-                a2,
-                is_left=True,
-                unique_neighbor=left_unique_neighbor,
-            )
-            right3 = ordered_tetrahedral_neighbors(
-                stereo2,
-                a1,
-                is_left=False,
-                unique_neighbor=right_unique_neighbor,
-            )
+            # i. Form HinderedBond33, ordering external neighbors consistently
+            #    with the tetrahedral stereochemistry
+            left3 = ordered_tetrahedral_neighbors(stereo1, a2, is_left=True)
+            right3 = ordered_tetrahedral_neighbors(stereo2, a1, is_left=False)
             hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
         # f. Assign HinderedBond23 for an sp2 and a tetrahedral atom
@@ -343,5 +290,6 @@ def external_symmetry_number(
             for hb in hindered_bonds.values()
         ):
             ext_sym_num += 1
-
+    if ext_sym_num == 0:
+        raise RuntimeError("External symmetry number is zero, this should not happen")
     return ext_sym_num
