@@ -172,7 +172,7 @@ def bond_symmetry_number(
     return len(unique_reorderings)
 
 
-def ext_sym_num(
+def external_symmetry_number(
     graph: StereoMolGraph, mappings: Iterable[dict[int, int]] | None = None
 ) -> int:
     """Calculate the upper bound of the external symmetry number for StereoMolGraph"""
@@ -247,14 +247,19 @@ def ext_sym_num(
 
     hindered_bonds: dict[Bond, HinderedBond] = {}
 
+    # 1. Loop over bond equivalence classes
     for eq_cls in {frozenset(eq_cls) for eq_cls in bond_eq_classes.values()}:
         eq_bonds = tuple(eq_cls)
         eq_cls_iterator = iter(eq_bonds)
+
+        # a. Atoms a1, a2 in the first bond of the equivalence class
         a1, a2 = next(eq_cls_iterator)
 
+        # b. If there is already bond stereochemistry, skip this equivalence class
         if graph.get_bond_stereo({a1, a2}) is not None:
             continue
 
+        # c. Determine the neighbors external to the bond
         nbrs1 = tuple(a for a in graph.bonded_to(a1) if a != a2)
         nbrs2 = tuple(a for a in graph.bonded_to(a2) if a != a1)
         if len(nbrs1) > len(nbrs2):
@@ -264,10 +269,12 @@ def ext_sym_num(
         if len(nbrs1) < 2:
             continue
 
+        # d. Get the stereochemistry of the atoms
         stereo1 = graph.get_atom_stereo(a1)
         stereo2 = graph.get_atom_stereo(a2)
         hb: HinderedBond | None = None
 
+        # e. Assign HinderedBond33 for two tetrahedral atoms
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
             eq_cls1 = group_by_eq(set(stereo1.atoms[1:5]) - {a2})
             eq_cls2 = group_by_eq(set(stereo2.atoms[1:5]) - {a1})
@@ -282,73 +289,38 @@ def ext_sym_num(
             pattern1 = tuple(sorted((len(group) for group in eq_cls1), reverse=True))
             pattern2 = tuple(sorted((len(group) for group in eq_cls2), reverse=True))
 
-            if (pattern1, pattern2) in {
-                ((3,), (3,)),
-                ((1, 1, 1), (3,)),
-                ((1, 1, 1), (2, 1)),
-                ((1, 1, 1), (1, 1, 1)),
-            }:
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
-
-            elif (pattern1, pattern2) == ((2, 1), (2, 1)):
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                    unique_neighbor=singled_out_neighbor(eq_cls1),
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                    unique_neighbor=singled_out_neighbor(eq_cls2),
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
-
-            elif (pattern1, pattern2) == ((2, 1), (3,)):
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                    unique_neighbor=singled_out_neighbor(eq_cls1),
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
-
-        elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
-            if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):
-                eq_cls_t = sorted(
-                    group_by_eq(set(stereo2.atoms[1:6]) - {a2}),
-                    key=len,
-                    reverse=True,
-                )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls_t[0] == set(p[4:6])
-                )
-            else:
-                hb_atoms2 = next(
-                    (*reversed(p[2:6]), a1) for p in stereo2._perm_atoms() if p[1] == a1
-                )
-            hb = HinderedBond23(
-                atoms=(*nbrs1, a1, a2, *hb_atoms2),
-                parity=stereo2.parity,
+            # i. Form HinderedBond33, sorting external neighbors to ensure consistency
+            #    with tetrahedral stereochemistry
+            left_unique_neighbor = (
+                singled_out_neighbor(eq_cls1) if pattern1 == (2, 1) else None
             )
+            right_unique_neighbor = (
+                singled_out_neighbor(eq_cls2) if pattern2 == (2, 1) else None
+            )
+
+            left3 = ordered_tetrahedral_neighbors(
+                stereo1,
+                a2,
+                is_left=True,
+                unique_neighbor=left_unique_neighbor,
+            )
+            right3 = ordered_tetrahedral_neighbors(
+                stereo2,
+                a1,
+                is_left=False,
+                unique_neighbor=right_unique_neighbor,
+            )
+            hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
+
+        # f. Assign HinderedBond23 for an sp2 and a tetrahedral atom
+        elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
+            # i. Get the right neighbors in an order consistent with their parity
+            # (Reverse the order of the external neighbors since the parity is opposite)
+            right5 = next(
+                (a1, a2, *reversed(p[2:])) for p in stereo2._perm_atoms() if p[1] == a1
+            )
+            # i. If both external neighbors of a1 have orbits of length 2
+            hb = HinderedBond23(atoms=(*nbrs1, *right5), parity=stereo2.parity)
 
         if hb is None:
             continue
