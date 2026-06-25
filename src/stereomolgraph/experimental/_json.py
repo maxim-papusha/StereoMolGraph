@@ -14,12 +14,12 @@ from stereomolgraph import (
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtropBond,
-    HinderedBond12,
-    HinderedBond13,
-    HinderedBond23,
-    HinderedBond33,
     Octahedral,
     PlanarBond,
+    RigidBond12,
+    RigidBond13,
+    RigidBond23,
+    RigidBond33,
     SquarePlanar,
     Tetrahedral,
     TrigonalBipyramidal,
@@ -35,10 +35,10 @@ STEREO_CLASSES: dict[str, type] = {
     "SquarePlanar": SquarePlanar,
     "PlanarBond": PlanarBond,
     "AtropBond": AtropBond,
-    "HinderedBond12": HinderedBond12,
-    "HinderedBond13": HinderedBond13,
-    "HinderedBond23": HinderedBond23,
-    "HinderedBond33": HinderedBond33,
+    "RigidBond12": RigidBond12,
+    "RigidBond13": RigidBond13,
+    "RigidBond23": RigidBond23,
+    "RigidBond33": RigidBond33,
 }
 
 
@@ -465,12 +465,12 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
         auto_cls_int: bond_auto_set[b] for b, auto_cls_int in bond_auto_int.items()
     }
 
-    counter: dict[BondAutoCls, dict[frozenset[HinderedBond33], set[MappingId]]] = {}
+    counter: dict[BondAutoCls, dict[frozenset[RigidBond33], set[MappingId]]] = {}
 
     for bond_auto_cls, bonds in int_bond_auto_set.items():
         counter[bond_auto_cls] = {}
 
-        bond_to_state: dict[Bond, set[HinderedBond33]] = {}
+        bond_to_state: dict[Bond, set[RigidBond33]] = {}
 
         for bond in bonds:
             if graph.get_bond_stereo(bond):
@@ -483,7 +483,7 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
             if len(nbrs1) != 3 or len(nbrs2) != 3:
                 continue
 
-            nrb_set: set[HinderedBond33] = set()
+            nrb_set: set[RigidBond33] = set()
             if (
                 len({atom_auto_int[nbr] for nbr in nbrs1}) == 2
                 and len({atom_auto_int[nbr] for nbr in nbrs2}) == 2
@@ -522,7 +522,7 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
                     if stereo_atoms[1] == a1 and stereo_atoms[2] == unique_right
                 )
 
-                nrb_set.add(HinderedBond33(atoms=(*left, a1, a2, *right), parity=0))
+                nrb_set.add(RigidBond33(atoms=(*left, a1, a2, *right), parity=0))
 
             elif (
                 len({atom_auto_int[nbr] for nbr in nbrs1}) == 1
@@ -545,7 +545,7 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
                     if stereo_atoms[1] == a1
                 )
 
-                nrb_set.add(HinderedBond33(atoms=(*left, a1, a2, *right), parity=0))
+                nrb_set.add(RigidBond33(atoms=(*left, a1, a2, *right), parity=0))
             else:
                 continue
                 raise Exception(
@@ -562,9 +562,7 @@ def external_symmetry_number(graph: StereoMolGraph) -> int:
         for bond_auto_cls, bond_state_dict in counter.items():
             for bond_state, mapping_ids in bond_state_dict.items():
                 if all(
-                    HinderedBond33(
-                        tuple(mapping[a] for a in non_rot_bond.atoms), parity=0
-                    )
+                    RigidBond33(tuple(mapping[a] for a in non_rot_bond.atoms), parity=0)
                     in bond_state
                     for non_rot_bond in bond_state
                 ):

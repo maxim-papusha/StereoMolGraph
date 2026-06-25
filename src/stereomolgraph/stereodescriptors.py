@@ -521,7 +521,7 @@ class AtropBond(
         return bond
 
 
-class HinderedBond33(
+class RigidBond33(
     _StereoMixin[
         tuple[OInt, OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]
     ],
@@ -568,7 +568,7 @@ class HinderedBond33(
         return bond
 
 
-class HinderedBond23(
+class RigidBond23(
     _StereoMixin[tuple[OInt, OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""
@@ -603,7 +603,7 @@ class HinderedBond23(
         return bond
 
 
-class HinderedBond13(
+class RigidBond13(
     _StereoMixin[tuple[OInt, int, int, OInt, OInt, OInt], None | Literal[1, -1]],
 ):
     r"""
@@ -638,7 +638,7 @@ class HinderedBond13(
         return bond
 
 
-class HinderedBond12(
+class RigidBond12(
     _StereoMixin[tuple[OInt, int, int, OInt, OInt], None | Literal[0]],
 ):
     r"""
@@ -666,11 +666,6 @@ class HinderedBond12(
         return bond
 
 
-HinderedBond = (
-    HinderedBond33
-    | HinderedBond23
-    | HinderedBond13
-    | HinderedBond12
-    | PlanarBond
-    | AtropBond
+RigidBond = (
+    RigidBond33 | RigidBond23 | RigidBond13 | RigidBond12 | PlanarBond | AtropBond
 )
