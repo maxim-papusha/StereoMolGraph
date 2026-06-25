@@ -55,17 +55,24 @@ class EmbedParameters:
     embedFragmentsSeparately: bool = False
     """Embed disconnected fragments separately."""
 
-    useSmallRingTorsions: bool = False
+    ignoreSmoothingFailures: bool = True
+    """Ignore smoothing failures during distance-geometry embedding."""
+
+    useSmallRingTorsions: bool = True
     """Use small-ring torsion corrections."""
 
-    useMacrocycleTorsions: bool = False
+    useMacrocycleTorsions: bool = True
     """Use macrocycle torsion corrections."""
+
+    useMacrocycle14config: bool = True
+    """Use macrocycle 1-4 configuration sampling."""
 
     def to_rdkit(self) -> rdDistGeom.EmbedParameters:
         """Build an RDKit :class:`~rdkit.Chem.rdDistGeom.EmbedParameters`
         from this dataclass."""
         ps = rdDistGeom.EmbedParameters()
         ps.ETversion = self.ETversion
+        ps.ignoreSmoothingFailures = self.ignoreSmoothingFailures
         ps.randomSeed = self.seed
         ps.useRandomCoords = self.useRandomCoords
         ps.useBasicKnowledge = self.useBasicKnowledge
@@ -74,6 +81,7 @@ class EmbedParameters:
         ps.embedFragmentsSeparately = self.embedFragmentsSeparately
         ps.useSmallRingTorsions = self.useSmallRingTorsions
         ps.useMacrocycleTorsions = self.useMacrocycleTorsions
+        ps.useMacrocycle14config = self.useMacrocycle14config
         # maxAttempts was renamed to maxIterations in RDKit >= 2025
         if int(rdkit_version.split(".")[0]) >= 2025:
             ps.maxIterations = self.max_attempts
