@@ -4,6 +4,7 @@
 ## [unreleased]
 
 - added GeometryProtocol definition as a potential external interface.
+- added Symmetry numbers of graphs
 
 ## [0.0.21b]
 
