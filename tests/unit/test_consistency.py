@@ -4,6 +4,7 @@ import rdkit.Chem.rdDistGeom  # type: ignore
 
 from stereomolgraph import StereoMolGraph
 from stereomolgraph.coords import Geometry
+from stereomolgraph.graph2rdmol import stereo_mol_graph_to_rdmol
 from stereomolgraph.rdmol2graph import RDMol2StereoMolGraph
 from stereomolgraph.stereodescriptors import (
     Octahedral,
@@ -68,7 +69,7 @@ class TestRDKitConversion:
         assert inchi == rdkit.Chem.MolToInchi(rdmol, treatWarningAsError=True)  # type: ignore
 
         smg = rdmol2graph(rdmol)
-        rdmol2, _ = smg._to_rdmol(generate_bond_orders=True)
+        rdmol2, _ = stereo_mol_graph_to_rdmol(smg, generate_bond_orders=True)
         assert inchi == rdkit.Chem.MolToInchi(rdmol2, treatWarningAsError=True)  # type: ignore
 
     @pytest.mark.parametrize(
@@ -94,7 +95,7 @@ class TestRDKitConversion:
         rdmol = rdkit.Chem.MolFromInchi(inchi)
         rdmol = rdkit.Chem.AddHs(rdmol)
         smg = rdmol2graph(rdmol)
-        rdmol2, _ = smg._to_rdmol(generate_bond_orders=True)
+        rdmol2, _ = stereo_mol_graph_to_rdmol(smg, generate_bond_orders=True)
         molblock = rdkit.Chem.MolToMolBlock(rdmol2)
         assert inchi == rdkit.Chem.MolBlockToInchi(molblock)  # type: ignore
 
@@ -145,8 +146,8 @@ class TestRDKitConversion:
         rdmol = rdkit.Chem.MolFromSmiles(smiles)
         rdmol = rdkit.Chem.AddHs(rdmol)
         smg = rdmol2graph(rdmol)
-        rdmol2, _ = smg._to_rdmol(
-            generate_bond_orders=True, allow_charged_fragments=True
+        rdmol2, _ = stereo_mol_graph_to_rdmol(
+            smg, generate_bond_orders=True, allow_charged_fragments=False
         )
         rdkit.Chem.SanitizeMol(
             rdmol2, sanitizeOps=rdkit.Chem.SanitizeFlags.SANITIZE_ALL
@@ -308,7 +309,7 @@ class TestRDKitConversion:
 
         set1 = {
             rdkit.Chem.MolToSmiles(
-                molgraph._to_rdmol()[0],
+                stereo_mol_graph_to_rdmol(molgraph)[0],
                 canonical=True,
                 ignoreAtomMapNumbers=True,
                 isomericSmiles=True,
@@ -317,7 +318,7 @@ class TestRDKitConversion:
         }
         set2 = {
             rdkit.Chem.MolToSmiles(
-                molgraph._to_rdmol()[0],
+                stereo_mol_graph_to_rdmol(molgraph)[0],
                 canonical=True,
                 ignoreAtomMapNumbers=True,
                 isomericSmiles=True,
@@ -326,7 +327,7 @@ class TestRDKitConversion:
         }
         set3 = {
             rdkit.Chem.MolToSmiles(
-                molgraph._to_rdmol()[0],
+                stereo_mol_graph_to_rdmol(molgraph)[0],
                 canonical=True,
                 ignoreAtomMapNumbers=True,
                 isomericSmiles=True,

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import sys
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Generic
+from typing import Generic, Optional
+
+from typing_extensions import Self, TypeVar, override
 
 from stereomolgraph.algorithms.circular import (
     color_refine_scrg,
@@ -13,8 +14,7 @@ from stereomolgraph.algorithms.circular import (
     numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.graph2rdmol import set_crg_bond_orders
+from stereomolgraph.coords import BondsFromDistance, GeometryProtocol
 from stereomolgraph.graphs.crg import Change, CondensedReactionGraph
 from stereomolgraph.graphs.mg import AtomId, Bond, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
@@ -27,22 +27,7 @@ from stereomolgraph.xyz2graph import (
     stero_from_geometry,
 )
 
-if TYPE_CHECKING:
-    import sys
-    from collections.abc import Iterable, Mapping
-    from typing import Optional
-
-    from rdkit import Chem
-
-    from stereomolgraph.coords import Geometry
-
-# Self is included in typing from 3.11
-if sys.version_info >= (3, 11):
-    from typing import Self, TypeVar
-else:
-    from typing_extensions import Self, TypeVar
-
-S = TypeVar("S", bound="Stereo", contravariant=True)
+S = TypeVar("S", bound="Stereo")
 
 
 class ChangeDict(dict[Change, None | S], Generic[S]):
@@ -65,6 +50,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
     __hash__ = MolGraph.__hash__
 
+    @override
     def __init__(self, mol_graph: Optional[MolGraph] = None):
         super().__init__(mol_graph)
         self._atom_stereo_change = defaultdict(ChangeDict[AtomStereo])
@@ -74,15 +60,18 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             self._atom_stereo_change.update(mol_graph._atom_stereo_change)
             self._bond_stereo_change.update(mol_graph._bond_stereo_change)
 
+    @override
     def _compute_colors(self) -> np.ndarray:
         labels = label_hash(self, atom_labels=("atom_type", "reaction"))
         return color_refine_scrg(self, atom_labels=labels)
 
+    @override
     def _compute_hash(self) -> int:
         if self.n_atoms == 0:
             return hash(self.__class__)
         return int(numpy_int_multiset_hash(self._get_colors()))
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -90,14 +79,11 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         o_color_array = other._get_colors()
         s_color_array = self._get_colors()
 
-        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
-
         return any(
             vf2pp_all_isomorphisms(
                 self,
                 other,
-                atom_labels=(s_colors, o_colors),
+                atom_labels=(s_color_array, o_color_array),
                 stereo=True,
                 stereo_change=True,
                 subgraph=False,
@@ -207,34 +193,44 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         else:
             del self._bond_stereo_change[bond][stereo_change]
 
-    def active_atoms(self, additional_layer: int = 0) -> set[AtomId]:
+    @override
+    def active_atoms(
+        self, additional_layer: int = 0, stereo: bool = False
+    ) -> set[AtomId]:
         """
         Atoms involved in the reaction with additional layers of atoms
         in the neighborhood.
 
         :param additional_layer: Number of additional layers of atoms to
                                  include, defaults to 0
+        :param stereo: Whether to include atoms involved in stereochemistry changes
+                       defaults to False
         :return: Atoms involved in the reaction
         """
-        active_atoms: set[int] = set()
+        active_atoms: set[AtomId] = set()
 
         for bond in self.get_formed_bonds() | self.get_broken_bonds():
             active_atoms.update(bond)
-
-        for _atom, stereo_change in self.atom_stereo_changes.items():
-            for _change, stereo in stereo_change.items():
-                if stereo is not None:
-                    active_atoms.update(stereo.atoms)
-        for _bond, stereo_change in self.bond_stereo_changes.items():
-            for _change, stereo in stereo_change.items():
-                if stereo is not None:
-                    active_atoms.update(stereo.atoms)
+        if stereo:
+            for _atom, a_stereo_change in self.atom_stereo_changes.items():
+                for _change, a_stereo in a_stereo_change.items():
+                    if a_stereo is not None:
+                        for a in a_stereo.atoms:
+                            if a is not None:
+                                active_atoms.add(a)
+            for _bond, b_stereo_change in self.bond_stereo_changes.items():
+                for _change, b_stereo in b_stereo_change.items():
+                    if b_stereo is not None:
+                        for a in b_stereo.atoms:
+                            if a is not None:
+                                active_atoms.add(a)
 
         for _ in range(additional_layer):
             for atom in active_atoms.copy():
                 active_atoms.update(self.bonded_to(atom))
         return active_atoms
 
+    @override
     def copy(self, frozen: bool = False) -> Self:
         """
         :return: returns a copy of self
@@ -244,6 +240,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         new_graph._bond_stereo_change = deepcopy(self._bond_stereo_change)
         return new_graph
 
+    @override
     def relabel_atoms(self, mapping: dict[AtomId, AtomId], copy: bool = True) -> Self:
         """
         Relabels the atoms of the graph and the chiral information accordingly
@@ -293,6 +290,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return relabeled_scrg
 
+    @override
     def reactant(self, keep_attributes: bool = True) -> StereoMolGraph:
         """
         Returns the reactant of the reaction
@@ -316,6 +314,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return reactant
 
+    @override
     def product(self, keep_attributes: bool = True) -> StereoMolGraph:
         """
         Returns the product of the reaction
@@ -337,20 +336,44 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return product
 
-    def _ts(self, keep_attributes: bool = True) -> StereoMolGraph:
+    @override
+    def ts(self, infer_non_fleeting_stereo: bool = True) -> StereoMolGraph:
+        """Returns a StereoCondensedReactionGraph representing the transition state of
+        the reaction. Stereochemistry is taken from the fleeting stereo changes if
+        present, otherwise from the broken or formed stereo changes. If both broken and
+        formed stereo changes are present for a stereo element, the transition state
+        stereo is not defined and the stereo information is not included in the
+        transition state graph."""
+
         ts = StereoMolGraph(self)
-        ts._atom_stereo = deepcopy(self._atom_stereo)
-        ts._bond_stereo = deepcopy(self._bond_stereo)
 
         for _atom, change_dict in self._atom_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_atom_stereo(stereo)
 
+            elif infer_non_fleeting_stereo:
+                broken_stereo = change_dict[Change.BROKEN]
+                formed_stereo = change_dict[Change.FORMED]
+                if broken_stereo and not formed_stereo:
+                    ts.set_atom_stereo(broken_stereo)
+                elif formed_stereo and not broken_stereo:
+                    ts.set_atom_stereo(formed_stereo)
+
         for _bond, change_dict in self._bond_stereo_change.items():
             if stereo := change_dict[Change.FLEETING]:
                 ts.set_bond_stereo(stereo)
+
+            elif infer_non_fleeting_stereo:
+                broken_stereo = change_dict[Change.BROKEN]
+                formed_stereo = change_dict[Change.FORMED]
+                if broken_stereo and not formed_stereo:
+                    ts.set_bond_stereo(broken_stereo)
+                elif formed_stereo and not broken_stereo:
+                    ts.set_bond_stereo(formed_stereo)
+
         return ts
 
+    @override
     def reverse_reaction(self) -> Self:
         """Creates the reaction in the opposite direction.
 
@@ -380,6 +403,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return rev_reac
 
+    @override
     def enantiomer(self) -> Self:
         """
         Creates the enantiomer of the StereoCondensedReactionGraph by inversion
@@ -399,60 +423,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
                 enantiomer.set_atom_stereo_change(**stereo_change_inverted)
         return enantiomer
 
-    def _to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        ts_smg = StereoMolGraph(self)  # bond change is now just a bond
-
-        for _atom, stereo_change_dict in self.atom_stereo_changes.items():
-            atom_stereo = next(
-                (
-                    stereo
-                    for stereo_change in (
-                        Change.FLEETING,
-                        Change.BROKEN,
-                        Change.FORMED,
-                    )
-                    if (stereo := stereo_change_dict[stereo_change]) is not None
-                ),
-                None,
-            )
-            if atom_stereo:
-                ts_smg.set_atom_stereo(atom_stereo)
-
-        for _bond, stereo_change_dict in self.bond_stereo_changes.items():
-            bond_stereo = next(
-                (
-                    stereo
-                    for stereo_change in (
-                        Change.FLEETING,
-                        Change.BROKEN,
-                        Change.FORMED,
-                    )
-                    if (stereo := stereo_change_dict[stereo_change]) is not None
-                ),
-                None,
-            )
-            if bond_stereo:
-                ts_smg.set_bond_stereo(bond_stereo)
-
-        mol, idx_map_num_dict = ts_smg._to_rdmol(
-            generate_bond_orders=False,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=charge,
-        )
-        if generate_bond_orders:
-            mol = set_crg_bond_orders(
-                graph=self,
-                mol=mol,
-                charge=charge,
-                idx_map_num_dict=idx_map_num_dict,
-            )
-        return mol, idx_map_num_dict
-
+    @override
     @classmethod
     def compose(cls, mol_graphs: Iterable[MolGraph]) -> Self:
         """Creates a MolGraph object from a list of MolGraph objects
@@ -466,12 +437,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             graph._bond_stereo_change.update(cls(mol_graph)._bond_stereo_change)
         return graph
 
+    @override
     @classmethod
     def from_graphs(
         cls,
-        reactant_graph: StereoMolGraph,
-        product_graph: StereoMolGraph,
-        ts_graph: None | StereoMolGraph = None,
+        reactant_graph: MolGraph,
+        product_graph: MolGraph,
+        ts_graph: None | MolGraph = None,
     ) -> Self:
         """Creates a StereoCondensedReactionGraph from reactant and product
         StereoMolGraphs.
@@ -486,11 +458,18 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         """
 
         scrg = super().from_graphs(reactant_graph, product_graph, ts_graph)
-
+        if not isinstance(reactant_graph, StereoMolGraph) or not isinstance(
+            product_graph, StereoMolGraph
+        ):
+            return scrg
         for atom in scrg.atoms:
             r_stereo = reactant_graph.get_atom_stereo(atom)
             p_stereo = product_graph.get_atom_stereo(atom)
-            ts_stereo = ts_graph.get_atom_stereo(atom) if ts_graph else None
+            ts_stereo = (
+                ts_graph.get_atom_stereo(atom)
+                if isinstance(ts_graph, StereoMolGraph)
+                else None
+            )
 
             if ts_stereo is not None and ts_stereo == r_stereo == p_stereo:
                 scrg.set_atom_stereo(ts_stereo)
@@ -540,12 +519,13 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
         return scrg
 
+    @override
     @classmethod
     def from_geometries(
         cls,
-        reactant_geo: Geometry,
-        product_geo: Geometry,
-        ts_geo: None | Geometry = None,
+        reactant_geo: GeometryProtocol,
+        product_geo: GeometryProtocol,
+        ts_geo: None | GeometryProtocol = None,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         """Creates a StereoCondensedReactionGraph from reactant, product and

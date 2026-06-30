@@ -1,28 +1,39 @@
 cff-version: 1.2.0
-message: If you use this software, please cite it using these metadata.
 type: software
 title: StereoMolGraph
 abstract: Graph Library for Molecules and Transition States with Stereochemistry.
-version: 0.0.0b6
-keywords:
-- reaction mechanism
-- chemistry
-- reaction network
-- stereochemistry
-- graphtheory
-- condensed reaction graph
 authors:
-- given-names: Maxim
-  family-names: Papusha
-  orcid: https://orcid.org/0009-0000-8580-4777
-- given-names: Florian
-  family-names: Solbach
-  orcid: https://orcid.org/0000-0003-1923-3747
-identifiers:
-- type: doi
-  value: https://doi.org/10.5281/zenodo.16360310 # general DOI for all versions
-license: MIT
-repository-code: https://github.com/maxim-papusha/StereoMolGraph
+  - given-names: Maxim
+    family-names: Papusha
+    orcid: https://orcid.org/0009-0000-8580-4777
+  - given-names: Florian
+    family-names: Solbach
+    orcid: https://orcid.org/0000-0003-1923-3747
+  - given-names: Andreas V.
+    family-names: Copan
+    orcid: https://orcid.org/0000-0002-8682-0813
 contact:
-- name: Maxim Papusha
-  email: maxim.papusha@ltt.rwth-aachen.de
+  - name: Maxim Papusha
+    email: maxim.papusha@ltt.rwth-aachen.de
+repository-code: >-
+  https://github.com/maxim-papusha/StereoMolGraph
+doi: 10.5281/zenodo.16360310
+license: MIT
+
+preferred-citation:
+  type: article
+  title: "StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs"
+  authors:
+    - given-names: Maxim
+      family-names: Papusha
+      orcid: 'https://orcid.org/0009-0000-8580-4777'
+    - given-names: Kai
+      family-names: Leonhard
+      orcid: 'https://orcid.org/0000-0001-6231-6957'
+  journal: "Journal of Chemical Information and Modeling"
+  volume: "66"
+  issue: "7"
+  start: "3830"
+  end: "3839"
+  year: "2026"
+  doi: 10.1021/acs.jcim.5c02523

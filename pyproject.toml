@@ -10,7 +10,7 @@ stereomolgraph = ["py.typed"]
 
 [project]
 name = "StereoMolGraph"
-version = "0.0.21b"
+version = "0.0.22b"
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -28,6 +28,7 @@ maintainers = [
 authors = [
   {name = "Maxim Papusha", email = "maxim.papusha@ltt.rwth-aachen.de"},
   {name = "Florian Solbach", email = "florian.solbach@ltt.rwth-aachen.de"}, 
+  {name = "Andreas Victor Copan", email = "avcopan@uga.edu"},
 ]
 
 classifiers = [

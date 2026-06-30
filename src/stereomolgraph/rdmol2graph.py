@@ -65,7 +65,7 @@ class RDMol2StereoMolGraph:
 
     lone_pair_stereo: bool = True
     resonance: bool = True
-    _max_resonance_structures: int = 100
+    _max_resonance_structures: int = 1000
     _radical_resonance_as_cation: bool = True
     _min_trans_ring_size: int = 7
 
@@ -75,10 +75,10 @@ class RDMol2StereoMolGraph:
         if not self.resonance:
             return smg
 
-        flags = 0  # (
+        flags = Chem.KEKULE_ALL
         # Chem.ALLOW_INCOMPLETE_OCTETS |
         # Chem.UNCONSTRAINED_CATIONS
-        # | Chem.KEKULE_ALL)
+        # | )
 
         has_radicals = any(
             atom.GetNumRadicalElectrons() > 0 for atom in rdmol.GetAtoms()
