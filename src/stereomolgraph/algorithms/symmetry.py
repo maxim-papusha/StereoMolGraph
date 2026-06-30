@@ -100,7 +100,7 @@ def bond_automorphism_classes(
     return classes
 
 
-def topological_symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
+def symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
     """
     Calculated from the number of graph isomorphisms which conserve the
     stereo information.
