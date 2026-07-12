@@ -201,17 +201,6 @@ class CondensedReactionGraph(MolGraph):
                 active_atoms.update(self._neighbors[atom])
         return active_atoms
 
-    @override
-    def to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> Chem.rdchem.Mol:
-        raise NotImplementedError(
-            "Rdkit is not able to represent reactions as condensed reaction graphs."
-        )
-
     def reactant(self, keep_attributes: bool = True) -> MolGraph:
         """Reactant of the reaction
 
@@ -287,6 +276,17 @@ class CondensedReactionGraph(MolGraph):
                 rev_reac.add_formed_bond(*bond)
 
         return rev_reac
+
+    @override
+    def to_rdmol(
+        self,
+        generate_bond_orders: bool = False,
+        allow_charged_fragments: bool = False,
+        charge: int = 0,
+    ) -> Chem.rdchem.Mol:
+        raise NotImplementedError(
+            "Rdkit is not able to represent reactions as condensed reaction graphs."
+        )
 
     @classmethod
     def from_graphs(

@@ -68,6 +68,89 @@ class MolGraph:
             self._bond_attrs = defaultdict(dict)
         self._frozen = frozen
 
+
+    def _compute_colors(self) -> np.ndarray:
+        """Compute the color refinement array. Override in subclasses."""
+        labels = label_hash(self, atom_labels=("atom_type",))
+        return color_refine_mg(self, atom_labels=labels)
+
+    def _get_colors(self) -> np.ndarray:
+        """Return color array, using cache for frozen graphs."""
+        if self._frozen and self._color_cache is not None:
+            return self._color_cache
+        colors = self._compute_colors()
+        if self._frozen:
+            self._color_cache = colors
+            colors.setflags(write=False)
+        return colors
+
+    def _compute_hash(self) -> int:
+        """Compute the graph hash. Override in subclasses."""
+        if self.n_atoms == 0:
+            return hash(self.__class__)
+        return int(numpy_int_multiset_hash(self._get_colors()))
+
+
+    def __hash__(self) -> int:
+        if not self._frozen:
+            raise TypeError(
+                f"Unhashable type: unfrozen {self.__class__.__name__!r}. "
+                "Call .freeze() before using in sets or as dict keys."
+            )
+        if self._hash_cache is None:
+            self._hash_cache = self._compute_hash()
+        return self._hash_cache
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
+
+        return any(
+            vf2pp_all_isomorphisms(
+                self,
+                other,
+                atom_labels=(s_color_array, o_color_array),
+                stereo=False,
+                stereo_change=False,
+                subgraph=False,
+            )
+        )
+
+    def __len__(self) -> int:
+        return len(self._atom_attrs)
+
+
+    @property
+    def frozen(self) -> bool:
+        """Whether the graph is currently frozen (immutable)."""
+        return self._frozen
+
+    def _check_mutable(self) -> None:
+        """Raises TypeError if the graph is frozen."""
+        if self._frozen:
+            raise TypeError(
+                f"Cannot mutate a frozen {self.__class__.__name__}. "
+                "Use .copy() to get a mutable copy."
+            )
+
+    def freeze(self) -> Self:
+        """Freeze the graph, making it immutable and hashable.
+
+        A frozen graph can be used in sets and as dict keys.
+        Mutation methods will raise :class:`TypeError`.
+        Use :meth:`copy` to get a mutable copy.
+
+        :return: self (for chaining)
+        """
+        self._frozen = True
+        self._hash_cache = None  # recomputed lazily in __hash__
+        self._color_cache = None  # recomputed lazily
+        return self
+
+
     @property
     def atoms(self) -> Collection[AtomId]:
         """
@@ -117,84 +200,6 @@ class MolGraph:
         """
         return len(self._atom_attrs)
 
-    def __len__(self) -> int:
-        return len(self._atom_attrs)
-
-    @property
-    def frozen(self) -> bool:
-        """Whether the graph is currently frozen (immutable)."""
-        return self._frozen
-
-    def _check_mutable(self) -> None:
-        """Raises TypeError if the graph is frozen."""
-        if self._frozen:
-            raise TypeError(
-                f"Cannot mutate a frozen {self.__class__.__name__}. "
-                "Use .copy() to get a mutable copy."
-            )
-
-    def freeze(self) -> Self:
-        """Freeze the graph, making it immutable and hashable.
-
-        A frozen graph can be used in sets and as dict keys.
-        Mutation methods will raise :class:`TypeError`.
-        Use :meth:`copy` to get a mutable copy.
-
-        :return: self (for chaining)
-        """
-        self._frozen = True
-        self._hash_cache = None  # recomputed lazily in __hash__
-        self._color_cache = None  # recomputed lazily
-        return self
-
-    def _compute_colors(self) -> np.ndarray:
-        """Compute the color refinement array. Override in subclasses."""
-        labels = label_hash(self, atom_labels=("atom_type",))
-        return color_refine_mg(self, atom_labels=labels)
-
-    def _get_colors(self) -> np.ndarray:
-        """Return color array, using cache for frozen graphs."""
-        if self._frozen and self._color_cache is not None:
-            return self._color_cache
-        colors = self._compute_colors()
-        if self._frozen:
-            self._color_cache = colors
-            colors.setflags(write=False)
-        return colors
-
-    def _compute_hash(self) -> int:
-        """Compute the graph hash. Override in subclasses."""
-        if self.n_atoms == 0:
-            return hash(self.__class__)
-        return int(numpy_int_multiset_hash(self._get_colors()))
-
-    def __hash__(self) -> int:
-        if not self._frozen:
-            raise TypeError(
-                f"Unhashable type: unfrozen {self.__class__.__name__!r}. "
-                "Call .freeze() before using in sets or as dict keys."
-            )
-        if self._hash_cache is None:
-            self._hash_cache = self._compute_hash()
-        return self._hash_cache
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-
-        o_color_array = other._get_colors()
-        s_color_array = self._get_colors()
-
-        return any(
-            vf2pp_all_isomorphisms(
-                self,
-                other,
-                atom_labels=(s_color_array, o_color_array),
-                stereo=False,
-                stereo_change=False,
-                subgraph=False,
-            )
-        )
 
     def has_atom(self, atom: int) -> bool:
         """Returns True if the molecules contains an atom with this id.
@@ -307,6 +312,7 @@ class MolGraph:
         else:
             return {attr: self._atom_attrs[atom][attr] for attr in attributes}
 
+
     def has_bond(self, atom1: AtomId, atom2: AtomId) -> bool:
         """Returns True if bond is in MolGraph.
 
@@ -412,6 +418,7 @@ class MolGraph:
         else:
             return {attr: val for attr, val in self._bond_attrs[bond].items()}
 
+
     def bonded_to(self, atom: int) -> frozenset[int]:
         """
         Returns the atoms connected to the atom.
@@ -447,6 +454,105 @@ class MolGraph:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
         return matrix
+
+    def node_connected_component(self, atom: int) -> set[AtomId]:
+        """
+        :param atom: atom id
+        :return: Returns the connected component that includes atom_id
+        """
+        visited: set[AtomId] = set()
+        stack = [atom]
+        while stack:
+            node = stack.pop()
+
+            if node not in visited:
+                visited.add(node)
+            for neighbor in self.bonded_to(node):
+                if neighbor not in visited:
+                    stack.append(neighbor)
+        return visited
+
+    def connected_components(self) -> list[set[int]]:
+        """
+        :return: Returns the connected components of the graph
+        """
+        visited: set[AtomId] = set()
+        components: list[set[int]] = []
+
+        for atom in self.atoms:
+            if atom not in visited:
+                component = self.node_connected_component(atom)
+                components.append(component)
+                visited.update(component)
+
+        return components
+
+
+    def subgraph(self, atoms: Iterable[AtomId]) -> Self:
+        """
+        Returns a subgraph copy only containing the given atoms
+
+        :param atoms: Iterable of atom ids to be
+        :return: Subgraph
+        """
+        new_atoms = set(atoms)
+        atom_attrs = {atom: self._atom_attrs[atom] for atom in atoms}
+        bond_attrs = {
+            bond: attrs
+            for bond, attrs in self._bond_attrs.items()
+            if new_atoms.issuperset(bond)
+        }
+        neighbors = {
+            atom: {n for n in self._neighbors[atom] if n in new_atoms}
+            for atom in new_atoms
+        }
+        new_graph = self.__class__()
+        new_graph._atom_attrs = atom_attrs
+        new_graph._neighbors = neighbors
+        new_graph._bond_attrs = bond_attrs
+        return new_graph
+
+    def copy(self, frozen: bool = False) -> Self:
+        """
+        :return: returns a copy of self
+        """
+        new = deepcopy(self)
+        new._frozen = frozen
+        new._hash_cache = None
+        new._color_cache = None
+        return new
+
+    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
+        """Changes the atom labels according to mapping.
+
+        :param mapping: dict used for map old atom labels to new atom labels
+        :param copy: defines if the relabeling is done inplace or a new object
+                     should be created
+        :return: this object (self) or a new instance of self.__class__
+        """
+        atom_attrs = {
+            mapping.get(atom, atom): attrs for atom, attrs in self._atom_attrs.items()
+        }
+        neighbors = {
+            mapping.get(atom, atom): {mapping.get(n, n) for n in neighbors}
+            for atom, neighbors in self._neighbors.items()
+        }
+
+        bond_attrs = {
+            Bond({mapping.get(atom, atom) for atom in bond}): attrs
+            for bond, attrs in self._bond_attrs.items()
+        }
+        if copy is True:
+            new_graph = self.__class__()
+        elif copy is False:
+            self._check_mutable()
+            new_graph = self
+
+        new_graph._atom_attrs = atom_attrs
+        new_graph._neighbors = neighbors
+        new_graph._bond_attrs = bond_attrs
+        return new_graph
+
 
     def to_rdmol(
         self,
@@ -487,102 +593,6 @@ class MolGraph:
         assert isinstance(mg, cls), "MolGraph.from_rdmol did not return a MolGraph"
         return mg
 
-    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
-        """Changes the atom labels according to mapping.
-
-        :param mapping: dict used for map old atom labels to new atom labels
-        :param copy: defines if the relabeling is done inplace or a new object
-                     should be created
-        :return: this object (self) or a new instance of self.__class__
-        """
-        atom_attrs = {
-            mapping.get(atom, atom): attrs for atom, attrs in self._atom_attrs.items()
-        }
-        neighbors = {
-            mapping.get(atom, atom): {mapping.get(n, n) for n in neighbors}
-            for atom, neighbors in self._neighbors.items()
-        }
-
-        bond_attrs = {
-            Bond({mapping.get(atom, atom) for atom in bond}): attrs
-            for bond, attrs in self._bond_attrs.items()
-        }
-        if copy is True:
-            new_graph = self.__class__()
-        elif copy is False:
-            self._check_mutable()
-            new_graph = self
-
-        new_graph._atom_attrs = atom_attrs
-        new_graph._neighbors = neighbors
-        new_graph._bond_attrs = bond_attrs
-        return new_graph
-
-    def node_connected_component(self, atom: int) -> set[AtomId]:
-        """
-        :param atom: atom id
-        :return: Returns the connected component that includes atom_id
-        """
-        visited: set[AtomId] = set()
-        stack = [atom]
-        while stack:
-            node = stack.pop()
-
-            if node not in visited:
-                visited.add(node)
-            for neighbor in self.bonded_to(node):
-                if neighbor not in visited:
-                    stack.append(neighbor)
-        return visited
-
-    def connected_components(self) -> list[set[int]]:
-        """
-        :return: Returns the connected components of the graph
-        """
-        visited: set[AtomId] = set()
-        components: list[set[int]] = []
-
-        for atom in self.atoms:
-            if atom not in visited:
-                component = self.node_connected_component(atom)
-                components.append(component)
-                visited.update(component)
-
-        return components
-
-    def subgraph(self, atoms: Iterable[AtomId]) -> Self:
-        """
-        Returns a subgraph copy only containing the given atoms
-
-        :param atoms: Iterable of atom ids to be
-        :return: Subgraph
-        """
-        new_atoms = set(atoms)
-        atom_attrs = {atom: self._atom_attrs[atom] for atom in atoms}
-        bond_attrs = {
-            bond: attrs
-            for bond, attrs in self._bond_attrs.items()
-            if new_atoms.issuperset(bond)
-        }
-        neighbors = {
-            atom: {n for n in self._neighbors[atom] if n in new_atoms}
-            for atom in new_atoms
-        }
-        new_graph = self.__class__()
-        new_graph._atom_attrs = atom_attrs
-        new_graph._neighbors = neighbors
-        new_graph._bond_attrs = bond_attrs
-        return new_graph
-
-    def copy(self, frozen: bool = False) -> Self:
-        """
-        :return: returns a copy of self
-        """
-        new = deepcopy(self)
-        new._frozen = frozen
-        new._hash_cache = None
-        new._color_cache = None
-        return new
 
     def bonds_from_bond_order_matrix(
         self,
@@ -710,8 +720,10 @@ class MolGraph:
     ) -> Self:
         return connectivity_from_geometry(cls, geo, switching_function)
 
+
     def is_isomorphic(self, other: Self) -> bool:
         return self == other
+
 
     def __str__(self) -> str:
         a_list = sorted(

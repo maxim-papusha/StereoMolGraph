@@ -231,66 +231,6 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
         return active_atoms
 
     @override
-    def copy(self, frozen: bool = False) -> Self:
-        """
-        :return: returns a copy of self
-        """
-        new_graph = super().copy(frozen=frozen)
-        new_graph._atom_stereo_change = deepcopy(self._atom_stereo_change)
-        new_graph._bond_stereo_change = deepcopy(self._bond_stereo_change)
-        return new_graph
-
-    @override
-    def relabel_atoms(self, mapping: dict[AtomId, AtomId], copy: bool = True) -> Self:
-        """
-        Relabels the atoms of the graph and the chiral information accordingly
-
-        :param mapping: Mapping of old atom ids to new atom ids
-        :param copy: If the graph should be copied before relabeling,
-                     defaults to True
-        :return: Returns the relabeled graph or None if copy is False
-        """
-        relabeled_scrg = self.__class__(super().relabel_atoms(mapping, copy=copy))
-
-        atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]] = defaultdict(
-            ChangeDict[AtomStereo]
-        )
-
-        for atom, stereo_change_dict in self._atom_stereo_change.items():
-            for stereo_change, atom_stereo in stereo_change_dict.items():
-                if atom_stereo is None:
-                    continue
-                new_stereo = atom_stereo.__class__(
-                    tuple(mapping.get(atom, atom) for atom in atom_stereo.atoms),
-                    atom_stereo.parity,
-                )
-                atom_stereo_change[mapping[atom]][stereo_change] = new_stereo
-
-        bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]] = defaultdict(
-            ChangeDict[BondStereo]
-        )
-
-        for bond, stereo_change_dict in self._bond_stereo_change.items():
-            for stereo_change, bond_stereo in stereo_change_dict.items():
-                if bond_stereo is None:
-                    continue
-                new_bond = Bond(mapping[a] for a in bond)
-                new_stereo = bond_stereo.__class__(
-                    tuple(mapping.get(atom, atom) for atom in bond_stereo.atoms),
-                    bond_stereo.parity,
-                )
-                bond_stereo_change[new_bond][stereo_change] = new_stereo
-
-        if copy is True:
-            relabeled_scrg._atom_stereo_change = atom_stereo_change
-            relabeled_scrg._bond_stereo_change = bond_stereo_change
-        else:
-            self._atom_stereo_change = atom_stereo_change
-            self._bond_stereo_change = bond_stereo_change
-
-        return relabeled_scrg
-
-    @override
     def reactant(self, keep_attributes: bool = True) -> StereoMolGraph:
         """
         Returns the reactant of the reaction
@@ -402,6 +342,66 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
             rev_reac.set_bond_stereo_change(**new_bond_change_dict)
 
         return rev_reac
+
+    @override
+    def copy(self, frozen: bool = False) -> Self:
+        """
+        :return: returns a copy of self
+        """
+        new_graph = super().copy(frozen=frozen)
+        new_graph._atom_stereo_change = deepcopy(self._atom_stereo_change)
+        new_graph._bond_stereo_change = deepcopy(self._bond_stereo_change)
+        return new_graph
+
+    @override
+    def relabel_atoms(self, mapping: dict[AtomId, AtomId], copy: bool = True) -> Self:
+        """
+        Relabels the atoms of the graph and the chiral information accordingly
+
+        :param mapping: Mapping of old atom ids to new atom ids
+        :param copy: If the graph should be copied before relabeling,
+                     defaults to True
+        :return: Returns the relabeled graph or None if copy is False
+        """
+        relabeled_scrg = self.__class__(super().relabel_atoms(mapping, copy=copy))
+
+        atom_stereo_change: defaultdict[AtomId, ChangeDict[AtomStereo]] = defaultdict(
+            ChangeDict[AtomStereo]
+        )
+
+        for atom, stereo_change_dict in self._atom_stereo_change.items():
+            for stereo_change, atom_stereo in stereo_change_dict.items():
+                if atom_stereo is None:
+                    continue
+                new_stereo = atom_stereo.__class__(
+                    tuple(mapping.get(atom, atom) for atom in atom_stereo.atoms),
+                    atom_stereo.parity,
+                )
+                atom_stereo_change[mapping[atom]][stereo_change] = new_stereo
+
+        bond_stereo_change: defaultdict[Bond, ChangeDict[BondStereo]] = defaultdict(
+            ChangeDict[BondStereo]
+        )
+
+        for bond, stereo_change_dict in self._bond_stereo_change.items():
+            for stereo_change, bond_stereo in stereo_change_dict.items():
+                if bond_stereo is None:
+                    continue
+                new_bond = Bond(mapping[a] for a in bond)
+                new_stereo = bond_stereo.__class__(
+                    tuple(mapping.get(atom, atom) for atom in bond_stereo.atoms),
+                    bond_stereo.parity,
+                )
+                bond_stereo_change[new_bond][stereo_change] = new_stereo
+
+        if copy is True:
+            relabeled_scrg._atom_stereo_change = atom_stereo_change
+            relabeled_scrg._bond_stereo_change = bond_stereo_change
+        else:
+            self._atom_stereo_change = atom_stereo_change
+            self._bond_stereo_change = bond_stereo_change
+
+        return relabeled_scrg
 
     @override
     def enantiomer(self) -> Self:

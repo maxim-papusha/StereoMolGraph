@@ -65,6 +65,7 @@ class StereoMolGraph(MolGraph):
             self._atom_stereo = {}
             self._bond_stereo = {}
 
+
     @override
     def _compute_colors(self) -> np.ndarray:
         labels = label_hash(self, atom_labels=("atom_type",))
@@ -76,6 +77,7 @@ class StereoMolGraph(MolGraph):
             return hash(self.__class__)
         else:
             return int(numpy_int_multiset_hash(self._get_colors()))
+
 
     @override
     def __eq__(self, other: object) -> bool:
@@ -96,33 +98,6 @@ class StereoMolGraph(MolGraph):
             )
         )
 
-    @override
-    def __str__(self) -> str:
-        a_list = sorted(
-            (a, SYMBOLS[a_type]) for a, a_type in zip(self.atoms, self.atom_types)
-        )
-        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
-        repr_atom_stereo = self._atom_stereo
-        repr_bond_stereo = {
-            tuple(sorted(bond)): bond_stereo
-            for bond, bond_stereo in self._bond_stereo.items()
-        }
-
-        pretty_str = pformat(
-            [
-                ["Atoms", a_list],
-                ["Bonds", b_list],
-                ["Atom Stereo", repr_atom_stereo],
-                ["Bond Stereo", repr_bond_stereo],
-            ],
-            indent=0,
-            width=120,
-            compact=True,
-            sort_dicts=True,
-        )
-        return f"{self.__class__.__name__}\n{pretty_str}".translate(
-            str.maketrans("", "", ",\"'[]")
-        )
 
     @property
     def stereo(self) -> Mapping[AtomId | Bond, AtomStereo | BondStereo]:
@@ -135,6 +110,7 @@ class StereoMolGraph(MolGraph):
     @property
     def bond_stereo(self) -> Mapping[Bond, BondStereo]:
         return MappingProxyType(self._bond_stereo)
+
 
     def get_atom_stereo(self, atom: AtomId) -> None | AtomStereo:
         """Returns the stereo information of the atom if it exists else None.
@@ -215,6 +191,7 @@ class StereoMolGraph(MolGraph):
         self._check_mutable()
         del self._bond_stereo[Bond(bond)]
 
+
     @override
     def remove_atom(self, atom: int):
         """Removes an atom from the graph and deletes all chiral information
@@ -230,6 +207,7 @@ class StereoMolGraph(MolGraph):
             if atom in bond_stereo.atoms:
                 self.delete_bond_stereo(bond)
         super().remove_atom(atom)
+
 
     @override
     def copy(self, frozen: bool = False) -> Self:
@@ -318,6 +296,7 @@ class StereoMolGraph(MolGraph):
                 enantiomer.set_atom_stereo(stereo.invert())
         return enantiomer
 
+
     @override
     def to_rdmol(
         self,
@@ -371,6 +350,7 @@ class StereoMolGraph(MolGraph):
         )
         smg = rd2smg(rdmol)
         return cls(smg)
+
 
     @override
     @classmethod
@@ -443,3 +423,32 @@ class StereoMolGraph(MolGraph):
         stereo_mol_graph = stero_from_geometry(mol_graph, geo)
         assert stereo_mol_graph is not None
         return stereo_mol_graph
+
+
+    @override
+    def __str__(self) -> str:
+        a_list = sorted(
+            (a, SYMBOLS[a_type]) for a, a_type in zip(self.atoms, self.atom_types)
+        )
+        b_list = sorted(tuple(sorted(bond)) for bond in self.bonds)
+        repr_atom_stereo = self._atom_stereo
+        repr_bond_stereo = {
+            tuple(sorted(bond)): bond_stereo
+            for bond, bond_stereo in self._bond_stereo.items()
+        }
+
+        pretty_str = pformat(
+            [
+                ["Atoms", a_list],
+                ["Bonds", b_list],
+                ["Atom Stereo", repr_atom_stereo],
+                ["Bond Stereo", repr_bond_stereo],
+            ],
+            indent=0,
+            width=120,
+            compact=True,
+            sort_dicts=True,
+        )
+        return f"{self.__class__.__name__}\n{pretty_str}".translate(
+            str.maketrans("", "", ",\"'[]")
+        )
