@@ -8,13 +8,13 @@ from stereomolgraph import AtomId, Bond, StereoMolGraph
 from stereomolgraph.algorithms.circular import color_refine_smg
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.stereodescriptors import (
-    HinderedBond,
-    HinderedBond12,
-    HinderedBond13,
-    HinderedBond23,
-    HinderedBond33,
     OInt,
     PlanarBond,
+    RigidBond,
+    RigidBond12,
+    RigidBond13,
+    RigidBond23,
+    RigidBond33,
     Tetrahedral,
 )
 
@@ -100,7 +100,7 @@ def bond_automorphism_classes(
     return classes
 
 
-def topological_symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
+def symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
     """
     Calculated from the number of graph isomorphisms which conserve the
     stereo information.
@@ -112,6 +112,7 @@ def topological_symmetry_number(graph: StereoMolGraph, atom_labels=None) -> int:
     mappings = vf2pp_all_isomorphisms(
         graph, graph, stereo=True, atom_labels=(atom_labels, atom_labels)
     )
+    # most efficient way to get the len of a generator
     return deque(enumerate(mappings, 1), maxlen=1)[0][0]
 
 
@@ -139,20 +140,20 @@ def bond_symmetry_number(
         nbrs1, nbrs2 = nbrs2, nbrs1
 
     if len(nbrs1) == 3 and len(nbrs2) == 3:
-        s = HinderedBond33(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
+        s = RigidBond33(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 2 and len(nbrs2) == 3:
-        s = HinderedBond23(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
+        s = RigidBond23(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 1 and len(nbrs2) == 3:
-        s = HinderedBond13(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
+        s = RigidBond13(atoms=(*nbrs1, a1, a2, *nbrs2), parity=1)
     elif len(nbrs1) == 2 and len(nbrs2) == 2:
         s = PlanarBond(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
     elif len(nbrs1) == 1 and len(nbrs2) == 2:
-        s = HinderedBond12(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
+        s = RigidBond12(atoms=(*nbrs1, a1, a2, *nbrs2), parity=0)
     else:
         raise NotImplementedError(
             "Bonds with more than 3 substituents are not supported"
         )
-    unique_reorderings: set[HinderedBond] = set()
+    unique_reorderings: set[RigidBond] = set()
     bond_class = s.__class__
 
     for mapping in mappings:
@@ -172,7 +173,7 @@ def bond_symmetry_number(
     return len(unique_reorderings)
 
 
-def ext_sym_num(
+def external_symmetry_number(
     graph: StereoMolGraph, mappings: Iterable[dict[int, int]] | None = None
 ) -> int:
     """Calculate the upper bound of the external symmetry number for StereoMolGraph"""
@@ -186,33 +187,16 @@ def ext_sym_num(
     for mapping in mappings:
         mapping[None] = None
 
-    # atom_eq_classes: dict[AtomId | None, set[AtomId | None]]
-    atom_eq_classes = atom_automorphism_classes(graph, mappings=mappings)
-    atom_eq_classes[None] = {None}
     bond_eq_classes = bond_automorphism_classes(graph, mappings=mappings)
-
-    def group_by_eq(atoms: Iterable[OInt]) -> list[set[OInt]]:
-        groups: list[set[OInt]] = []
-        for a in atoms:
-            for g in groups:
-                if any(a in atom_eq_classes[b] for b in g):
-                    g.add(a)
-                    break
-            else:
-                groups.append({a})
-        return groups
 
     def ordered_tetrahedral_neighbors(
         stereo: Tetrahedral,
         bonded_atom: AtomId,
         *,
         is_left: bool,
-        unique_neighbor: OInt = None,
     ) -> tuple[OInt, OInt, OInt]:
         for permuted_atoms in stereo._perm_atoms():
             if permuted_atoms[1] != bonded_atom:
-                continue
-            if unique_neighbor is not None and permuted_atoms[2] != unique_neighbor:
                 continue
 
             ordered_neighbors = (
@@ -235,26 +219,21 @@ def ext_sym_num(
             f"Could not order tetrahedral neighbors for atom {stereo.central_atom}"
         )
 
-    def singled_out_neighbor(groups: list[set[OInt]]) -> OInt:
-        if len(groups) != 2:
-            return None
+    rigid_bonds: dict[Bond, RigidBond] = {}
 
-        singleton_group = next((group for group in groups if len(group) == 1), None)
-        if singleton_group is None:
-            return None
-
-        return next(iter(singleton_group))
-
-    hindered_bonds: dict[Bond, HinderedBond] = {}
-
+    # 1. Loop over bond equivalence classes
     for eq_cls in {frozenset(eq_cls) for eq_cls in bond_eq_classes.values()}:
         eq_bonds = tuple(eq_cls)
         eq_cls_iterator = iter(eq_bonds)
+
+        # a. Atoms a1, a2 in the first bond of the equivalence class
         a1, a2 = next(eq_cls_iterator)
 
+        # b. If there is already bond stereochemistry, skip this equivalence class
         if graph.get_bond_stereo({a1, a2}) is not None:
             continue
 
+        # c. Determine the neighbors external to the bond
         nbrs1 = tuple(a for a in graph.bonded_to(a1) if a != a2)
         nbrs2 = tuple(a for a in graph.bonded_to(a2) if a != a1)
         if len(nbrs1) > len(nbrs2):
@@ -264,101 +243,41 @@ def ext_sym_num(
         if len(nbrs1) < 2:
             continue
 
+        # d. Get the stereochemistry of the atoms
         stereo1 = graph.get_atom_stereo(a1)
         stereo2 = graph.get_atom_stereo(a2)
-        hb: HinderedBond | None = None
+        hb: RigidBond | None = None
 
+        # e. Assign RigidBond33 for two tetrahedral atoms
         if isinstance(stereo1, Tetrahedral) and isinstance(stereo2, Tetrahedral):
-            eq_cls1 = group_by_eq(set(stereo1.atoms[1:5]) - {a2})
-            eq_cls2 = group_by_eq(set(stereo2.atoms[1:5]) - {a1})
-
-            if len(eq_cls2) > len(eq_cls1):
-                a1, a2 = a2, a1
-                stereo1, stereo2 = stereo2, stereo1
-                eq_cls1, eq_cls2 = eq_cls2, eq_cls1
-
             assert stereo1.parity is not None and stereo2.parity is not None
             parity = stereo1.parity * stereo2.parity
-            pattern1 = tuple(sorted((len(group) for group in eq_cls1), reverse=True))
-            pattern2 = tuple(sorted((len(group) for group in eq_cls2), reverse=True))
 
-            if (pattern1, pattern2) in {
-                ((3,), (3,)),
-                ((1, 1, 1), (3,)),
-                ((1, 1, 1), (2, 1)),
-                ((1, 1, 1), (1, 1, 1)),
-            }:
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
+            # i. Form RigidBond33, ordering external neighbors consistently
+            #    with the tetrahedral stereochemistry
+            left3 = ordered_tetrahedral_neighbors(stereo1, a2, is_left=True)
+            right3 = ordered_tetrahedral_neighbors(stereo2, a1, is_left=False)
+            hb = RigidBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
 
-            elif (pattern1, pattern2) == ((2, 1), (2, 1)):
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                    unique_neighbor=singled_out_neighbor(eq_cls1),
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                    unique_neighbor=singled_out_neighbor(eq_cls2),
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
-
-            elif (pattern1, pattern2) == ((2, 1), (3,)):
-                left3 = ordered_tetrahedral_neighbors(
-                    stereo1,
-                    a2,
-                    is_left=True,
-                    unique_neighbor=singled_out_neighbor(eq_cls1),
-                )
-                right3 = ordered_tetrahedral_neighbors(
-                    stereo2,
-                    a1,
-                    is_left=False,
-                )
-                hb = HinderedBond33(atoms=(*left3, a1, a2, *right3), parity=parity)
-
+        # f. Assign RigidBond23 for an sp2 and a tetrahedral atom
         elif len(nbrs1) == 2 and isinstance(stereo2, Tetrahedral):
-            if len(atom_eq_classes[nbrs1[0]]) == 2 == len(atom_eq_classes[nbrs1[1]]):
-                eq_cls_t = sorted(
-                    group_by_eq(set(stereo2.atoms[1:6]) - {a2}),
-                    key=len,
-                    reverse=True,
-                )
-                hb_atoms2 = next(
-                    (a1, *reversed(p[2:6]))
-                    for p in stereo2._perm_atoms()
-                    if p[1] == a1 and eq_cls_t[0] == set(p[4:6])
-                )
-            else:
-                hb_atoms2 = next(
-                    (*reversed(p[2:6]), a1) for p in stereo2._perm_atoms() if p[1] == a1
-                )
-            hb = HinderedBond23(
-                atoms=(*nbrs1, a1, a2, *hb_atoms2),
-                parity=stereo2.parity,
+            # i. Get the right neighbors in an order consistent with their parity
+            # (Reverse the order of the external neighbors since the parity is opposite)
+            right5 = next(
+                (a1, a2, *reversed(p[2:])) for p in stereo2._perm_atoms() if p[1] == a1
             )
+            # i. If both external neighbors of a1 have orbits of length 2
+            hb = RigidBond23(atoms=(*nbrs1, *right5), parity=stereo2.parity)
 
         if hb is None:
             continue
 
-        hindered_bonds[frozenset({a1, a2})] = hb
+        rigid_bonds[frozenset({a1, a2})] = hb
         for eq_bond in eq_cls_iterator:
             for mapping in mappings:
                 bond = frozenset({mapping[a1], mapping[a2]})
                 if bond == eq_bond:
-                    hindered_bonds[bond] = hb.__class__(
+                    rigid_bonds[bond] = hb.__class__(
                         atoms=tuple(mapping[a] for a in hb.atoms),
                         parity=hb.parity,
                     )
@@ -367,9 +286,10 @@ def ext_sym_num(
     for mapping in mappings:
         if all(
             hb.__class__(atoms=tuple(mapping[a] for a in hb.atoms), parity=hb.parity)
-            in hindered_bonds.values()
-            for hb in hindered_bonds.values()
+            in rigid_bonds.values()
+            for hb in rigid_bonds.values()
         ):
             ext_sym_num += 1
-
+    if ext_sym_num == 0:
+        raise RuntimeError("External symmetry number is zero, this should not happen")
     return ext_sym_num

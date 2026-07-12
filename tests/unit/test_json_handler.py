@@ -12,7 +12,7 @@ from stereomolgraph import (
 from stereomolgraph.coords import Geometry
 from stereomolgraph.experimental import JSONHandler
 from stereomolgraph.graphs.crg import Change
-from stereomolgraph.stereodescriptors import HinderedBond33, PlanarBond, Tetrahedral
+from stereomolgraph.stereodescriptors import RigidBond33, PlanarBond, Tetrahedral
 
 
 def _build_sample_molgraph() -> MolGraph:
@@ -108,7 +108,7 @@ def test_json_roundtrip_planar_bond_with_null_atoms(
     assert deserialized == smg
 
 
-def test_json_roundtrip_hindered_bond33() -> None:
+def test_json_roundtrip_rigid_bond33() -> None:
     smg = StereoMolGraph()
     for atom in range(8):
         smg.add_atom(atom, "C")
@@ -124,7 +124,7 @@ def test_json_roundtrip_hindered_bond33() -> None:
     ):
         smg.add_bond(a1, a2)
 
-    smg.set_bond_stereo(HinderedBond33((0, 1, 2, 3, 4, 5, 6, 7), 0))
+    smg.set_bond_stereo(RigidBond33((0, 1, 2, 3, 4, 5, 6, 7), 0))
 
     serialized = JSONHandler.json_serialize(smg)
     deserialized = JSONHandler.json_deserialize(serialized)
