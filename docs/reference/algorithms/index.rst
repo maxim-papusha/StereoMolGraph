@@ -9,10 +9,22 @@ Algorithms
       :link-type: doc
       :text-align: center
 
+   .. grid-item-card:: Circular
+      :link: circular
+      :link-type: doc
+      :text-align: center
+
+   .. grid-item-card:: Symmetry
+      :link: symmetry
+      :link-type: doc
+      :text-align: center
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    isomorphism
+   circular
+   symmetry
 
 
