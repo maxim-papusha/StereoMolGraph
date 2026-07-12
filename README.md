@@ -79,7 +79,6 @@ If you use **StereoMolGraph**, please cite the relevant publication(s):
   number  = {7},
   pages   = {3830--3839},
   doi     = {10.1021/acs.jcim.5c02523},
-  url     = {https://doi.org/10.1021/acs.jcim.5c02523}
 }
 
 @article{Papusha2026CircularStereoAlgorithm,
@@ -90,7 +89,6 @@ If you use **StereoMolGraph**, please cite the relevant publication(s):
   year    = {2026},
   note    = {Preprint},
   doi     = {10.26434/chemrxiv.15002723/v1},
-  url     = {https://doi.org/10.26434/chemrxiv.15002723/v1}
 }
 
 @unpublished{Papusha2026SymmetryNumbers,
@@ -100,7 +98,6 @@ If you use **StereoMolGraph**, please cite the relevant publication(s):
             and Transition States},
   year   = {2026},
   note   = {Manuscript submitted for publication},
-  url    = {https://github.com/maxim-papusha/Experiments-SymmetryNumbers}
 }
 ```
 
