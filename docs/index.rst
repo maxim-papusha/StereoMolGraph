@@ -30,7 +30,7 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 .. |github| image:: https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white
    :target: https://github.com/maxim-papusha/StereoMolGraph
 
-|pypi| |python| |license| |tests| |docs| |github|  |doi|
+|pypi| |python| |license| |tests| |github|  |doi|
 
 Welcome to the documentation for **StereoMolGraph**.
 
