@@ -178,7 +178,7 @@ class SMG2Geo:
                 # rdForceFieldHelpers.UFFHasAllMoleculeParams
                 ff = rdForceFieldHelpers.UFFGetMoleculeForceField(mol, confId=cid)
                 if ff:
-                    ff.Minimize(energyTol=1e-6, maxIts=100)
+                    ff.Minimize(energyTol=1e-6, maxIts=1000)
                     # Re-fetch positions after optimization
                     conf = mol.GetConformer(cid)
 
