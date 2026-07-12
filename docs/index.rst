@@ -27,9 +27,6 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 .. |doi| image:: https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square
    :target: https://doi.org/10.1021/acs.jcim.5c02523
 
-.. |docs| image:: https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white
-   :target: https://stereomolgraph.readthedocs.io
-
 .. |github| image:: https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white
    :target: https://github.com/maxim-papusha/StereoMolGraph
 
