@@ -44,10 +44,8 @@ pip install stereomolgraph
 
 ## Feedback and support
 
-Bug reports are welcome — please open an issue on GitHub.
-
-Issues:
-- Bugreports: https://github.com/maxim-papusha/StereoMolGraph/issues
+Bug reports, feature requests, and questions are welcome through
+[GitHub Issues](https://github.com/maxim-papusha/StereoMolGraph/issues).
 
 
 ## Citations
