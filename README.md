@@ -52,15 +52,15 @@ Bug reports, feature requests, and questions are welcome through
 
 If you use **StereoMolGraph**, please cite the relevant publication(s):
 
-1. M. Papusha and K. Leonhard, “**StereoMolGraph**: Stereochemistry-Aware Molecular and Reaction Graphs,” *J. Chem. Inf. Model.*, **2026**, *66*, 3830–3839.
+1. M. Papusha and K. Leonhard, “**StereoMolGraph**: Stereochemistry-Aware Molecular and Reaction Graphs,” *J. Chem. Inf. Model.*, 2026, *66*, 3830–3839.
    [![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
    [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-StereoMolGraph)
 
-2. M. Papusha and K. Leonhard, “**Circular Stereo Algorithm** and Fingerprint for Chiral Resonance Invariant Molecular Representation,” *ChemRxiv*, **2026**, preprint.
+2. M. Papusha and K. Leonhard, “**Circular Stereo Algorithm** and Fingerprint for Chiral Resonance Invariant Molecular Representation,” *ChemRxiv*, 2026, preprint.
    [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15002723%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
    [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-CircularStereoAlgorithm)
 
-3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “**Symmetry Numbers**: A Flexible Approach for Molecules and Transition States,” submitted manuscript, **2026**.
+3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “**Symmetry Numbers**: A Flexible Approach for Molecules and Transition States,” submitted manuscript, 2026.
    ![DOI](https://img.shields.io/badge/DOI-pending-lightgrey?style=flat-square)
    [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-SymmetryNumbers)
 
