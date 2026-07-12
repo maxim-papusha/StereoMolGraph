@@ -50,43 +50,24 @@ Issues:
 - Bugreports: https://github.com/maxim-papusha/StereoMolGraph/issues
 
 
-## Citation
+## Citations
 
-If you use **StereoMolGraph** in your research, please cite the main library paper:
+If you use **StereoMolGraph**, please cite the relevant publication(s):
 
-> **M. Papusha and K. Leonhard**,
-> “StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs,”
-> *Journal of Chemical Information and Modeling* **2026**, *66* (7), 3830–3839.
+1. M. Papusha and K. Leonhard, “StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs,” *J. Chem. Inf. Model.*, **2026**, *66*, 3830–3839.
+   [![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-StereoMolGraph)
 
-[![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
-[![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-StereoMolGraph)
+2. M. Papusha and K. Leonhard, “Circular Stereo Algorithm and Fingerprint for Chiral Resonance Invariant Molecular Representation,” *ChemRxiv*, **2026**, preprint.
+   [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15002723%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-CircularStereoAlgorithm)
 
-## Publications using StereoMolGraph
-
-The following publications use StereoMolGraph. The corresponding repositories contain experimental code, notebooks, data, and reproducibility material.
-
-### Circular Stereo Algorithm and Fingerprint
-
-> **M. Papusha and K. Leonhard**,
-> “Circular Stereo Algorithm and Fingerprint for Chiral Resonance Invariant Molecular Representation,”
-> *ChemRxiv* **2026**, preprint.
-
-[![Preprint](https://img.shields.io/badge/Preprint-ChemRxiv-B31B1B?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
-[![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-CircularStereoAlgorithm)
-
-### Symmetry Numbers
-
-> **M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard**,
-> “Symmetry Numbers: A Flexible Approach for Molecules and Transition States,”
-> manuscript submitted for publication, **2026**.
-
-[![Status](https://img.shields.io/badge/Status-Submitted-6B7280?style=flat-square)](#)
-[![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-SymmetryNumbers)
-
-## BibTeX
+3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “Symmetry Numbers: A Flexible Approach for Molecules and Transition States,” submitted manuscript, **2026**.
+   ![DOI](https://img.shields.io/badge/DOI-pending-lightgrey?style=flat-square)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-SymmetryNumbers)
 
 <details>
-<summary><strong>Show all BibTeX references</strong></summary>
+<summary><strong>BibTeX entries</strong></summary>
 
 ```bibtex
 @article{Papusha2026StereoMolGraph,
@@ -103,7 +84,8 @@ The following publications use StereoMolGraph. The corresponding repositories co
 
 @article{Papusha2026CircularStereoAlgorithm,
   author  = {Papusha, Maxim and Leonhard, Kai},
-  title   = {Circular Stereo Algorithm and Fingerprint for Chiral Resonance Invariant Molecular Representation},
+  title   = {Circular Stereo Algorithm and Fingerprint for Chiral Resonance
+             Invariant Molecular Representation},
   journal = {ChemRxiv},
   year    = {2026},
   note    = {Preprint},
@@ -112,8 +94,10 @@ The following publications use StereoMolGraph. The corresponding repositories co
 }
 
 @unpublished{Papusha2026SymmetryNumbers,
-  author = {Papusha, Maxim and Copan, Andreas V. and Rotavera, Brandon and Leonhard, Kai},
-  title  = {Symmetry Numbers: A Flexible Approach for Molecules and Transition States},
+  author = {Papusha, Maxim and Copan, Andreas V. and
+            Rotavera, Brandon and Leonhard, Kai},
+  title  = {Symmetry Numbers: A Flexible Approach for Molecules
+            and Transition States},
   year   = {2026},
   note   = {Manuscript submitted for publication},
   url    = {https://github.com/maxim-papusha/Experiments-SymmetryNumbers}
@@ -121,7 +105,6 @@ The following publications use StereoMolGraph. The corresponding repositories co
 ```
 
 </details>
-
 
 
 ## License
