@@ -52,10 +52,10 @@ StereoMolGraph implements the following magic methods:
 * ``__eq__``: based on :doc:`graph isomorphism </reference/algorithms/isomorphism>` and stereochemical equivalence. [#smg]_
 * ``__hash__``: based on Circular Stereo Algorithm. [#csa]_
 
-Citation
-========
+Citations
+=========
 
-If you use StereoMolGraph in your work, please cite:
+If you use StereoMolGraph, please cite the relevant publication(s):
 
 .. [#smg] M. Papusha and K. Leonhard,
    *StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs*,
