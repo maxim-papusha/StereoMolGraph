@@ -56,6 +56,8 @@ extensions = [
     # Theme and UI extensions
     "sphinx_copybutton",
     "sphinx_design",
+    # BibTeX citations
+    "sphinxcontrib.bibtex",
     "sphinx.ext.intersphinx",
 ]
 
@@ -115,3 +117,6 @@ typehints_use_signature = True
 typehints_use_signature_return = True
 
 rst_prolog = ":github_url: https://github.com/maxim-papusha/StereoMolGraph"
+
+# -- sphinxcontrib-bibtex ---------------------------------------------------
+bibtex_bibfiles = ["references.bib"]

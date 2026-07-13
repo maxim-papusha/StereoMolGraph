@@ -303,9 +303,7 @@ def vf2pp_all_isomorphisms(
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
-    r"""Find all isomorphisms between two graphs.
-
-    Defined in: https://doi.org/10.1021/acs.jcim.5c02523
+    r"""Find all isomorphisms between two graphs :cite:`papusha2026stereomolgraph`.
 
     :param g1: First graph
     :param g2: Second graph

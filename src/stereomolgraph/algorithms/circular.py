@@ -171,8 +171,7 @@ def circular_stereo_generator(
     smg: StereoMolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
-    """Generator of the Circular Stereo Algorithm for StereoMolGraph.
-    https://doi.org/10.26434/chemrxiv.15002723/v1
+    """Generator of the Circular Stereo Algorithm for StereoMolGraph :cite:`papusha2026circular`.
     """
 
     n_atoms = len(smg.atoms)

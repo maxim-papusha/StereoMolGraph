@@ -49,27 +49,13 @@ Magic Methods
 
 StereoMolGraph implements the following magic methods:
 
-* ``__eq__``: based on :doc:`graph isomorphism </reference/algorithms/isomorphism>` and stereochemical equivalence. [#smg]_
-* ``__hash__``: based on Circular Stereo Algorithm. [#csa]_
+* ``__eq__``: based on :doc:`graph isomorphism </reference/algorithms/isomorphism>` and stereochemical equivalence :cite:`papusha2026stereomolgraph`
+* ``__hash__``: based on Circular Stereo Algorithm :cite:`papusha2026circular`
 
 Citations
 =========
 
-If you use StereoMolGraph, please cite the relevant publication(s):
-
-.. [#smg] M. Papusha and K. Leonhard,
-   *StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs*,
-   *J. Chem. Inf. Model.* 2026,
-   `DOI: 10.1021/acs.jcim.5c02523 <https://doi.org/10.1021/acs.jcim.5c02523>`_
-
-.. [#csa] M. Papusha and K. Leonhard,
-   *Circular Stereo Algorithm and Fingerprint for Chiral Resonance Invariant Molecular Representations*,
-   *ChemRxiv* 2026,
-   `DOI: 10.26434/chemrxiv.15002723/v1 <https://doi.org/10.26434/chemrxiv.15002723/v1>`_
-
-.. [#sym_num] M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard,
-   *Symmetry Numbers: A Flexible Approach for Molecules and Transition States*,
-   submitted, 2026.
+If you use StereoMolGraph, please cite the relevant :doc:`publication(s) </reference/bibliography>`.
 
 .. toctree::
    :maxdepth: 1
