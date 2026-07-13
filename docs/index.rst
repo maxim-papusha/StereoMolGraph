@@ -55,7 +55,10 @@ StereoMolGraph implements the following magic methods:
 Citations
 =========
 
-If you use StereoMolGraph, please cite the relevant :doc:`publication(s) </reference/bibliography>`.
+If you use StereoMolGraph, please cite the relevant publication(s):
+
+.. bibliography::
+   :all:
 
 .. toctree::
    :maxdepth: 1

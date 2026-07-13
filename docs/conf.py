@@ -120,3 +120,4 @@ rst_prolog = ":github_url: https://github.com/maxim-papusha/StereoMolGraph"
 
 # -- sphinxcontrib-bibtex ---------------------------------------------------
 bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "unsrt"
