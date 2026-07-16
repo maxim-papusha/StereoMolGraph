@@ -60,9 +60,11 @@ If you use **StereoMolGraph**, please cite the relevant publication(s):
    [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15002723%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
    [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-CircularStereoAlgorithm)
 
-3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “**Symmetry Numbers**: A Flexible Approach for Molecules and Transition States,” submitted manuscript, 2026.
-      [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15006158%2Fv1-ffcc00?style=flat-square)] (https://doi.org/10.26434/chemrxiv.15006158/v1)
+3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “**Symmetry Numbers**: A Flexible Approach for Molecules and Transition States,” *ChemRxiv*, 2026, preprint.
+   [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15006158%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15006158/v1)
+   [![Preprint](https://img.shields.io/badge/Preprint-ChemRxiv-00A4CC?style=flat-square)](https://doi.org/10.26434/chemrxiv.15006158/v1)
    [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-SymmetryNumbers)
+
 
 <details>
 <summary><strong>BibTeX entries</strong></summary>
