@@ -90,13 +90,15 @@ If you use **StereoMolGraph**, please cite the relevant publication(s):
   doi     = {10.26434/chemrxiv.15002723/v1},
 }
 
-@unpublished{Papusha2026SymmetryNumbers,
+@article{Papusha2026SymmetryNumbers,
   author = {Papusha, Maxim and Copan, Andreas V. and
             Rotavera, Brandon and Leonhard, Kai},
   title  = {Symmetry Numbers: A Flexible Approach for Molecules
             and Transition States},
+  journal = {ChemRxiv},
   year   = {2026},
-  note   = {Manuscript submitted for publication},
+  note   = {Preprint},
+  doi     = {10.26434/chemrxiv.15002723/v1},
 }
 ```
 
