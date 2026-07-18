@@ -5,8 +5,9 @@ Tutorials
    :maxdepth: 1
    :caption: Tutorials
 
-   rdkit
+   
    geo
+   ../examples/stereoiso
 
 
 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, NamedTuple
 
-from stereomolgraph.algorithms.color_refine import label_hash
+import numpy as np
+
+from stereomolgraph.algorithms.circular import label_hash
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
@@ -43,8 +46,8 @@ class _Parameters(NamedTuple):
     """
 
     # Neighborhood
-    g1_nbrhd: Mapping[AtomId, set[AtomId]]
-    g2_nbrhd: Mapping[AtomId, set[AtomId]]
+    g1_nbrhd: Mapping[AtomId, frozenset[AtomId]]
+    g2_nbrhd: Mapping[AtomId, frozenset[AtomId]]
     # atomid: label
     g1_labels: Mapping[AtomId, np.int64]
     g2_labels: Mapping[AtomId, np.int64]
@@ -147,8 +150,8 @@ def _sanity_check_and_init(
     g2: StereoMolGraph | MolGraph,
     atom_labels: None
     | tuple[
-        np.ndarray[tuple[int], np.dtype[np.int64]],
-        np.ndarray[tuple[int], np.dtype[np.int64]],
+        Mapping[AtomId, np.int64],
+        Mapping[AtomId, np.int64],
     ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
@@ -291,20 +294,49 @@ def vf2pp_all_isomorphisms(
     | StereoMolGraph
     | CondensedReactionGraph
     | StereoCondensedReactionGraph,
-    atom_labels: None | tuple[Mapping[AtomId, int], Mapping[AtomId, int]] = None,
+    atom_labels: None
+    | tuple[
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+        np.ndarray[tuple[int], np.dtype[np.int64]],
+    ] = None,
     stereo: bool = False,
     stereo_change: bool = False,
     subgraph: bool = False,
 ) -> Iterator[dict[AtomId, AtomId]]:
-    r"""Find all isomorphisms between two graphs.
+    r"""Find all isomorphisms between two graphs :cite:`papusha2026stereomolgraph`.
 
-    Jüttner, A.; Madarasi, P.
-    VF2++—An Improved Subgraph Isomorphism Algorithm.
-    Discrete Appl. Math. 2018, 242, 69-81.
-    https://doi.org/10.1016/j.dam.2018.02.018.
+    :param g1: First graph
+    :param g2: Second graph
+    :param atom_labels: Optional precomputed graph-ordered atom-label arrays for both
+                        graphs, if none defaults to color refinement.
+    :param stereo: Whether to consider stereochemistry in the isomorphism
+    :param stereo_change: Whether to consider stereochemistry changes in the isomorphism
+    :param subgraph: Whether to find subgraph isomorphisms instead of graph isomorphisms
+                     (Currently only limited support and not well tested.)
+    :return: An iterator of all isomorphisms, where each isomorphism is represented as a
+             dictionary mapping atom ids of g1 to atom ids of g2.
     """
+    normalized_atom_labels = None
+    if atom_labels is not None:
+        g1_atom_labels_array, g2_atom_labels_array = atom_labels
+
+        if len(g1_atom_labels_array) != len(g1.atoms):
+            raise ValueError("atom_labels must contain one label for each atom.")
+        if len(g2_atom_labels_array) != len(g2.atoms):
+            raise ValueError("atom_labels must contain one label for each atom.")
+
+        g1_atom_labels_by_atom = {
+            atom: label
+            for atom, label in zip(g1.atoms, g1_atom_labels_array, strict=True)
+        }
+        g2_atom_labels_by_atom = {
+            atom: label
+            for atom, label in zip(g2.atoms, g2_atom_labels_array, strict=True)
+        }
+        normalized_atom_labels = (g1_atom_labels_by_atom, g2_atom_labels_by_atom)
+
     if params_state := _sanity_check_and_init(
-        g1, g2, atom_labels, stereo, stereo_change, subgraph
+        g1, g2, normalized_atom_labels, stereo, stereo_change, subgraph
     ):
         params, state = params_state
     else:
@@ -445,17 +477,19 @@ def _stereo_feasibility(
 ) -> bool:
     s1 = [
         stereo.__class__(
-            atoms=tuple([state.mapping[a] for a in stereo.atoms]),
+            atoms=tuple(
+                [state.mapping[a] if a is not None else None for a in stereo.atoms]
+            ),
             parity=stereo.parity,
         )
         for stereo in params.g1_stereo[u]
-        if all([a in state.mapping for a in stereo.atoms])
+        if all([a in state.mapping or a is None for a in stereo.atoms])
     ]
 
     s2 = [
         stereo
         for stereo in params.g2_stereo[v]
-        if all([a in state.inverted_mapping for a in stereo.atoms])
+        if all([a in state.inverted_mapping or a is None for a in stereo.atoms])
     ]
 
     if len(s2) != len(s1):
@@ -478,14 +512,16 @@ def _stereo_change_feasibility(
         (
             stereo_change,
             stereo.__class__(
-                atoms=tuple([state.mapping[a] for a in stereo.atoms]),
+                atoms=tuple(
+                    [state.mapping[a] if a is not None else None for a in stereo.atoms]
+                ),
                 parity=stereo.parity,
             ),
         )
         for stereo_change, stereo_list in params.g1_stereo_changes[u].items()
         for stereo in stereo_list
         if stereo is not None  # type: ignore
-        and all([a in state.mapping for a in stereo.atoms])
+        and all([a in state.mapping or a is None for a in stereo.atoms])
     }
 
     s2 = {
@@ -493,7 +529,7 @@ def _stereo_change_feasibility(
         for stereo_change, stereo_list in params.g2_stereo_changes[u].items()
         for stereo in stereo_list
         if stereo is not None  # type: ignore
-        and all([a in state.inverted_mapping for a in stereo.atoms])
+        and all([a in state.inverted_mapping or a is None for a in stereo.atoms])
     }
 
     if s1 == s2:
@@ -693,17 +729,3 @@ def _revert_state(
 
     if not has_covered_neighbor:
         external2.add(last_atom2)
-
-
-def stereo_induced_subgraph_mappings(
-    g1: MolGraph,
-    g2: MolGraph,
-) -> Iterator[dict[AtomId, AtomId]]:
-    """
-    g2 is a induced subgraph of g1 if all atoms of g2 are in g1 and all bonds
-    of g2 are in g1 without additional bonds.
-    Also the stereodescriptors have to match fully. Additional AtomIds without
-    present atoms in g2 will still be mapped. Atom Stereodescriptors have to
-    contain the ce
-    """
-    ...

@@ -1,5 +1,7 @@
+import numpy as np
 import pytest
 
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.coords import Geometry
 from stereomolgraph.graphs import (
     CondensedReactionGraph,
@@ -7,7 +9,6 @@ from stereomolgraph.graphs import (
     StereoCondensedReactionGraph,
     StereoMolGraph,
 )
-from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 
 
 class TestIsomorphismMG:
@@ -25,7 +26,7 @@ class TestIsomorphismMG:
         mol_graph.add_atom(2, atom_type="O")
         mol_graph.add_bond(0, 1, bond_order=1)
         return mol_graph
-    
+
     @pytest.fixture
     def enantiomer_graph1(self, enantiomer_geos):
         return self._TestClass.from_geometry(enantiomer_geos[0])
@@ -35,15 +36,11 @@ class TestIsomorphismMG:
         return self._TestClass.from_geometry(enantiomer_geos[1])
 
     def test_get_isomorphic_mappings(self, water_graph, mol_graph):
-        assert [] == [
-            i for i in vf2pp_all_isomorphisms(mol_graph, water_graph)
-        ]
+        assert [] == [i for i in vf2pp_all_isomorphisms(mol_graph, water_graph)]
 
         assert all(
             mapping in ({0: 0, 1: 1, 2: 2}, {0: 0, 2: 1, 1: 2})
-            for mapping in (
-                i for i in vf2pp_all_isomorphisms(water_graph, water_graph)
-            )
+            for mapping in (i for i in vf2pp_all_isomorphisms(water_graph, water_graph))
         )
 
     def test_get_isomorphic_mappings_of_enantiomers(
@@ -56,10 +53,23 @@ class TestIsomorphismMG:
     def test_get_automorphic_mappings(self, water_graph):
         assert all(
             mapping in ({0: 0, 1: 1, 2: 2}, {0: 0, 2: 1, 1: 2})
-            for mapping in (
-                i for i in vf2pp_all_isomorphisms(water_graph, water_graph)
-            )
+            for mapping in (i for i in vf2pp_all_isomorphisms(water_graph, water_graph))
         )
+
+    def test_accepts_array_atom_labels(self, water_graph):
+        atom_labels = np.array([0, 1, 1], dtype=np.int64)
+
+        assert {
+            frozenset(mapping.items())
+            for mapping in vf2pp_all_isomorphisms(
+                water_graph,
+                water_graph,
+                atom_labels=(atom_labels, atom_labels),
+            )
+        } == {
+            frozenset({0: 0, 1: 1, 2: 2}.items()),
+            frozenset({0: 0, 1: 2, 2: 1}.items()),
+        }
 
 
 class TestIsomorphismCRG(TestIsomorphismMG):
@@ -71,28 +81,20 @@ class TestIsomorphismSMG(TestIsomorphismMG):
 
     @pytest.fixture
     def chiral_product_graph1(self, data_path):
-        filepath = (
-            data_path
-            / "disrot_reaction"
-            / "(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
-        )
+        filepath = data_path / "disrot_reaction" / "(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
         chiral_product_geo1 = Geometry.from_xyz_file(filepath)
 
         return self._TestClass.from_geometry(chiral_product_geo1)
 
     @pytest.fixture
     def chiral_product_graph2(self, data_path):
-        filepath = (
-            data_path / "conrot_reaction/(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
-        )
+        filepath = data_path / "conrot_reaction/(Z)-(4S)-3,4-Dichlor-2-pentene.xyz"
         chiral_product_geo2 = Geometry.from_xyz_file(filepath)
         return self._TestClass.from_geometry(chiral_product_geo2)
 
     def test_get_atom_stereo_isomorphic_mappings(self, chiral_product_graph1):
         isomorphic_graph = chiral_product_graph1.copy()
-        isomorphic_graph.relabel_atoms(
-            {0: 1, 1: 0, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
-        )
+        isomorphic_graph.relabel_atoms({0: 1, 1: 0, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7})
         m1 = {i: i for i in range(15)}
         m2 = {**m1, 11: 10, 12: 11, 10: 12}
         m3 = {**m1, 12: 10, 10: 11, 11: 12}
@@ -126,6 +128,4 @@ class TestIsomorphismSMG(TestIsomorphismMG):
 
 
 class TestIsomorphismSCRG(TestIsomorphismCRG, TestIsomorphismSMG):
-    _TestClass: type[StereoCondensedReactionGraph] = (
-        StereoCondensedReactionGraph
-    )
+    _TestClass: type[StereoCondensedReactionGraph] = StereoCondensedReactionGraph

@@ -1,7 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/img/logo_smg_dark.svg">
-  <img alt="Logo" src="docs/_static/img/logo_smg.svg">
-</picture>
+![Logo](https://raw.githubusercontent.com/maxim-papusha/StereoMolGraph/main/docs/_static/img/logo_smg.png)
 
 # StereoMolGraph #
 
@@ -12,13 +9,13 @@
 
 [![Documentation](https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white)](https://stereomolgraph.readthedocs.io)
 [![GitHub](https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white)](https://github.com/maxim-papusha/StereoMolGraph)
-[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+[![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
 
 StereoMolGraph (SMG) is a library for graph representation of molecules and reactions with a focus on Stereochemistry. It provides:
 
 - Graph types for molecules and reactions (with/without stereo and stereo changes)
 - Includes non tetrahedral stereocenters and changing stereochemistry in reactions
-- Fast approximate hashing via Weisfeiler–Lehman color refinement
+- Fast hashing using Circular Stereo Hash
 - Robust equality/isomorphism via a VF2++-style algorithm extended for stereochemistry and reactions
 - Bidirectional conversion from / to RDKit
 - Construction from 3D coordinates with automatic local stereo inference
@@ -27,13 +24,13 @@ StereoMolGraph (SMG) is a library for graph representation of molecules and reac
 ## Design philosophy
 
 - Unopinionated about bond orders, charge and electronic state
-- SMG focuses on the connectivity and stereochemistry. 
+- SMG focuses just on the connectivity and stereochemistry. 
 - Stereochemistry describes relative spatial arrangement. No absolute stereochemistry.
 - Transparent: Simple 2D visualization in IPython notebooks
 
 ## RDKit interoperability notes
 
-- Hydrogens must be explicit for stereo-safe bidirectional conversion.
+- Hydrogens must be explicit for bidirectional conversion.
 - Supports tetrahedral and non tetrahedral stereochemistry during conversion.
 - Bond orders, charges, unpaired electrons and other properties are not used!
 
@@ -47,16 +44,66 @@ pip install stereomolgraph
 
 ## Feedback and support
 
-Bug reports and feature requests are welcome — please open an issue on GitHub:
+Bug reports, feature requests, and questions are welcome through
+[GitHub Issues](https://github.com/maxim-papusha/StereoMolGraph/issues).
 
-- Issues: https://github.com/maxim-papusha/StereoMolGraph/issues
+
+## Citations
+
+If you use **StereoMolGraph**, please cite the relevant publication(s):
+
+1. M. Papusha and K. Leonhard, “**StereoMolGraph**: Stereochemistry-Aware Molecular and Reaction Graphs,” *J. Chem. Inf. Model.*, 2026, *66*, 3830–3839.
+   [![DOI](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-StereoMolGraph)
+
+2. M. Papusha and K. Leonhard, “**Circular Stereo Algorithm** and Fingerprint for Chiral Resonance Invariant Molecular Representation,” *ChemRxiv*, 2026, preprint.
+   [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15002723%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15002723/v1)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-CircularStereoAlgorithm)
+
+3. M. Papusha, A. V. Copan, B. Rotavera, and K. Leonhard, “**Symmetry Numbers**: A Flexible Approach for Molecules and Transition States,” *ChemRxiv*, 2026, preprint.
+   [![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv.15006158%2Fv1-ffcc00?style=flat-square)](https://doi.org/10.26434/chemrxiv.15006158/v1)
+   [![Reproducibility](https://img.shields.io/badge/Reproducibility-Code-181717?style=flat-square\&logo=github\&logoColor=white)](https://github.com/maxim-papusha/Experiments-SymmetryNumbers)
 
 
-## Citation
+<details>
+<summary><strong>BibTeX entries</strong></summary>
 
-If you use StereoMolGraph in your work, please cite the Zenodo record:
+```bibtex
+@article{Papusha2026StereoMolGraph,
+  author  = {Papusha, Maxim and Leonhard, Kai},
+  title   = {{StereoMolGraph}: Stereochemistry-Aware Molecular and Reaction Graphs},
+  journal = {Journal of Chemical Information and Modeling},
+  year    = {2026},
+  volume  = {66},
+  number  = {7},
+  pages   = {3830--3839},
+  doi     = {10.1021/acs.jcim.5c02523},
+}
 
-[![DOI](https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square)](https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn)
+@article{Papusha2026CircularStereoAlgorithm,
+  author  = {Papusha, Maxim and Leonhard, Kai},
+  title   = {Circular Stereo Algorithm and Fingerprint for Chiral Resonance
+             Invariant Molecular Representation},
+  journal = {ChemRxiv},
+  year    = {2026},
+  note    = {Preprint},
+  doi     = {10.26434/chemrxiv.15002723/v1},
+}
+
+@article{Papusha2026SymmetryNumbers,
+  author = {Papusha, Maxim and Copan, Andreas V. and
+            Rotavera, Brandon and Leonhard, Kai},
+  title  = {Symmetry Numbers: A Flexible Approach for Molecules
+            and Transition States},
+  journal = {ChemRxiv},
+  year   = {2026},
+  note   = {Preprint},
+  doi     = {10.26434/chemrxiv.15002723/v1},
+}
+```
+
+</details>
+
 
 ## License
 

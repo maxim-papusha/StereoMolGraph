@@ -1,14 +1,30 @@
 Algorithms
 ===========
 
-Some general information about algorithms.
-Maybe some nice images?
+.. grid:: 1
+   :gutter: 1
+
+   .. grid-item-card:: Isomorphism
+      :link: isomorphism
+      :link-type: doc
+      :text-align: center
+
+   .. grid-item-card:: Circular
+      :link: circular
+      :link-type: doc
+      :text-align: center
+
+   .. grid-item-card:: Symmetry
+      :link: symmetry
+      :link-type: doc
+      :text-align: center
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   color_refine
    isomorphism
-   bond_orders
+   circular
+   symmetry
+
 

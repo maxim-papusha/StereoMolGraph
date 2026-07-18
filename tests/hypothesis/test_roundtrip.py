@@ -55,7 +55,7 @@ class HashRoundtripTester(MolGraphStateMachiene):
             for bond in bond_list:
                 other_g.add_bond(*bond)
 
-            assert hash(self.g) == hash(other_g)
+            assert hash(self.g.copy(frozen=True)) == hash(other_g.copy(frozen=True))
 
 
 TestHash = HashRoundtripTester.TestCase

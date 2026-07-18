@@ -1,41 +1,29 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import (
+    Collection,
+    Iterable,
+    Mapping,
+    Sequence,
+)
 from copy import deepcopy
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import Any, Optional, TypeAlias
 
 import numpy as np
+from rdkit import Chem  # type: ignore
+from typing_extensions import Self
 
-from stereomolgraph.algorithms.color_refine import (
-    color_refine_hash_mg,
+from stereomolgraph.algorithms.circular import (
     color_refine_mg,
     label_hash,
+    numpy_int_multiset_hash,
 )
 from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
-from stereomolgraph.coords import BondsFromDistance
-from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
+from stereomolgraph.coords import BondsFromDistance, GeometryProtocol
 from stereomolgraph.periodic_table import PERIODIC_TABLE, SYMBOLS, Element
 from stereomolgraph.xyz2graph import connectivity_from_geometry
-
-if TYPE_CHECKING:
-    from collections.abc import (
-        Collection,
-        Iterable,
-        Mapping,
-        Sequence,
-    )
-    from typing import Any, Optional, Self, TypeAlias, TypeVar
-
-    from rdkit import Chem  # type: ignore
-
-    from stereomolgraph.coords import Geometry
-
-    N = TypeVar(
-        "N",
-        bound=int,
-    )
 
 AtomId: TypeAlias = int
 
@@ -50,13 +38,26 @@ class MolGraph:
     graph, iff. they are isomorphic and of the same type.
     """
 
-    __slots__ = ("_atom_attrs", "_neighbors", "_bond_attrs")
+    __slots__ = (
+        "_atom_attrs",
+        "_neighbors",
+        "_bond_attrs",
+        "_frozen",
+        "_hash_cache",
+        "_color_cache",
+    )
 
     _atom_attrs: dict[AtomId, dict[str, Any]]
     _neighbors: dict[AtomId, set[AtomId]]
     _bond_attrs: dict[Bond, dict[str, Any]]
+    _frozen: bool
+    _hash_cache: int | None
+    _color_cache: np.ndarray | None
 
-    def __init__(self, mol_graph: Optional[MolGraph] = None):
+    def __init__(self, mol_graph: Optional[MolGraph] = None, frozen: bool = False):
+
+        self._hash_cache = None
+        self._color_cache = None
         if mol_graph is not None:
             self._atom_attrs = deepcopy(mol_graph._atom_attrs)
             self._neighbors = deepcopy(mol_graph._neighbors)
@@ -65,20 +66,100 @@ class MolGraph:
             self._atom_attrs = defaultdict(dict)
             self._neighbors = defaultdict(set)
             self._bond_attrs = defaultdict(dict)
+        self._frozen = frozen
+
+
+    def _compute_colors(self) -> np.ndarray:
+        """Compute the color refinement array. Override in subclasses."""
+        labels = label_hash(self, atom_labels=("atom_type",))
+        return color_refine_mg(self, atom_labels=labels)
+
+    def _get_colors(self) -> np.ndarray:
+        """Return color array, using cache for frozen graphs."""
+        if self._frozen and self._color_cache is not None:
+            return self._color_cache
+        colors = self._compute_colors()
+        if self._frozen:
+            self._color_cache = colors
+            colors.setflags(write=False)
+        return colors
+
+    def _compute_hash(self) -> int:
+        """Compute the graph hash. Override in subclasses."""
+        if self.n_atoms == 0:
+            return hash(self.__class__)
+        return int(numpy_int_multiset_hash(self._get_colors()))
+
+
+    def __hash__(self) -> int:
+        if not self._frozen:
+            raise TypeError(
+                f"Unhashable type: unfrozen {self.__class__.__name__!r}. "
+                "Call .freeze() before using in sets or as dict keys."
+            )
+        if self._hash_cache is None:
+            self._hash_cache = self._compute_hash()
+        return self._hash_cache
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
+        o_color_array = other._get_colors()
+        s_color_array = self._get_colors()
+
+        return any(
+            vf2pp_all_isomorphisms(
+                self,
+                other,
+                atom_labels=(s_color_array, o_color_array),
+                stereo=False,
+                stereo_change=False,
+                subgraph=False,
+            )
+        )
+
+    def __len__(self) -> int:
+        return len(self._atom_attrs)
+
 
     @property
-    def atoms(
-        self,
-    ) -> Collection[AtomId]:
+    def frozen(self) -> bool:
+        """Whether the graph is currently frozen (immutable)."""
+        return self._frozen
+
+    def _check_mutable(self) -> None:
+        """Raises TypeError if the graph is frozen."""
+        if self._frozen:
+            raise TypeError(
+                f"Cannot mutate a frozen {self.__class__.__name__}. "
+                "Use .copy() to get a mutable copy."
+            )
+
+    def freeze(self) -> Self:
+        """Freeze the graph, making it immutable and hashable.
+
+        A frozen graph can be used in sets and as dict keys.
+        Mutation methods will raise :class:`TypeError`.
+        Use :meth:`copy` to get a mutable copy.
+
+        :return: self (for chaining)
+        """
+        self._frozen = True
+        self._hash_cache = None  # recomputed lazily in __hash__
+        self._color_cache = None  # recomputed lazily
+        return self
+
+
+    @property
+    def atoms(self) -> Collection[AtomId]:
         """
         :return: Returns all atoms of the molecule
         """
         return self._atom_attrs.keys()
 
     @property
-    def atom_types(
-        self,
-    ) -> tuple[Element, ...]:
+    def atom_types(self) -> tuple[Element, ...]:
         """
         :return: Returns all atom types in the MolGraph
         """
@@ -92,71 +173,33 @@ class MolGraph:
         return MappingProxyType(self._atom_attrs)
 
     @property
-    def bonds(
-        self,
-    ) -> Collection[Bond]:
+    def bonds(self) -> Collection[Bond]:
         """
         :return: Returns all bonds in the MolGraph
         """
         return self._bond_attrs.keys()  # type: ignore Dicts keep the order!
 
     @property
-    def bonds_with_attributes(
-        self,
-    ) -> Mapping[Bond, dict[str, Any]]:
+    def bonds_with_attributes(self) -> Mapping[Bond, dict[str, Any]]:
         """
         :return: Returns all bonds in the MolGraph with their attributes
         """
         return MappingProxyType(self._bond_attrs)
 
     @property
-    def neighbors(
-        self,
-    ) -> Mapping[AtomId, set[AtomId]]:
+    def neighbors(self) -> Mapping[AtomId, frozenset[AtomId]]:
         """
         :return: Returns all neighbors of the atoms in the MolGraph
         """
-        return MappingProxyType(self._neighbors)
+        return MappingProxyType({a: frozenset(self._neighbors[a]) for a in self.atoms})
 
     @property
-    def n_atoms(
-        self,
-    ) -> int:
+    def n_atoms(self) -> int:
         """
         :return: Returns number of atoms in the MolGraph
         """
         return len(self._atom_attrs)
 
-    def __len__(self) -> int:
-        return len(self._atom_attrs)
-
-    def __hash__(self) -> int:
-        if self.n_atoms == 0:
-            return hash(self.__class__)
-        return color_refine_hash_mg(self)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-
-        o_labels = label_hash(other, atom_labels=("atom_type",))
-        s_labels = label_hash(self, atom_labels=("atom_type",))
-        o_color_array = color_refine_mg(other, atom_labels=o_labels)
-        s_color_array = color_refine_mg(self, atom_labels=s_labels)
-
-        o_colors = {a: int(c) for a, c in zip(other.atoms, o_color_array)}
-        s_colors = {a: int(c) for a, c in zip(self.atoms, s_color_array)}
-
-        return any(
-            vf2pp_all_isomorphisms(
-                self,
-                other,
-                atom_labels=(s_colors, o_colors),
-                stereo=False,
-                stereo_change=False,
-                subgraph=False,
-            )
-        )
 
     def has_atom(self, atom: int) -> bool:
         """Returns True if the molecules contains an atom with this id.
@@ -172,6 +215,7 @@ class MolGraph:
         :param atom: Atom ID
         :param atom_type: Atom Type
         """
+        self._check_mutable()
         atom_type = PERIODIC_TABLE[atom_type]
 
         self._atom_attrs[atom] = {"atom_type": atom_type, **attr}
@@ -182,6 +226,7 @@ class MolGraph:
         :param atom: Atom ID
         :raises: KeyError if atom is not in graph.
         """
+        self._check_mutable()
         del self._atom_attrs[atom]
         if nbr := self._neighbors.pop(atom, None):
             for n in nbr:
@@ -223,6 +268,7 @@ class MolGraph:
         :raises ValueError: The attribute "atom_type" can only have values of
                             type Element
         """
+        self._check_mutable()
         if attr == "atom_type":
             try:
                 value = PERIODIC_TABLE[value]
@@ -243,6 +289,7 @@ class MolGraph:
         :param attr: Attribute
         :raises ValueError: The attribute "atom_type" can not be deleted
         """
+        self._check_mutable()
         if attr == "atom_type":
             raise ValueError("atom_type can not be deleted")
         else:
@@ -265,6 +312,7 @@ class MolGraph:
         else:
             return {attr: self._atom_attrs[atom][attr] for attr in attributes}
 
+
     def has_bond(self, atom1: AtomId, atom2: AtomId) -> bool:
         """Returns True if bond is in MolGraph.
 
@@ -280,6 +328,7 @@ class MolGraph:
         :param atom1: Atom1
         :param atom2: Atom2
         """
+        self._check_mutable()
         if atom1 not in self.atoms or atom2 not in self.atoms:
             raise ValueError("Atoms not in Graph")
         bond = Bond({atom1, atom2})
@@ -294,6 +343,7 @@ class MolGraph:
         :param atom1: Atom1
         :param atom2: Atom2
         """
+        self._check_mutable()
         bond = Bond((atom1, atom2))
         del self._bond_attrs[bond]
         self._neighbors[atom1].discard(atom2)
@@ -332,6 +382,7 @@ class MolGraph:
         :param attr: Attribute
         :param value: Value
         """
+        self._check_mutable()
         bond = Bond((atom1, atom2))
         if bond in self._bond_attrs:
             self._bond_attrs[bond][attr] = value
@@ -346,6 +397,7 @@ class MolGraph:
         :param atom2: Atom1
         :param attr: Attribute
         """
+        self._check_mutable()
         self._bond_attrs[Bond((atom1, atom2))].pop(attr)
 
     def get_bond_attributes(
@@ -365,6 +417,7 @@ class MolGraph:
             return MappingProxyType(self._bond_attrs[bond])
         else:
             return {attr: val for attr, val in self._bond_attrs[bond].items()}
+
 
     def bonded_to(self, atom: int) -> frozenset[int]:
         """
@@ -395,95 +448,12 @@ class MolGraph:
             if a1 not in atomid_index_dict or a2 not in atomid_index_dict
         ]
         if dangling:
-            raise ValueError(
-                "Dangling bonds reference missing atoms: " + str(dangling)
-            )
+            raise ValueError("Dangling bonds reference missing atoms: " + str(dangling))
 
         for a1, a2 in self.bonds:
             matrix[atomid_index_dict[a1]][atomid_index_dict[a2]] = 1
             matrix[atomid_index_dict[a2]][atomid_index_dict[a1]] = 1
         return matrix
-
-    def _to_rdmol(
-        self,
-        generate_bond_orders: bool = False,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
-        return mol_graph_to_rdmol(
-            self,
-            generate_bond_orders=generate_bond_orders,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=charge,
-        )
-
-    def to_rdmol(
-        self,
-        generate_bond_orders: bool = True,
-        allow_charged_fragments: bool = False,
-        charge: int = 0,
-    ) -> Chem.rdchem.Mol:
-        mol, _ = self._to_rdmol(
-            generate_bond_orders=generate_bond_orders,
-            allow_charged_fragments=allow_charged_fragments,
-            charge=charge,
-        )
-        for atom in mol.GetAtoms():  # type: ignore
-            atom.SetAtomMapNum(0, strict=True)  # type: ignore
-        return mol
-
-    @classmethod
-    def from_rdmol(cls, rdmol: Chem.Mol, use_atom_map_number: bool = False) -> Self:
-        """
-        Creates a StereoMolGraph from an RDKit Mol object.
-        Implicit Hydrogens are added to the graph.
-        Stereo information is conserved. Double bonds, aromatic bonds and
-        conjugated bonds are interpreted as planar. Atoms with 5 bonding
-        partners are assumed to be TrigonalBipyramidal and allow interchange
-        of the substituents (berry pseudorotation). Atoms with 6 bonding
-        partners are assumed to be octahedral and do not allow interchange of
-        the substituents.
-
-        :param rdmol: RDKit Mol object
-        :param use_atom_map_number: If the atom map number should be used
-                                    instead of the atom index
-        :return: StereoMolGraph
-        """
-        from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
-
-        mg = mol_graph_from_rdmol(cls, rdmol, use_atom_map_number=use_atom_map_number)
-        assert isinstance(mg, cls), "MolGraph.from_rdmol did not return a MolGraph"
-        return mg
-
-    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
-        """Changes the atom labels according to mapping.
-
-        :param mapping: dict used for map old atom labels to new atom labels
-        :param copy: defines if the relabeling is done inplace or a new object
-                     should be created
-        :return: this object (self) or a new instance of self.__class__
-        """
-        atom_attrs = {
-            mapping.get(atom, atom): attrs for atom, attrs in self._atom_attrs.items()
-        }
-        neighbors = {
-            mapping.get(atom, atom): {mapping.get(n, n) for n in neighbors}
-            for atom, neighbors in self._neighbors.items()
-        }
-
-        bond_attrs = {
-            Bond({mapping.get(atom, atom) for atom in bond}): attrs
-            for bond, attrs in self._bond_attrs.items()
-        }
-        if copy is True:
-            new_graph = self.__class__()
-        elif copy is False:
-            new_graph = self
-
-        new_graph._atom_attrs = atom_attrs
-        new_graph._neighbors = neighbors
-        new_graph._bond_attrs = bond_attrs
-        return new_graph
 
     def node_connected_component(self, atom: int) -> set[AtomId]:
         """
@@ -517,6 +487,7 @@ class MolGraph:
 
         return components
 
+
     def subgraph(self, atoms: Iterable[AtomId]) -> Self:
         """
         Returns a subgraph copy only containing the given atoms
@@ -541,11 +512,87 @@ class MolGraph:
         new_graph._bond_attrs = bond_attrs
         return new_graph
 
-    def copy(self) -> Self:
+    def copy(self, frozen: bool = False) -> Self:
         """
         :return: returns a copy of self
         """
-        return deepcopy(self)
+        new = deepcopy(self)
+        new._frozen = frozen
+        new._hash_cache = None
+        new._color_cache = None
+        return new
+
+    def relabel_atoms(self, mapping: dict[int, int], copy: bool = True) -> Self:
+        """Changes the atom labels according to mapping.
+
+        :param mapping: dict used for map old atom labels to new atom labels
+        :param copy: defines if the relabeling is done inplace or a new object
+                     should be created
+        :return: this object (self) or a new instance of self.__class__
+        """
+        atom_attrs = {
+            mapping.get(atom, atom): attrs for atom, attrs in self._atom_attrs.items()
+        }
+        neighbors = {
+            mapping.get(atom, atom): {mapping.get(n, n) for n in neighbors}
+            for atom, neighbors in self._neighbors.items()
+        }
+
+        bond_attrs = {
+            Bond({mapping.get(atom, atom) for atom in bond}): attrs
+            for bond, attrs in self._bond_attrs.items()
+        }
+        if copy is True:
+            new_graph = self.__class__()
+        elif copy is False:
+            self._check_mutable()
+            new_graph = self
+
+        new_graph._atom_attrs = atom_attrs
+        new_graph._neighbors = neighbors
+        new_graph._bond_attrs = bond_attrs
+        return new_graph
+
+
+    def to_rdmol(
+        self,
+        generate_bond_orders: bool = True,
+        allow_charged_fragments: bool = False,
+        charge: int = 0,
+    ) -> Chem.rdchem.Mol:
+        from stereomolgraph.graph2rdmol import mol_graph_to_rdmol
+
+        mol, _ = mol_graph_to_rdmol(
+            self,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
+        for atom in mol.GetAtoms():  # type: ignore
+            atom.SetAtomMapNum(0, strict=True)  # type: ignore
+        return mol
+
+    @classmethod
+    def from_rdmol(cls, rdmol: Chem.Mol) -> Self:
+        """
+        Creates a StereoMolGraph from an RDKit Mol object.
+        Implicit Hydrogens are added to the graph.
+        Stereo information is conserved. Double bonds, aromatic bonds and
+        conjugated bonds are interpreted as planar. Atoms with 5 bonding
+        partners are assumed to be TrigonalBipyramidal and allow interchange
+        of the substituents (berry pseudorotation). Atoms with 6 bonding
+        partners are assumed to be octahedral and do not allow interchange of
+        the substituents.
+
+        :param rdmol: RDKit Mol object
+        :return: StereoMolGraph
+        """
+        from stereomolgraph.rdmol2graph import mol_graph_from_rdmol
+
+        mg = mol_graph_from_rdmol(cls, rdmol)
+        assert isinstance(mg, cls), "MolGraph.from_rdmol did not return a MolGraph"
+        return mg
+
 
     def bonds_from_bond_order_matrix(
         self,
@@ -563,6 +610,7 @@ class MolGraph:
                                    attributes, defaults to False
         """
 
+        self._check_mutable()
         if not np.shape(matrix) == (len(self), len(self)):
             raise ValueError(
                 "Matrix has the wrong shape. shape of matrix is "
@@ -640,7 +688,7 @@ class MolGraph:
     @classmethod
     def from_geometry_and_bond_order_matrix(
         cls,
-        geo: Geometry,
+        geo: GeometryProtocol,
         matrix: np.ndarray,
         threshold: float = 0.5,
         include_bond_order: bool = False,
@@ -667,13 +715,15 @@ class MolGraph:
     @classmethod
     def from_geometry(
         cls,
-        geo: Geometry,
+        geo: GeometryProtocol,
         switching_function: BondsFromDistance = BondsFromDistance(),
     ) -> Self:
         return connectivity_from_geometry(cls, geo, switching_function)
 
+
     def is_isomorphic(self, other: Self) -> bool:
         return self == other
+
 
     def __str__(self) -> str:
         a_list = sorted(

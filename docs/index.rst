@@ -24,40 +24,49 @@ Stereochemistry-Aware Molecular and Reaction Graphs
 .. |tests| image:: https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests
    :target: https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml
 
-.. |doi| image:: https://img.shields.io/badge/DOI-10.26434%2Fchemrxiv--2025--0g4wn-ffcc00?style=flat-square
-   :target: https://chemrxiv.org/doi/full/10.26434/chemrxiv-2025-0g4wn
-
-.. |docs| image:: https://img.shields.io/badge/Documentation-docs-4C6A92?style=flat-square&logo=readthedocs&logoColor=white
-   :target: https://stereomolgraph.readthedocs.io
+.. |doi| image:: https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square
+   :target: https://doi.org/10.1021/acs.jcim.5c02523
 
 .. |github| image:: https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white
    :target: https://github.com/maxim-papusha/StereoMolGraph
 
-|pypi| |python| |license| |tests| |docs| |github|  |doi|
+|pypi| |python| |license| |tests| |github|  |doi|
 
 Welcome to the documentation for **StereoMolGraph**.
 
-This package provides a collection of :doc:`graph classes </reference/graphs/index>` for the representation of molecules and chemical reactions.
-Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from :doc:`group-theoretical </theory/index>` principles.
+This package provides a collection of :doc:`graph classes </reference/graphs/index>` for the representation of molecules and chemical reactions in a modular.
+The core focus is to allow the user to work with chiral molecules in a consistent way with a simple interface.
+All arising algorithmic difficulties are taken care of by the internal implementations.
 
-Building on this formal foundation, a range of :doc:`graph algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
-Citing
-------
+Its treatment of stereochemistry is based on rigorously defined local :doc:`stereodescriptors </reference/stereodescriptors>`, which are derived from group-theoretical principles.
 
-To cite StereoMolGraph please use the following publication:
+Building on this formal foundation, a range of graph :doc:`algorithms </reference/algorithms/index>` is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
 
-Maxim Papusha, Kai Leonhard. StereoMolGraph: Stereochemistry-Aware Molecular and Reaction Graphs. *ChemRxiv.* **2026**.
 
-DOI: https://doi.org/10.26434/chemrxiv-2025-0g4wn
+Magic Methods
+=============
 
+StereoMolGraph implements the following magic methods:
+
+* ``__eq__``: based on :doc:`graph isomorphism </reference/algorithms/isomorphism>` and stereochemical equivalence :cite:`papusha2026stereomolgraph`
+* ``__hash__``: based on Circular Stereo Algorithm :cite:`papusha2026circular`
+
+Citations
+=========
+
+If you use StereoMolGraph, please cite the relevant publication(s):
+
+.. bibliography::
+   :all:
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   getting_started
+   installation
    tutorial/index
    reference/index
+   changelog
 
 

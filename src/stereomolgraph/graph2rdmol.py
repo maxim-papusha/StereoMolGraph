@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TypeAlias
 
 import rdkit.Chem as Chem  # type: ignore
 
-from stereomolgraph.algorithms.bond_orders import connectivity2bond_orders
+from stereomolgraph.algorithms._bond_orders import connectivity2bond_orders
+from stereomolgraph.graphs.crg import CondensedReactionGraph
+from stereomolgraph.graphs.mg import AtomId, MolGraph
+from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
+from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
     AtropBond,
@@ -17,11 +21,7 @@ from stereomolgraph.stereodescriptors import (
     TrigonalBipyramidal,
 )
 
-if TYPE_CHECKING:
-    from stereomolgraph.graphs.crg import CondensedReactionGraph
-    from stereomolgraph.graphs.mg import MolGraph
-    from stereomolgraph.graphs.smg import StereoMolGraph
-
+RDKitAtomId: TypeAlias = int
 
 bond_type_dict = {
     0.5: Chem.BondType.HYDROGEN,
@@ -55,43 +55,34 @@ bond_type_dict = {
 def set_bond_orders(
     graph: MolGraph,
     mol: Chem.rdchem.RWMol,
-    idx_map_num_dict: dict[int, int],
+    idx_map_num_dict: dict[RDKitAtomId, AtomId],
     allow_charged_fragments=False,
     charge=0,
 ) -> Chem.rdchem.RWMol:
-    bond_order_mat, atomic_charges, unpaired_electrons = (
-        connectivity2bond_orders(
-            atom_types=graph.atom_types,
-            connectivity_matrix=graph.connectivity_matrix(),
-            allow_charged_fragments=allow_charged_fragments,
-            charge=charge,
-        )
+    bo = connectivity2bond_orders(
+        graph=graph,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
     )
 
-    # Map atom identifiers to their position in the connectivity matrix
-    atom_idx_in_matrix = {map_num: i for i, map_num in enumerate(graph.atoms)}
-
     # Map atom identifiers to RDKit indices in the constructed molecule
-    map_num_idx_dict = {
+    map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
         map_num: idx for idx, map_num in idx_map_num_dict.items()
     }
 
     for bond in graph.bonds:
         atom1, atom2 = bond
-        bond_order = bond_order_mat[atom_idx_in_matrix[atom1]][
-            atom_idx_in_matrix[atom2]
-        ]
+        bond_order = bo.bond_order.get(bond, 0)
 
         mol.GetBondBetweenAtoms(
             map_num_idx_dict[atom1], map_num_idx_dict[atom2]
         ).SetBondType(bond_type_dict[bond_order])
 
-    for i, atomic_charge in enumerate(atomic_charges):
-        if atomic_charge:
-            mol.GetAtomWithIdx(i).SetFormalCharge(int(atomic_charge))
-    for i, unpaired_e in enumerate(unpaired_electrons):
-        if unpaired_e:
-            mol.GetAtomWithIdx(i).SetNumRadicalElectrons(unpaired_e)
+    for rd_idx, atom_id in idx_map_num_dict.items():
+        if allow_charged_fragments and (charge := bo.charges.get(atom_id, 0)):
+            mol.GetAtomWithIdx(rd_idx).SetFormalCharge(int(charge))
+        if unpaired := bo.unpaired_electrons.get(atom_id, 0):
+            mol.GetAtomWithIdx(rd_idx).SetNumRadicalElectrons(unpaired)
 
     return mol
 
@@ -101,7 +92,7 @@ def mol_graph_to_rdmol(
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,
-) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
     mol = Chem.RWMol()
 
     atom_types_strings = []
@@ -125,9 +116,7 @@ def mol_graph_to_rdmol(
         for j in range(i + 1, graph.n_atoms):
             if graph.has_bond(idx_map_num_dict[i], idx_map_num_dict[j]):
                 mol.AddBond(i, j)
-                # TODO: check if this is still needed
-                # mol.GetBondBetweenAtoms(i, j).SetBondType(
-                #    Chem.rdchem.BondType.SINGLE)
+
     if generate_bond_orders:
         mol = set_bond_orders(
             graph=graph,
@@ -145,7 +134,7 @@ def stereo_mol_graph_to_rdmol(
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,
-) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
     """
     Creates a RDKit mol object using the connectivity of the mol graph.
     Stereochemistry is added to the mol object.
@@ -165,22 +154,20 @@ def stereo_mol_graph_to_rdmol(
         charge=charge,
     )
 
-    map_num_idx_dict = {v: k for k, v in idx_map_num_dict.items()}
+    map_num_idx_dict: dict[AtomId, RDKitAtomId] = {
+        v: k for k, v in idx_map_num_dict.items()
+    }
 
     for atom in graph.atoms:
         a_stereo = graph.get_atom_stereo(atom)
         atom_idx = map_num_idx_dict[atom]
         rd_atom = mol.GetAtomWithIdx(atom_idx)
 
-        if False: #a_stereo is not None and any(
-            #a not in graph.atoms for a in a_stereo.atoms
-        #):
-            raise NotImplementedError(
-                "Handling of missing atoms not supported yet"
-            )
-            for mis_a in [
-                a for a in a_stereo.atoms[1:] if a not in graph.atoms
-            ]:
+        if False:  # a_stereo is not None and any(
+            # a not in graph.atoms for a in a_stereo.atoms
+            # ):
+            raise NotImplementedError("Handling of missing atoms not supported yet")
+            for mis_a in [a for a in a_stereo.atoms[1:] if a not in graph.atoms]:
                 if mis_a not in map_num_idx_dict:
                     # add dummy atom
                     idx = mol.AddAtom(Chem.Atom(0))
@@ -208,14 +195,14 @@ def stereo_mol_graph_to_rdmol(
         # representation of chirality.
 
         if a_stereo is not None and isinstance(a_stereo, Tetrahedral):
-            mol.GetAtomWithIdx(atom_idx).SetHybridization(
-                Chem.HybridizationType.SP3
-            )
+            mol.GetAtomWithIdx(atom_idx).SetHybridization(Chem.HybridizationType.SP3)
             assert len(a_stereo.atoms) == 5
-            rd_nbrs = tuple([
-                idx_map_num_dict[a.GetIdx()]
-                for a in mol.GetAtomWithIdx(atom_idx).GetNeighbors()
-            ])
+            rd_nbrs = tuple(
+                [
+                    idx_map_num_dict[a.GetIdx()]
+                    for a in mol.GetAtomWithIdx(atom_idx).GetNeighbors()
+                ]
+            )
 
             if a_stereo.parity is None:
                 rd_stereo = Chem.rdchem.ChiralType.CHI_TETRAHEDRAL
@@ -225,14 +212,10 @@ def stereo_mol_graph_to_rdmol(
                 rd_stereo = rd_tetrahedral[a_stereo.parity * -1]
             rd_atom.SetChiralTag(rd_stereo)
 
-
         elif a_stereo is not None and isinstance(a_stereo, SquarePlanar):
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_SQUAREPLANAR)
             neighbors = tuple(
-                [
-                    idx_map_num_dict[atom.GetIdx()]
-                    for atom in rd_atom.GetNeighbors()
-                ]
+                [idx_map_num_dict[atom.GetIdx()] for atom in rd_atom.GetNeighbors()]
             )
 
             if neighbors in {p[1:] for p in a_stereo._perm_atoms()}:
@@ -240,52 +223,49 @@ def stereo_mol_graph_to_rdmol(
             else:
                 rd_atom.SetUnsignedProp("_chiralPermutation", 2)
 
-        elif a_stereo is not None and isinstance(
-            a_stereo, TrigonalBipyramidal
-        ):
-            #rd_atom.SetHybridization(Chem.HybridizationType.SP3D)
+        elif a_stereo is not None and isinstance(a_stereo, TrigonalBipyramidal):
+            # rd_atom.SetHybridization(Chem.HybridizationType.SP3D)
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_TRIGONALBIPYRAMIDAL)
             if a_stereo.parity is not None:
-
-                atoms_order = (a_stereo._inverted_atoms()
-                               if a_stereo.parity == -1 else a_stereo.atoms)
-                rd_id_order = tuple([map_num_idx_dict[a]
-                                     for a in atoms_order[1::]])
+                atoms_order = (
+                    a_stereo._inverted_atoms()
+                    if a_stereo.parity == -1
+                    else a_stereo.atoms
+                )
+                rd_id_order = tuple([map_num_idx_dict[a] for a in atoms_order[1::]])
                 rd_nbr_order = tuple([nbr.GetIdx() for nbr in rd_atom.GetNeighbors()])
-                
-                        # adapted from http://opensmiles.org/opensmiles.html
+
+                # adapted from http://opensmiles.org/opensmiles.html
                 atom_order_permutation_dict = {
-                (0, 1, 2, 3, 4): 1,
-                (0, 1, 3, 2, 4): 2,
-                (0, 1, 2, 4, 3): 3,
-                (0, 1, 4, 2, 3): 4,
-                (0, 1, 3, 4, 2): 5,
-                (0, 1, 4, 3, 2): 6,
-                (0, 2, 3, 4, 1): 7,
-                (0, 2, 4, 3, 1): 8,
-                (1, 0, 2, 3, 4): 9,
-                (1, 0, 3, 2, 4): 11,
-                (1, 0, 2, 4, 3): 10,
-                (1, 0, 4, 2, 3): 12,
-                (1, 0, 3, 4, 2): 13,
-                (1, 0, 4, 3, 2): 14,
-                (2, 0, 1, 3, 4): 15,
-                (2, 0, 1, 4, 3): 16,
-                (3, 0, 1, 2, 4): 17,
-                (3, 0, 2, 1, 4): 18,
-                (2, 0, 4, 1, 3): 19,
-                (2, 0, 3, 1, 4): 20,
+                    (0, 1, 2, 3, 4): 1,
+                    (0, 1, 3, 2, 4): 2,
+                    (0, 1, 2, 4, 3): 3,
+                    (0, 1, 4, 2, 3): 4,
+                    (0, 1, 3, 4, 2): 5,
+                    (0, 1, 4, 3, 2): 6,
+                    (0, 2, 3, 4, 1): 7,
+                    (0, 2, 4, 3, 1): 8,
+                    (1, 0, 2, 3, 4): 9,
+                    (1, 0, 3, 2, 4): 11,
+                    (1, 0, 2, 4, 3): 10,
+                    (1, 0, 4, 2, 3): 12,
+                    (1, 0, 3, 4, 2): 13,
+                    (1, 0, 4, 3, 2): 14,
+                    (2, 0, 1, 3, 4): 15,
+                    (2, 0, 1, 4, 3): 16,
+                    (3, 0, 1, 2, 4): 17,
+                    (3, 0, 2, 1, 4): 18,
+                    (2, 0, 4, 1, 3): 19,
+                    (2, 0, 3, 1, 4): 20,
                 }
 
                 for perm, val in atom_order_permutation_dict.items():
-
                     rd_nbr_perm = tuple([rd_nbr_order[i] for i in perm])
                     rd_nbr_perm = tuple([rd_nbr_perm[i] for i in (0, 4, 1, 2, 3)])
 
                     if rd_id_order == rd_nbr_perm:
                         rd_atom.SetUnsignedProp("_chiralPermutation", val)
                         break
-
 
         elif a_stereo is not None and isinstance(a_stereo, Octahedral):
             for rd_n in rd_atom.GetNeighbors():
@@ -307,10 +287,8 @@ def stereo_mol_graph_to_rdmol(
     for b_stereo in (bs for bs in graph.bond_stereo.values() if bs):
         a1, a2 = b_stereo.atoms[2], b_stereo.atoms[3]
 
-        if False: #not all(a in graph.atoms for a in b_stereo.atoms if a is not None):
-            raise NotImplementedError(
-                "Handling of missing atoms not supported"
-            )
+        if False:  # not all(a in graph.atoms for a in b_stereo.atoms if a is not None):
+            raise NotImplementedError("Handling of missing atoms not supported")
             for mis_a in (a for a in b_stereo.atoms if a not in graph.atoms):
                 if mis_a not in map_num_idx_dict:
                     # add dummy atom
@@ -337,59 +315,56 @@ def stereo_mol_graph_to_rdmol(
                 else:
                     raise RuntimeError("This should not happen")
 
-        rd_a1 = map_num_idx_dict[a1]
-        rd_a2 = map_num_idx_dict[a2]
-        rd_bond = mol.GetBondBetweenAtoms(rd_a1, rd_a2)
+        rd_bond = mol.GetBondBetweenAtoms(map_num_idx_dict[a1], map_num_idx_dict[a2])
         new_a1 = idx_map_num_dict[rd_bond.GetBeginAtomIdx()]
         new_a2 = idx_map_num_dict[rd_bond.GetEndAtomIdx()]
 
         assert {a1, a2} == {new_a1, new_a2}
 
         if isinstance(b_stereo, PlanarBond):
-            
-            mol.GetAtomWithIdx(rd_a1).SetHybridization(
-                Chem.HybridizationType.SP2
-            )
-            mol.GetAtomWithIdx(rd_a2).SetHybridization(
-                Chem.HybridizationType.SP2
-            )
+            # mol.GetAtomWithIdx(rd_a1).SetHybridization(Chem.HybridizationType.SP2)
+            # mol.GetAtomWithIdx(rd_a2).SetHybridization(Chem.HybridizationType.SP2)
+
+            rd_bond.SetBondType(Chem.BondType.DOUBLE)
+
+            if (a1, a2) == (new_a2, new_a1):
+                b_stereo = b_stereo.__class__(
+                    atoms=tuple(b_stereo.atoms[i] for i in (4, 5, 3, 2, 0, 1)),
+                    parity=b_stereo.parity,
+                )
+
+            if b_stereo.atoms[0] and b_stereo.atoms[4]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[0]],
+                    map_num_idx_dict[b_stereo.atoms[4]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
+            elif b_stereo.atoms[1] and b_stereo.atoms[5]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[1]],
+                    map_num_idx_dict[b_stereo.atoms[5]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
+            elif b_stereo.atoms[0] and b_stereo.atoms[5]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[0]],
+                    map_num_idx_dict[b_stereo.atoms[5]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOE)
+            elif b_stereo.atoms[1] and b_stereo.atoms[4]:
+                rd_bond.SetStereoAtoms(
+                    map_num_idx_dict[b_stereo.atoms[1]],
+                    map_num_idx_dict[b_stereo.atoms[4]],
+                )
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOE)
+
+            else:
+                raise Exception(f"something wrong with {b_stereo}")
 
             if b_stereo.parity is None:
                 rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREONONE)
 
-            elif (a1, a2) == (new_a1, new_a2):
-                rd_bond.SetStereoAtoms(
-                    map_num_idx_dict[b_stereo.atoms[0]],
-                    map_num_idx_dict[b_stereo.atoms[4]],
-                )
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
-
-            elif (a1, a2) == (new_a2, new_a1):
-                rd_bond.SetStereoAtoms(
-                    map_num_idx_dict[b_stereo.atoms[4]],
-                    map_num_idx_dict[b_stereo.atoms[0]],
-                )
-                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOZ)
-            else:
-                raise Exception(f"something wrong with {b_stereo}")
-
-            # if no planar bond neigboring set the bond to double
-            if False:
-                ...
-                # TODO: check if this is still needed
-                # all(
-                # graph.get_bond_stereo(
-                #    (b_stereo.atoms[i], b_stereo.atoms[j])
-                # )
-                # is None
-                # for i, j in ((0, 2), (1, 2), (3, 4), (3, 5))
-                # if tuple(sorted((b_stereo.atoms[i], b_stereo.atoms[j])))
-                #         in graph.bonds):
-        #
-        #     rd_bond.SetBondType(Chem.BondType.DOUBLE)
-
         elif isinstance(b_stereo, AtropBond):
-
             if (a1, a2) == (new_a1, new_a2):
                 rd_bond.SetStereoAtoms(
                     map_num_idx_dict[b_stereo.atoms[0]],
@@ -425,11 +400,11 @@ def stereo_mol_graph_to_rdmol(
 def set_crg_bond_orders(
     graph: CondensedReactionGraph,
     mol: Chem.rdchem.RWMol,
-    idx_map_num_dict: dict[int, int],
+    idx_map_num_dict: dict[RDKitAtomId, AtomId],
     generate_bond_orders=False,
     allow_charged_fragments=False,
     charge=0,
-) -> tuple[Chem.rdchem.RWMol, dict[int, int]]:
+) -> Chem.rdchem.RWMol:
     r, r_idx_map_num_dict = mol_graph_to_rdmol(
         graph.reactant(),
         generate_bond_orders=generate_bond_orders,
@@ -453,8 +428,112 @@ def set_crg_bond_orders(
             p_bond_order = p_bond.GetBondTypeAsDouble()
             average = (r_bond_order + p_bond_order) / 2
             bond_order = round(average * 2) / 2
-            mol.GetBondBetweenAtoms(a1, a2).SetBondType(
-                bond_type_dict[bond_order]
-            )
+            mol.GetBondBetweenAtoms(a1, a2).SetBondType(bond_type_dict[bond_order])
 
     return mol
+
+
+def condensed_reaction_graph_to_rdmol(
+    graph: CondensedReactionGraph,
+    generate_bond_orders: bool = False,
+    allow_charged_fragments: bool = False,
+    charge: int = 0,
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
+    """Convert a CondensedReactionGraph to an RDKit molecule.
+
+    :param graph: CondensedReactionGraph to convert
+    :param generate_bond_orders: If True, compute bond orders for the CRG
+    :param allow_charged_fragments: If True, allow charged fragments
+    :param charge: Total charge of the molecule
+    :return: RDKit molecule and index-to-atom-id mapping
+    """
+    mol, idx_map_num_dict = mol_graph_to_rdmol(
+        graph=graph,
+        generate_bond_orders=False,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=0,
+    )
+
+    if generate_bond_orders:
+        mol = set_crg_bond_orders(
+            graph=graph,
+            mol=mol,
+            idx_map_num_dict=idx_map_num_dict,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+        )
+
+    return mol, idx_map_num_dict
+
+
+def stereo_condensed_reaction_graph_to_rdmol(
+    graph: StereoCondensedReactionGraph,
+    generate_bond_orders: bool = False,
+    allow_charged_fragments: bool = False,
+    charge: int = 0,
+) -> tuple[Chem.rdchem.RWMol, dict[RDKitAtomId, AtomId]]:
+    """Convert a StereoCondensedReactionGraph to an RDKit molecule.
+
+    The stereo changes are merged into a flat StereoMolGraph which is then
+    converted via :func:`stereo_mol_graph_to_rdmol`.
+
+    :param graph: StereoCondensedReactionGraph to convert
+    :param generate_bond_orders: If True, compute bond orders for the SCRG
+    :param allow_charged_fragments: If True, allow charged fragments
+    :param charge: Total charge of the molecule
+    :return: RDKit molecule and index-to-atom-id mapping
+    """
+    from stereomolgraph.graphs.crg import Change
+    from stereomolgraph.graphs.smg import StereoMolGraph
+
+    ts_smg = StereoMolGraph(graph)  # bond change is now just a bond
+
+    for _atom, stereo_change_dict in graph.atom_stereo_changes.items():
+        atom_stereo = next(
+            (
+                stereo
+                for stereo_change in (
+                    Change.FLEETING,
+                    Change.BROKEN,
+                    Change.FORMED,
+                )
+                if (stereo := stereo_change_dict[stereo_change]) is not None
+            ),
+            None,
+        )
+        if atom_stereo:
+            ts_smg.set_atom_stereo(atom_stereo)
+
+    for _bond, stereo_change_dict in graph.bond_stereo_changes.items():
+        bond_stereo = next(
+            (
+                stereo
+                for stereo_change in (
+                    Change.FLEETING,
+                    Change.BROKEN,
+                    Change.FORMED,
+                )
+                if (stereo := stereo_change_dict[stereo_change]) is not None
+            ),
+            None,
+        )
+        if bond_stereo:
+            ts_smg.set_bond_stereo(bond_stereo)
+
+    mol, idx_map_num_dict = stereo_mol_graph_to_rdmol(
+        ts_smg,
+        generate_bond_orders=False,
+        allow_charged_fragments=allow_charged_fragments,
+        charge=charge,
+    )
+    if generate_bond_orders:
+        mol = set_crg_bond_orders(
+            graph=graph,
+            mol=mol,
+            generate_bond_orders=generate_bond_orders,
+            allow_charged_fragments=allow_charged_fragments,
+            charge=charge,
+            idx_map_num_dict=idx_map_num_dict,
+        )
+    return mol, idx_map_num_dict

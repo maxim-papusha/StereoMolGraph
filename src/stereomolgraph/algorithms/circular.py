@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import itertools
-from collections import defaultdict
-from typing import TYPE_CHECKING
+from collections import defaultdict, deque
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Iterator
+    from collections.abc import Callable, Collection, Iterator, Sequence
     from typing import Literal, TypeVar
 
     from stereomolgraph.graphs import (
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     N = TypeVar("N", bound=int)
 
 
-def numpy_int_tuple_hash(
+def _numpy_int_tuple_hash(
     arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]],
     out: None | np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]] = None,
 ) -> np.ndarray:
@@ -72,7 +72,7 @@ def numpy_int_multiset_hash(
     Works by sorting the elements and then applying the tuple hashing function.
     """
     sorted_arr = np.sort(arr, axis=-1)
-    return numpy_int_tuple_hash(sorted_arr, out)
+    return _numpy_int_tuple_hash(sorted_arr, out)
 
 
 def label_hash(
@@ -98,7 +98,7 @@ def label_hash(
     return np.array(atom_hash, dtype=np.int64)
 
 
-def morgan_generator(
+def circular_generator(
     mg: MolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
@@ -161,16 +161,18 @@ def morgan_generator(
             hash_pair_view = hash_pair[: len(ids)]
             hash_pair_view[:, 0] = atom_hash[ids]
             hash_pair_view[:, 1] = prev_atom_hash[ids]
-            atom_hash[ids] = numpy_int_tuple_hash(hash_pair_view, out=atom_hash[ids])
+            atom_hash[ids] = _numpy_int_tuple_hash(hash_pair_view, out=atom_hash[ids])
         atom_hash_view = atom_hash.view()
         atom_hash_view.setflags(write=False)
         yield atom_hash_view
 
 
-def stereo_morgan_generator(
+def circular_stereo_generator(
     smg: StereoMolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
+    """Generator of the Circular Stereo Algorithm for StereoMolGraph :cite:`papusha2026circular`."""
+
     n_atoms = len(smg.atoms)
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
@@ -320,7 +322,7 @@ def stereo_morgan_generator(
         i_b_perm_nbrs.append(b_perm_nbrs)
         i_b_perm.append(np.zeros(b_perm_nbrs.shape[0:2], dtype=np.int64))
         i_bond_stereo = np.zeros(b_perm_nbrs.shape[0:1], dtype=np.int64)
-        i_bond_stereo.fill(numpy_int_tuple_hash(numpy_int_tuple_hash(arr_perm_group)))
+        i_bond_stereo.fill(_numpy_int_tuple_hash(_numpy_int_tuple_hash(arr_perm_group)))
         i_b.append(i_bond_stereo)
 
         for stereo_id, (atom_arr_id1, atom_arr_id2) in enumerate(atom_arr_ids):
@@ -357,7 +359,7 @@ def stereo_morgan_generator(
         for perm_atoms, a_perm_nbrs, a_perm, a in zip(
             as_perm_atoms, i_a_perm_nbrs, i_a_perm, i_a
         ):
-            numpy_int_tuple_hash(atom_hash[perm_atoms], out=a_perm)
+            _numpy_int_tuple_hash(atom_hash[perm_atoms], out=a_perm)
             numpy_int_multiset_hash(a_perm, out=a)
 
         # bond stereo
@@ -365,7 +367,7 @@ def stereo_morgan_generator(
             for perm_atoms, b_perm_nbrs, b_perm, b in zip(
                 bs_perm_atoms, i_b_perm_nbrs, i_b_perm, i_b
             ):
-                numpy_int_tuple_hash(prev_atom_hash[perm_atoms], out=b_perm)
+                _numpy_int_tuple_hash(prev_atom_hash[perm_atoms], out=b_perm)
                 numpy_int_multiset_hash(b_perm, out=b)
 
         for (
@@ -391,17 +393,23 @@ def _reaction_generator(
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
     max_iter: int | None = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
+    if hasattr(graph, "atom_stereo_changes") and hasattr(graph, "bond_stereo_changes"):
+        ts = cast("StereoCondensedReactionGraph", graph).ts(
+            infer_non_fleeting_stereo=False
+        )
+    else:
+        ts = graph.ts()
+
     n_atoms = graph.n_atoms
     reactant = graph.reactant()
     product = graph.product()
-    ts = graph._ts()
     assert n_atoms == reactant.n_atoms
     assert n_atoms == product.n_atoms
     assert n_atoms == ts.n_atoms
     color_iters = [
-        generator(graph.reactant(), atom_labels=atom_labels),
-        generator(graph.product(), atom_labels=atom_labels),
-        generator(graph._ts(), atom_labels=atom_labels),
+        generator(reactant, atom_labels=atom_labels),
+        generator(product, atom_labels=atom_labels),
+        generator(ts, atom_labels=atom_labels),
     ]
 
     stacked: np.ndarray | None = None
@@ -420,34 +428,34 @@ def _reaction_generator(
             np.copyto(stacked[..., axis], color)
 
         assert stacked is not None and hash_buf is not None
-        hashed = numpy_int_tuple_hash(stacked, out=hash_buf)
+        hashed = _numpy_int_tuple_hash(stacked, out=hash_buf)
         hash_view = hashed.view()
         hash_view.setflags(write=False)
         assert len(hash_view) == n_atoms
         yield hash_view
 
 
-def reaction_morgan_generator(
+def reaction_circular_generator(
     graph: CondensedReactionGraph,
     max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
     return _reaction_generator(
         graph=graph,
-        generator=morgan_generator,
+        generator=circular_generator,
         atom_labels=atom_labels,
         max_iter=max_iter,
     )
 
 
-def stereo_reaction_morgan_generator(
+def reaction_circular_stereo_generator(
     graph: StereoCondensedReactionGraph,
     max_iter: int | None = None,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
     return _reaction_generator(
         graph=graph,
-        generator=stereo_morgan_generator,
+        generator=circular_stereo_generator,
         atom_labels=atom_labels,
         max_iter=max_iter,
     )
@@ -479,7 +487,8 @@ def _color_refine(
         elif new_n_classes > n_atoms:
             raise RuntimeError(
                 "Number of atom classes exceeded number of atoms."
-                f"n_classes: {new_n_classes} and n_atoms: {n_atoms}, old_classes{n_atom_classes}"
+                f"n_classes: {new_n_classes} and n_atoms: {n_atoms}, "
+                f"old_classes{n_atom_classes}"
             )
         else:
             n_atom_classes = new_n_classes
@@ -494,7 +503,7 @@ def color_refine_mg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=morgan_generator,
+        generator=circular_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -507,7 +516,7 @@ def color_refine_smg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=stereo_morgan_generator,
+        generator=circular_stereo_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -520,7 +529,7 @@ def color_refine_crg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=reaction_morgan_generator,
+        generator=reaction_circular_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -533,7 +542,7 @@ def color_refine_scrg(
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
     return _color_refine(
         graph=graph,
-        generator=stereo_reaction_morgan_generator,
+        generator=reaction_circular_stereo_generator,
         max_iter=max_iter,
         atom_labels=atom_labels,
     )
@@ -584,26 +593,50 @@ def circular_fingerprint(
     radius: int = 3,
     n_bits: int = 2048,
     count: bool = True,
+    accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
-    gen = morgan_generator(graph)
+    """Build a circular fingerprint for a molecular graph.
 
-    all_colors: list[np.ndarray] = []
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
+    gen = circular_generator(graph)
+
+    all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
 
     if include_hydrogens:
         for colors, _r in zip(gen, range(radius + 1)):
-            all_colors.append(colors)
+            all_colors.append(colors.copy() if accumulate else colors)
 
     elif not include_hydrogens:
         non_hydrogens = np.array(
             [i for i, atom_type in enumerate(graph.atom_types) if atom_type != 1]
         )
         for colors, _r in zip(gen, range(radius + 1)):
+            # colors is always copied because of fancy indexing
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
+
+    fp = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(fp, n_bits, count=count)
+    elif not n_bits and not count:
+        fp = np.unique(fp, sorted=False)
     return fp
 
 
@@ -612,66 +645,48 @@ def circular_stereo_fingerprint(
     radius: int = 3,
     n_bits: int = 2048,
     count: bool = True,
+    accumulate: bool = False,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
-    gen = stereo_morgan_generator(graph)
+    """Build a circular stereo fingerprint for a molecular graph.
 
-    all_colors: list[np.ndarray] = []
+    If ``accumulate`` is ``True``, identifiers from every radius up to the
+    requested radius are included. Otherwise, only the last radius is used.
+    If ``include_hydrogens`` is ``False``, atom environments centered on
+    hydrogens are excluded.
+
+    :param graph: Molecular graph to fingerprint.
+    :param radius: Maximum refinement radius to include.
+    :param n_bits: Length of the folded fingerprint. If ``0`` or ``None``,
+        return the unique integer identifiers instead of a folded bit/count vector.
+    :param count: If ``True``, all unique values are used once.
+    :param accumulate: Whether to include identifiers from all radii up to
+        ``radius`` instead of only the final radius.
+    :param include_hydrogens: Whether to include hydrogen-centered
+        environments.
+    """
+    gen = circular_stereo_generator(graph)
+
+    all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
 
     if include_hydrogens:
         for colors, _r in zip(gen, range(radius + 1)):
-            all_colors.append(colors)
+            all_colors.append(colors.copy() if accumulate else colors)
 
     elif not include_hydrogens:
         non_hydrogens = np.array(
             [i for i, atom_type in enumerate(graph.atom_types) if atom_type != 1]
         )
         for colors, _r in zip(gen, range(radius + 1)):
+            # colors is always copied because of fancy indexing
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
         return np.zeros(n_bits, dtype=np.uint32)
-    fp = modulo_fold(np.concatenate(all_colors), n_bits, count=count)
-    return fp
 
-
-def circular_reaction_fingerprint(
-    graph: CondensedReactionGraph,
-    radius: int = 3,
-    n_bits: int = 1024,
-    count: bool = True,
-    only_active_atoms: bool = False,
-):
-    gen = reaction_morgan_generator(graph)
-
-    all_colors: list[np.ndarray] = []
-    for colors, r in zip(gen, range(radius + 1)):
-        if only_active_atoms:
-            active_atoms = graph.active_atoms(additional_layer=r)
-
-            colors = colors[np.fromiter(active_atoms, dtype=int)]
-        all_colors.append(colors)
-
-    fp = modulo_fold(np.concatenate(all_colors), n_bits=n_bits, count=count)
-    return fp
-
-
-def circular_stereo_reaction_fingerprint(
-    graph: StereoCondensedReactionGraph,
-    radius: int = 3,
-    n_bits: int = 1024,
-    count: bool = True,
-    only_active_atoms: bool = False,
-):
-    gen = stereo_reaction_morgan_generator(graph)
-
-    all_colors: list[np.ndarray] = []
-    for colors, r in zip(gen, range(radius + 1)):
-        if only_active_atoms:
-            active_atoms = graph.active_atoms(additional_layer=r)
-
-            colors = colors[np.fromiter(active_atoms, dtype=int)]
-        all_colors.append(colors)
-
-    fp = modulo_fold(np.concatenate(all_colors), n_bits=n_bits, count=count)
+    fp = np.concatenate(all_colors)
+    if n_bits:
+        fp = modulo_fold(fp, n_bits, count=count)
+    elif not n_bits and not count:
+        fp = np.unique(fp, sorted=False)
     return fp

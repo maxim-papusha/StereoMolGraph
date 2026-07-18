@@ -62,31 +62,101 @@ class RDMol2StereoMolGraph:
 
     stereo_complete: bool = False
     use_atom_map_number: bool = False
+
     lone_pair_stereo: bool = True
     resonance: bool = True
-    _max_resonance_structures: int = 100
+    _max_resonance_structures: int = 1000
+    _radical_resonance_as_cation: bool = True
     _min_trans_ring_size: int = 7
 
     def __call__(self, rdmol: Chem.Mol) -> StereoMolGraph:
         smg = self.smg_from_rdmol(rdmol)
 
-        if self.resonance is False:
+        if not self.resonance:
             return smg
 
-        elif self.resonance is True:
-            enumerator = (
-                res_mol
-                for res_mol in Chem.ResonanceMolSupplier(
-                    rdmol, Chem.KEKULE_ALL, self._max_resonance_structures
-                )
-                if res_mol is not None
-            )
+        flags = Chem.KEKULE_ALL
+        # Chem.ALLOW_INCOMPLETE_OCTETS |
+        # Chem.UNCONSTRAINED_CATIONS
+        # | )
 
-            for res_mol in enumerator:
-                res_smg = self.smg_from_rdmol(res_mol)
-                for bond, bond_stereo in res_smg.bond_stereo.items():
-                    if bond not in smg.bond_stereo:
-                        smg.set_bond_stereo(bond_stereo)
+        has_radicals = any(
+            atom.GetNumRadicalElectrons() > 0 for atom in rdmol.GetAtoms()
+        )
+        total_charge = sum(atom.GetFormalCharge() for atom in rdmol.GetAtoms())
+        has_formal_charges = any(
+            atom.GetFormalCharge() != 0 for atom in rdmol.GetAtoms()
+        )
+
+        resonance_input = rdmol
+        radical_resonance_mode = False
+        if (
+            self._radical_resonance_as_cation
+            and has_radicals
+            and total_charge == 0
+            and not has_formal_charges
+        ):
+            resonance_input = Chem.RWMol(rdmol, True)
+            radical_resonance_mode = True
+            for atom in resonance_input.GetAtoms():
+                radical_electrons = atom.GetNumRadicalElectrons()
+                if radical_electrons > 0:
+                    atom.SetFormalCharge(atom.GetFormalCharge() + radical_electrons)
+                    atom.SetNumRadicalElectrons(0)
+            Chem.SetConjugation(resonance_input)
+            resonance_input.UpdatePropertyCache(strict=False)
+
+        for res_mol in Chem.ResonanceMolSupplier(
+            resonance_input,
+            flags,
+            self._max_resonance_structures,
+        ):
+            if res_mol is None:
+                continue
+
+            if radical_resonance_mode:
+                res_mol = Chem.RWMol(res_mol)
+                discard = False
+                for atom in res_mol.GetAtoms():
+                    charge = atom.GetFormalCharge()
+                    if charge < 0:
+                        discard = True
+                        break
+                    if charge > 0:
+                        atom.SetFormalCharge(0)
+                        atom.SetNumRadicalElectrons(charge)
+                if discard:
+                    continue
+                res_mol.UpdatePropertyCache(strict=False)
+
+            res_smg = self.smg_from_rdmol(res_mol)
+            for bond, bond_stereo in res_smg.bond_stereo.items():
+                if (already_set := smg.get_bond_stereo(bond)) is None:
+                    smg.set_bond_stereo(bond_stereo)
+                elif bond_stereo.parity is not None and already_set.parity is None:
+                    smg.set_bond_stereo(bond_stereo)
+
+            if self.stereo_complete:
+                default_parity = {
+                    Tetrahedral: 1,
+                    SquarePlanar: 0,
+                    TrigonalBipyramidal: 1,
+                    Octahedral: 1,
+                    PlanarBond: 0,
+                    AtropBond: 1,
+                }
+                for _atom, atom_stereo in res_smg.atom_stereo.items():
+                    if atom_stereo.parity is None:
+                        new_atom_stereo = atom_stereo.__class__(
+                            atom_stereo.atoms, default_parity[type(atom_stereo)]
+                        )
+                        smg.set_atom_stereo(new_atom_stereo)
+                for _bond, bond_stereo in res_smg.bond_stereo.items():
+                    if bond_stereo.parity is None:
+                        new_bond_stereo = bond_stereo.__class__(
+                            bond_stereo.atoms, default_parity[type(bond_stereo)]
+                        )
+                        smg.set_bond_stereo(new_bond_stereo)
         return smg
 
     def smg_from_rdmol(self, rdmol: Chem.Mol) -> StereoMolGraph:
@@ -141,9 +211,7 @@ class RDMol2StereoMolGraph:
                         self._rd_tetrahedral[chiral_tag],
                     )
                 else:
-                    raise RuntimeError(
-                        "Tetrahedral stereo must have 3 or 4 neighbors"
-                    )
+                    raise RuntimeError("Tetrahedral stereo must have 3 or 4 neighbors")
 
             elif chiral_tag == Chem.ChiralType.CHI_TETRAHEDRAL or (
                 hybridization == Chem.HybridizationType.SP3 and len(neighbors) == 4
@@ -154,13 +222,7 @@ class RDMol2StereoMolGraph:
                     for i in range(5)
                 )  # extends with "None" if less than 4 neighbors
                 assert len(stereo_atoms) == 5
-
-                if not self.stereo_complete:
-                    atom_stereo = Tetrahedral(stereo_atoms, None)
-                elif self.stereo_complete:
-                    atom_stereo = Tetrahedral(stereo_atoms, parity=1)
-                else:
-                    raise RuntimeError("This should never happen")
+                atom_stereo = Tetrahedral(stereo_atoms, None)
 
             elif chiral_tag == Chem.ChiralType.CHI_SQUAREPLANAR:
                 sp_order: tuple[int, int, int, int]
@@ -283,9 +345,7 @@ class RDMol2StereoMolGraph:
                 begin_non_stereo_nbr = (
                     None
                     if len(neighbors_begin) == 1
-                    else [
-                        a for a in neighbors_begin if a != begin_stereo_atom
-                    ][0]
+                    else [a for a in neighbors_begin if a != begin_stereo_atom][0]
                 )
                 end_non_stereo_nbr = (
                     None
@@ -305,14 +365,10 @@ class RDMol2StereoMolGraph:
 
                 assert len(bond_atoms_idx) == 6
 
-                bond_atoms = tuple(
-                    [id_atom_map.get(a) for a in bond_atoms_idx]
-                )
+                bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
 
                 if invert:
-                    bond_atoms = tuple(
-                        [bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)]
-                    )
+                    bond_atoms = tuple([bond_atoms[i] for i in (1, 0, 2, 3, 4, 5)])
                 assert len(bond_atoms) == 6
                 bond_stereo = PlanarBond(bond_atoms, 0)
 
@@ -372,9 +428,7 @@ class RDMol2StereoMolGraph:
                             (n for n in n_end if n not in ring), None
                         ),  # atom6: out-of-ring neighbor of end_idx
                     ]
-                    bond_atoms = tuple(
-                        [id_atom_map.get(a) for a in bond_atoms_idx]
-                    )
+                    bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
 
                     assert len(bond_atoms) == 6
 
@@ -394,14 +448,9 @@ class RDMol2StereoMolGraph:
                         *neighbors_end_with_none,
                     )
 
-                    bond_atoms = tuple(
-                        [id_atom_map.get(a) for a in bond_atoms_idx]
-                    )
+                    bond_atoms = tuple([id_atom_map.get(a) for a in bond_atoms_idx])
                     assert len(bond_atoms) == 6, bond_atoms
-                    if self.stereo_complete:
-                        bond_stereo = PlanarBond(bond_atoms, 0)
-                    else:
-                        bond_stereo = PlanarBond(bond_atoms, None)
+                    bond_stereo = PlanarBond(bond_atoms, None)
 
             else:
                 continue
