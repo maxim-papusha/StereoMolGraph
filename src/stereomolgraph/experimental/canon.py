@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from stereomolgraph import AtomId, MolGraph, StereoMolGraph
-from stereomolgraph.algorithms.color_refine import (
+from stereomolgraph.algorithms.circular import (
     color_refine_mg,
     color_refine_smg,
 )
