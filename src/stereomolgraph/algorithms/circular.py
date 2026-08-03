@@ -594,7 +594,7 @@ def circular_fingerprint(
     radius: int = 3,
     n_bits: int = 2048,
     count: bool = True,
-    accumulate: bool = False,
+    accumulate: bool = True,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
     """Build a circular fingerprint for a molecular graph.
@@ -646,7 +646,7 @@ def circular_stereo_fingerprint(
     radius: int = 3,
     n_bits: int = 2048,
     count: bool = True,
-    accumulate: bool = False,
+    accumulate: bool = True,
     include_hydrogens: bool = False,
 ) -> np.ndarray:
     """Build a circular stereo fingerprint for a molecular graph.
@@ -668,17 +668,20 @@ def circular_stereo_fingerprint(
     """
     gen = circular_stereo_generator(graph)
 
+    # Skip iteration 0 (atom types only) — start from radius 1
+    next(gen)
+
     all_colors: Sequence[np.ndarray] = [] if accumulate else deque([], maxlen=1)
 
     if include_hydrogens:
-        for colors, _r in zip(gen, range(radius + 1)):
+        for colors, _r in zip(gen, range(1, radius + 1)):
             all_colors.append(colors.copy() if accumulate else colors)
 
     elif not include_hydrogens:
         non_hydrogens = np.array(
             [i for i, atom_type in enumerate(graph.atom_types) if atom_type != 1]
         )
-        for colors, _r in zip(gen, range(radius + 1)):
+        for colors, _r in zip(gen, range(1, radius + 1)):
             # colors is always copied because of fancy indexing
             all_colors.append(colors[non_hydrogens])
 

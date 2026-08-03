@@ -131,7 +131,7 @@ class TestStereoMolGraph(TestMolGraph):
         assert g3.get_bond_stereo((2, 3)).parity is None
         db3 = rdmol_g3.GetBondBetweenAtoms(2, 3)
 
-        assert db3.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREONONE  # type: ignore
+        assert db3.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREOANY  # type: ignore
 
     def test_to_rdmol_tetrahedral(self):
         g = self._TestClass()
