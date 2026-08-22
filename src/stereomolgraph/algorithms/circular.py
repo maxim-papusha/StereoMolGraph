@@ -171,8 +171,7 @@ def circular_stereo_generator(
     smg: StereoMolGraph,
     atom_labels: None | np.ndarray[tuple[int], np.dtype[np.int64]] = None,
 ) -> Iterator[np.ndarray[tuple[int], np.dtype[np.int64]]]:
-    """Generator of the Circular Stereo Algorithm for StereoMolGraph :cite:`papusha2026circular`.
-    """
+    """Generator of the Circular Stereo Algorithm for StereoMolGraph :cite:`papusha2026circular`."""
 
     n_atoms = len(smg.atoms)
     if atom_labels is not None:
@@ -210,7 +209,6 @@ def circular_stereo_generator(
     atoms_with_bond_stereo: set[int] = set()
 
     grouped_bond_stereo: dict = defaultdict(list)
-    atoms_with_atom_stereo: set[int] = set()
 
     as_atoms = []
     as_perm_atoms = []
@@ -253,11 +251,21 @@ def circular_stereo_generator(
 
     atoms_without_atom_stereo = set(smg.atoms) - atoms_with_atom_stereo
 
+    # Atoms without an atom-stereo descriptor have no stereo: their neighbors
+    # form an unordered multiset, hashed directly instead of enumerating the
+    # full permutation group (infeasible for high coordination). Atoms with the
+    # same number of neighbors are grouped for vectorized multiset hashing.
+    no_stereo_by_degree = defaultdict(list)
     for atom in atoms_without_atom_stereo:
-        fake_stereo_atoms = (atom, *smg.bonded_to(atom))
-        perm_gen = itertools.permutations(range(1, len(fake_stereo_atoms)))
-        perm_group = tuple((0, *perm) for perm in perm_gen)
-        grouped_atom_stereo[perm_group].append((atom, fake_stereo_atoms))
+        nbrs = [arr_id_dict[a] for a in smg.bonded_to(atom)]
+        if nbrs:
+            no_stereo_by_degree[len(nbrs)].append((arr_id_dict[atom], nbrs))
+
+    no_stereo_atoms = []
+    no_stereo_nbrs = []
+    for nbrs_lst in no_stereo_by_degree.values():
+        no_stereo_atoms.append(np.array([a for a, _ in nbrs_lst], dtype=np.int16))
+        no_stereo_nbrs.append(np.array([n for _, n in nbrs_lst], dtype=np.int16))
 
     # atom_stereo
     for perm_group, atom_nbr_atoms_list_tup in grouped_atom_stereo.items():
@@ -288,6 +296,19 @@ def circular_stereo_generator(
         i_atom_stereo = np.zeros(a_perm_nbrs.shape[0:1], dtype=np.int64)
         i_a.append(i_atom_stereo)
 
+        for stereo_id, atom_arr_id in enumerate(atom_arr_ids):
+            stereo_hash_pointer[atom_arr_id].append(
+                i_atom_stereo[stereo_id : stereo_id + 1]
+            )
+            # by reference
+
+    # no_stereo atoms: one direct multiset-hash descriptor each
+    i_no_stereo = []
+    no_stereo_pairs = []
+    for atom_arr_ids in no_stereo_atoms:
+        i_atom_stereo = np.zeros((len(atom_arr_ids),), dtype=np.int64)
+        i_no_stereo.append(i_atom_stereo)
+        no_stereo_pairs.append(np.empty((len(atom_arr_ids), 2), dtype=np.int64))
         for stereo_id, atom_arr_id in enumerate(atom_arr_ids):
             stereo_hash_pointer[atom_arr_id].append(
                 i_atom_stereo[stereo_id : stereo_id + 1]
@@ -362,6 +383,14 @@ def circular_stereo_generator(
         ):
             _numpy_int_tuple_hash(atom_hash[perm_atoms], out=a_perm)
             numpy_int_multiset_hash(a_perm, out=a)
+
+        # no_stereo atoms
+        for ids, nbrs, pair, d in zip(
+            no_stereo_atoms, no_stereo_nbrs, no_stereo_pairs, i_no_stereo
+        ):
+            pair[:, 0] = atom_hash[ids]
+            pair[:, 1] = numpy_int_multiset_hash(atom_hash[nbrs])
+            d[:] = _numpy_int_tuple_hash(pair)
 
         # bond stereo
         if count != 0:
