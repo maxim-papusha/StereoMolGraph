@@ -222,13 +222,13 @@ def enumerate_stereo_assignments(
     count = 0
     for assignments in itertools.product(*(s.states for s in analysis.sites)):
         candidate = graph.copy()
-        for stereo in assignments:
-            if isinstance(stereo, AtomStereo):
-                candidate.set_atom_stereo(stereo)
-            elif isinstance(stereo, BondStereo):
-                candidate.set_bond_stereo(stereo)
-            else:
-                raise TypeError(f"Unsupported descriptor: {type(stereo)!r}")
+        for site, stereo in zip(analysis.sites, assignments, strict=True):
+            if (
+                _site_key(stereo) != site.key
+                or type(stereo) is not type(site.template)
+            ):
+                raise ValueError("Local state cannot change the input stereo site")
+            _replace_stereo_state(candidate, stereo)
 
         if unique:
             candidate.freeze()
