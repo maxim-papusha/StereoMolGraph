@@ -156,7 +156,7 @@ $$
 c_{r+1}(v) =
 \operatorname{Compress}\left(
  c_r(v),\
- \multiset{c_r(u):u\in N(v)}
+ \operatorname{multiset}\{c_r(u):u\in N(v)\}
 \right).
 \tag{4}
 $$
