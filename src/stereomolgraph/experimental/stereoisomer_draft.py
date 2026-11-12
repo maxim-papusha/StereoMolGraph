@@ -138,7 +138,7 @@ def detect_stereo_elements(graph: StereoMolGraph) -> StereoAnalysis:
             states = tuple(
                 sorted(
                     descriptor.get_isomers(),
-                    key=lambda s: repr((type(s).__name__, s.canonical_form())),
+                    key=lambda s: (type(s).__name__, repr(s.atoms), repr(s.parity)),
                 )
             )
             classification: SiteClass = (
