@@ -1,23 +1,32 @@
-"""Focused smoke tests for the experimental stereoisomer draft."""
+"""Small tests for the input-descriptor-only experimental stereoisomer draft."""
 
 from stereomolgraph import StereoMolGraph
 from stereomolgraph.experimental.stereoisomer_draft import (
     detect_stereo_elements,
     enumerate_stereo_assignments,
+    locally_stereogenic_at_assignment,
 )
 from stereomolgraph.stereodescriptors import Tetrahedral
 
 
-def _tetrahedral_graph():
+def _tetrahedral_graph(ligands=("F", "Cl", "Br", "I")):
     graph = StereoMolGraph()
-    for atom, element in enumerate(("C", "F", "Cl", "Br", "I")):
+    graph.add_atom(0, "C")
+    for atom, element in enumerate(ligands, 1):
         graph.add_atom(atom, element)
-    for ligand in (1, 2, 3, 4):
-        graph.add_bond(0, ligand)
+        graph.add_bond(0, atom)
     return graph
 
 
-def test_explicit_tetrahedral_candidate_and_enumeration():
+def test_only_declared_stereo_sites_are_analyzed():
+    graph = _tetrahedral_graph()
+    assert detect_stereo_elements(graph).sites == ()
+    isomers = list(enumerate_stereo_assignments(graph))
+    assert len(isomers) == 1
+    assert len(isomers[0].stereo) == 0
+
+
+def test_existing_tetrahedral_candidate_and_enumeration():
     graph = _tetrahedral_graph()
     graph.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), None))
     analysis = detect_stereo_elements(graph)
@@ -26,20 +35,23 @@ def test_explicit_tetrahedral_candidate_and_enumeration():
     assert analysis.sites[0].classification == "distinct_colors"
     assert len(analysis.sites[0].states) == 2
     assert len(list(enumerate_stereo_assignments(graph, analysis))) == 2
+    assert len(list(enumerate_stereo_assignments(
+        graph, analysis, max_isomers=1
+    ))) == 1
+    assert graph.get_atom_stereo(0).parity is None
 
 
-def test_infer_tetrahedral_and_limit():
+def test_exact_local_stereogenicity_on_assigned_tetrahedra():
     graph = _tetrahedral_graph()
-    assert len(detect_stereo_elements(graph).sites) == 0
-    analysis = detect_stereo_elements(graph, infer_tetrahedral=True)
+    graph.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), 1))
+    assert locally_stereogenic_at_assignment(graph, ("atom", 0))
 
-    assert len(analysis.sites) == 1
-    assert analysis.sites[0].key == ("atom", 0)
-    assert len(list(enumerate_stereo_assignments(graph, analysis, max_isomers=1))) == 1
-    assert len(graph.atom_stereo) == 0  # Input is not mutated.
+    symmetric = _tetrahedral_graph(ligands=("F", "F", "Br", "I"))
+    symmetric.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), 1))
+    assert not locally_stereogenic_at_assignment(symmetric, ("atom", 0))
 
 
-def test_structural_dependency_is_detected_but_not_used_for_pruning():
+def test_dependency_estimate_only_uses_supplied_sites():
     graph = StereoMolGraph()
     types = {
         0: "C", 1: "C", 2: "C", 3: "F", 4: "Cl",
@@ -53,8 +65,10 @@ def test_structural_dependency_is_detected_but_not_used_for_pruning():
         graph.add_bond(1, end)
     for end in (8, 9, 10):
         graph.add_bond(2, end)
+    for a in (0, 1, 2):
+        graph.set_atom_stereo(Tetrahedral((a, *sorted(graph.bonded_to(a))), None))
 
-    analysis = detect_stereo_elements(graph, infer_tetrahedral=True)
+    analysis = detect_stereo_elements(graph)
     sites = {site.key: site for site in analysis.sites}
     assert len(sites) == 3
     assert sites[("atom", 0)].classification == "unresolved"
