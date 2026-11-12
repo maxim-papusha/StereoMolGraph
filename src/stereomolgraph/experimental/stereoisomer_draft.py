@@ -200,10 +200,23 @@ def enumerate_stereo_assignments(
         analysis = detect_stereo_elements(graph)
 
     # Reusing analysis from an unrelated graph must never insert new stereo units.
-    input_keys = {_site_key(s) for s in _candidate_descriptors(graph)}
+    input_descriptors = {
+        _site_key(s): s for s in _candidate_descriptors(graph)
+    }
     analysis_keys = [site.key for site in analysis.sites]
-    if len(analysis_keys) != len(input_keys) or set(analysis_keys) != input_keys:
+    if (
+        len(analysis_keys) != len(input_descriptors)
+        or set(analysis_keys) != set(input_descriptors)
+    ):
         raise ValueError("analysis sites must match the input stereo descriptors")
+    for site in analysis.sites:
+        original = input_descriptors[site.key]
+        if (
+            type(site.template) is not type(original)
+            or site.template.atoms != original.atoms
+            or site.template.parity != original.parity
+        ):
+            raise ValueError("analysis descriptors must match the input graph")
 
     seen: set[StereoMolGraph] = set()
     count = 0
