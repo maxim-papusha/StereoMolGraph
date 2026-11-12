@@ -265,20 +265,22 @@ class StereoMolGraph(MolGraph):
     @override
     def subgraph(self, atoms: Iterable[int]) -> Self:
         """Returns a subgraph of the graph with the given atoms and the chiral
-        information accordingly
+        information accordingly. Stereo is retained when all referenced real
+        atoms remain; ``None`` lone-pair placeholders do not need to be selected.
 
         :param atoms: Atoms to be used for the subgraph
         :return: Subgraph
         """
+        atoms = set(atoms)
         new_graph = super().subgraph(atoms)
 
         for central_atom, atoms_atom_stereo in self._atom_stereo.items():
             atoms_set = set((*atoms_atom_stereo.atoms, central_atom))
-            if all(atom in atoms for atom in atoms_set):
+            if all(atom is None or atom in atoms for atom in atoms_set):
                 new_graph.set_atom_stereo(atoms_atom_stereo)
 
         for _bond, bond_stereo in self._bond_stereo.items():
-            if all(atom in atoms for atom in bond_stereo.atoms):
+            if all(atom is None or atom in atoms for atom in bond_stereo.atoms):
                 new_graph.set_bond_stereo(bond_stereo)
         return new_graph
 
