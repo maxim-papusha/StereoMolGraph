@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from stereomolgraph import Bond, MolGraph, StereoMolGraph
-from stereomolgraph.algorithms.circular import color_refine_mg
+from stereomolgraph.algorithms.circular import color_refine_mg, color_refine_smg
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
 from stereomolgraph.stereodescriptors import (
     AtomStereo,
     AtropBond,
     BondStereo,
     PlanarBond,
-    Tetrahedral,
 )
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 SiteKey = tuple[Literal["atom", "bond"], int | Bond]
 StereoDescriptor = AtomStereo | BondStereo
-SiteClass = Literal["specified", "distinct_colors", "unresolved"]
+SiteClass = Literal["specified", "distinct_colors", "unresolved", "geometry_only"]
 
 
 @dataclass(frozen=True)
@@ -115,48 +115,25 @@ def _distinct_ligand_colors(
     return True
 
 
-def _candidate_descriptors(
-    graph: StereoMolGraph, *, infer_tetrahedral: bool
-) -> tuple[StereoDescriptor, ...]:
-    candidates: list[StereoDescriptor] = [
-        *graph.atom_stereo.values(), *graph.bond_stereo.values()
-    ]
-    if infer_tetrahedral:
-        for a in graph.atoms:
-            # Conservative structural shortcut: only explicitly bonded,
-            # four-coordinate C/Si. Other geometries need a template.
-            if (
-                a not in graph.atom_stereo
-                and graph.get_atom_type(a) in (6, 14)
-                and len(graph.bonded_to(a)) == 4
-            ):
-                candidates.append(
-                    Tetrahedral((a, *sorted(graph.bonded_to(a))), None)
-                )
-    return tuple(candidates)
+def _candidate_descriptors(graph: StereoMolGraph) -> tuple[StereoDescriptor, ...]:
+    """Use ONLY the stereo descriptors explicitly supplied by the input graph."""
+    return (*graph.atom_stereo.values(), *graph.bond_stereo.values())
 
 
-def detect_stereo_elements(
-    graph: StereoMolGraph,
-    *,
-    infer_tetrahedral: bool = False,
-) -> StereoAnalysis:
+def detect_stereo_elements(graph: StereoMolGraph) -> StereoAnalysis:
     """Collect possible stereo sites and estimate stereo dependencies.
 
     Do not discard sites with equal ligand colors: another stereochemical
     assignment could make them stereogenic (para-stereogenicity).
 
-    Normally geometry candidates are already present on the graph.
-    infer_tetrahedral=True also nominates four-coordinate C/Si sites; it is
-    not general chemical stereoperception.
+    The input StereoMolGraph already contains ALL candidate geometry units.
+    No stereo descriptor is inferred, added, or deleted during analysis.
     """
     topology = MolGraph(graph)
     base = _colors(topology)
     sites: list[StereoSite] = []
 
-    for descriptor in _candidate_descriptors(
-        graph, infer_tetrahedral=infer_tetrahedral
-    ):
+    for descriptor in _candidate_descriptors(graph):
         if descriptor.parity is None:
             states = tuple(
                 sorted(
@@ -165,9 +142,13 @@ def detect_stereo_elements(
                 )
             )
             classification: SiteClass = (
-                "distinct_colors"
-                if _distinct_ligand_colors(_ligand_groups(descriptor), base)
-                else "unresolved"
+                "geometry_only"
+                if len(states) == 1 and states[0].parity is None
+                else (
+                    "distinct_colors"
+                    if _distinct_ligand_colors(_ligand_groups(descriptor), base)
+                    else "unresolved"
+                )
             )
         else:
             states = (descriptor,)
@@ -202,7 +183,6 @@ def enumerate_stereo_assignments(
     graph: StereoMolGraph,
     analysis: StereoAnalysis | None = None,
     *,
-    infer_tetrahedral: bool = False,
     unique: bool = True,
     max_isomers: int | None = None,
 ) -> Iterator[StereoMolGraph]:
@@ -211,14 +191,19 @@ def enumerate_stereo_assignments(
     No automorphism pruning is used. Outputs are candidate stereo graphs,
     not certified chemically feasible stereoisomers: unresolved sites
     could be inactive, and ring-geometry feasibility is not checked.
+    Only existing descriptor slots are overwritten; no new sites are added.
     unique=True uses the existing StereoMolGraph graph isomorphism test.
     """
     if max_isomers is not None and max_isomers < 1:
         raise ValueError("max_isomers must be positive or None")
     if analysis is None:
-        analysis = detect_stereo_elements(
-            graph, infer_tetrahedral=infer_tetrahedral
-        )
+        analysis = detect_stereo_elements(graph)
+
+    # Reusing analysis from an unrelated graph must never insert new stereo units.
+    input_keys = {_site_key(s) for s in _candidate_descriptors(graph)}
+    analysis_keys = [site.key for site in analysis.sites]
+    if len(analysis_keys) != len(input_keys) or set(analysis_keys) != input_keys:
+        raise ValueError("analysis sites must match the input stereo descriptors")
 
     seen: set[StereoMolGraph] = set()
     count = 0
@@ -243,3 +228,95 @@ def enumerate_stereo_assignments(
         count += 1
         if max_isomers is not None and count >= max_isomers:
             return
+
+
+def _replace_stereo_state(graph: StereoMolGraph, state: StereoDescriptor) -> None:
+    """Overwrite the existing site descriptor with a local configuration."""
+    key = _site_key(state)
+    if key[0] == "atom":
+        if key[1] not in graph.atom_stereo:
+            raise ValueError("Cannot add a new atom stereo descriptor")
+        graph.set_atom_stereo(state)
+    else:
+        if key[1] not in graph.bond_stereo:
+            raise ValueError("Cannot add a new bond stereo descriptor")
+        graph.set_bond_stereo(state)
+
+
+def _anchored_stereo_isomorphic(
+    first: StereoMolGraph, second: StereoMolGraph, key: SiteKey
+) -> bool:
+    """Exact stereo isomorphism requiring the designated site to map to itself.
+
+    An atom site is individualized at its center; a bond site is individualized
+    at both endpoints (which may still exchange with each other). This is an
+    isomorphism test on complete stereo graphs, NOT McKay-style pruning.
+    """
+    if key[0] == "atom":
+        anchors = frozenset((key[1],))
+    else:
+        anchors = key[1]
+
+    def labels(g: StereoMolGraph) -> np.ndarray:
+        atoms = tuple(g.atoms)
+        seeds = [(int(g.get_atom_type(a)), a in anchors) for a in atoms]
+        ordered = {seed: i for i, seed in enumerate(sorted(set(seeds)))}
+        array = np.array([ordered[x] for x in seeds], dtype=np.int64)
+        return color_refine_smg(g, atom_labels=array)
+
+    return any(
+        vf2pp_all_isomorphisms(
+            first,
+            second,
+            stereo=True,
+            atom_labels=(labels(first), labels(second)),
+        )
+    )
+
+
+def locally_stereogenic_at_assignment(
+    graph: StereoMolGraph,
+    key: SiteKey,
+) -> bool:
+    """Determine whether a site has distinguishable local states at a fixed assignment.
+
+    All *other* sites with more than one local state must be specified first.
+    A site's alternative states are compared using an isomorphism which
+    fixes the site, while keeping all other descriptors unchanged.
+
+    This is exact for the *represented stereo graphs* assuming the underlying
+    isomorphism implementation is correct. It is NOT a physical stability
+    or geometry feasibility test, and it does not certify global conditional
+    stereogenicity before other sites are assigned.
+    """
+    descriptors = _candidate_descriptors(graph)
+    available = {_site_key(s): s for s in descriptors}
+    if key not in available:
+        raise ValueError("Site is not present among input stereo descriptors")
+
+    for other in descriptors:
+        if _site_key(other) == key:
+            continue
+        if other.parity is None and len(other.get_isomers()) > 1:
+            raise ValueError(
+                "All other variable stereo sites must be assigned first"
+            )
+
+    states = tuple(available[key].get_isomers())
+    if len(states) < 2:
+        return False
+
+    # Fast sufficient result: strictly distinct constitutional ligand colors
+    # imply that alternative local arrangements cannot be isomorphic at this site.
+    base_colors = _colors(MolGraph(graph))
+    if _distinct_ligand_colors(_ligand_groups(available[key]), base_colors):
+        return True
+
+    first = graph.copy()
+    _replace_stereo_state(first, states[0])
+    for state in states[1:]:
+        alternate = graph.copy()
+        _replace_stereo_state(alternate, state)
+        if not _anchored_stereo_isomorphic(first, alternate, key):
+            return True
+    return False
