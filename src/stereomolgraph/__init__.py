@@ -20,4 +20,11 @@ def __getattr__(name: str):
         case name:
             from importlib import import_module
 
-            import_module(f".{name}", __name__)
+            try:
+                return import_module(f".{name}", __name__)
+            except ModuleNotFoundError as error:
+                if error.name != f"{__name__}.{name}":
+                    raise
+                raise AttributeError(
+                    f"module {__name__!r} has no attribute {name!r}"
+                ) from error

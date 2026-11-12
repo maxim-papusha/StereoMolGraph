@@ -618,6 +618,86 @@ def modulo_fold(vec: np.ndarray, n_bits: int = 1024, count: bool = True) -> np.n
     return fp
 
 
+def folding_has_collision(ids: np.ndarray, n_bits: int) -> bool:
+    """Return ``True`` if folding with ``ids % n_bits`` maps two distinct
+    identifiers onto the same bit.
+
+    Two identifiers collide when ``id1 % n_bits == id2 % n_bits`` while
+    ``id1 != id2``. Repeated occurrences of the same identifier are not a
+    collision: they represent the same atom environment and intentionally
+    accumulate in the same bin (count fingerprints).
+
+    :param ids: Integer atom-environment identifiers.
+    :param n_bits: Folding length to test.
+    """
+    ids = np.asarray(ids, dtype=np.int64)
+    if ids.size <= 1:
+        return False
+    return bool(np.unique(np.mod(ids, n_bits)).size != np.unique(ids).size)
+
+
+def minimal_collision_free_length(
+    ids: np.ndarray,
+    min_bits: int = 64,
+    max_bits: int = 2**63 - 1,
+) -> int:
+    """Find the smallest folding length for which ``ids % length`` is injective.
+
+    Implements the exponential-growth plus binary-search strategy of
+    :cite:`li2026collisionfree`: double ``length`` until no collision remains,
+    then binary-search the interval between the last colliding and the first
+    collision-free length.
+
+    :param ids: Integer atom-environment identifiers.
+    :param min_bits: Lower bound for the search.
+    :param max_bits: Upper bound for the search.
+    """
+    ids = np.unique(np.asarray(ids, dtype=np.int64))
+    n = int(min_bits)
+    while folding_has_collision(ids, n):
+        n *= 2
+        if n > max_bits:
+            raise RuntimeError(
+                f"No collision-free folding length found up to {max_bits} bits."
+            )
+    lo, hi = n // 2, n
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if folding_has_collision(ids, mid):
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def collision_free_fold(
+    vec: np.ndarray,
+    n_bits: int | None = None,
+    count: bool = True,
+) -> np.ndarray:
+    """Fold integer identifiers into a fixed-length vector without bit collisions.
+
+    If ``n_bits`` is ``None``, the smallest collision-free length is determined
+    from the identifiers in ``vec``. If ``n_bits`` is provided, it is used
+    directly and a :class:`ValueError` is raised when it would cause a collision.
+
+    :param vec: Integer atom-environment identifiers.
+    :param n_bits: Folding length. ``None`` selects the minimal collision-free
+        length automatically.
+    :param count: If ``True``, bin counts are accumulated; otherwise the
+        fingerprint is binary.
+    """
+    vec = np.asarray(vec, dtype=np.int64)
+    if n_bits is None:
+        n_bits = minimal_collision_free_length(vec)
+    elif folding_has_collision(vec, n_bits):
+        raise ValueError(
+            f"Folding length {n_bits} causes a bit collision between distinct "
+            "atom-environment identifiers."
+        )
+    return modulo_fold(vec, n_bits, count=count)
+
+
 def circular_fingerprint(
     graph: MolGraph,
     radius: int = 3,
@@ -625,6 +705,7 @@ def circular_fingerprint(
     count: bool = True,
     accumulate: bool = True,
     include_hydrogens: bool = False,
+    collision_free: bool = False,
 ) -> np.ndarray:
     """Build a circular fingerprint for a molecular graph.
 
@@ -642,6 +723,10 @@ def circular_fingerprint(
         ``radius`` instead of only the final radius.
     :param include_hydrogens: Whether to include hydrogen-centered
         environments.
+    :param collision_free: If ``True``, fold the identifiers without bit
+        collisions (:cite:`li2026collisionfree`). When ``n_bits`` is ``0`` or
+        ``None`` the smallest collision-free length is determined automatically;
+        otherwise the supplied length must be collision-free.
     """
     gen = circular_generator(graph)
 
@@ -660,10 +745,12 @@ def circular_fingerprint(
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
-        return np.zeros(n_bits, dtype=np.uint32)
+        return np.zeros(n_bits if n_bits else 0, dtype=np.uint32)
 
     fp = np.concatenate(all_colors)
-    if n_bits:
+    if collision_free:
+        fp = collision_free_fold(fp, n_bits or None, count=count)
+    elif n_bits:
         fp = modulo_fold(fp, n_bits, count=count)
     elif not n_bits and not count:
         fp = np.unique(fp, sorted=False)
@@ -677,6 +764,7 @@ def circular_stereo_fingerprint(
     count: bool = True,
     accumulate: bool = True,
     include_hydrogens: bool = False,
+    collision_free: bool = False,
 ) -> np.ndarray:
     """Build a circular stereo fingerprint for a molecular graph.
 
@@ -694,6 +782,10 @@ def circular_stereo_fingerprint(
         ``radius`` instead of only the final radius.
     :param include_hydrogens: Whether to include hydrogen-centered
         environments.
+    :param collision_free: If ``True``, fold the identifiers without bit
+        collisions (:cite:`li2026collisionfree`). When ``n_bits`` is ``0`` or
+        ``None`` the smallest collision-free length is determined automatically;
+        otherwise the supplied length must be collision-free.
     """
     gen = circular_stereo_generator(graph)
 
@@ -715,10 +807,12 @@ def circular_stereo_fingerprint(
             all_colors.append(colors[non_hydrogens])
 
     if not all_colors:
-        return np.zeros(n_bits, dtype=np.uint32)
+        return np.zeros(n_bits if n_bits else 0, dtype=np.uint32)
 
     fp = np.concatenate(all_colors)
-    if n_bits:
+    if collision_free:
+        fp = collision_free_fold(fp, n_bits or None, count=count)
+    elif n_bits:
         fp = modulo_fold(fp, n_bits, count=count)
     elif not n_bits and not count:
         fp = np.unique(fp, sorted=False)
