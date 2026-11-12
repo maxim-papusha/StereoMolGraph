@@ -102,3 +102,20 @@ def test_stale_analysis_is_rejected():
     graph.set_atom_stereo(Tetrahedral((0, 2, 1, 3, 4), None))
     with pytest.raises(ValueError, match="analysis descriptors"):
         list(enumerate_stereo_assignments(graph, analysis))
+
+
+def test_missing_ligand_slot_is_supported():
+    graph = StereoMolGraph()
+    graph.add_atom(0, "C")
+    for idx, element in enumerate(("F", "Cl", "Br"), 1):
+        graph.add_atom(idx, element)
+        graph.add_bond(0, idx)
+    graph.set_atom_stereo(Tetrahedral((0, 1, 2, 3, None), None))
+
+    analysis = detect_stereo_elements(graph)
+    assert len(analysis.sites) == 1
+    assert len(analysis.sites[0].states) == 2
+    results = list(enumerate_stereo_assignments(graph, analysis))
+    assert len(results) == 2
+    assert len(graph.atom_stereo) == 1
+    assert graph.get_atom_stereo(0).parity is None
