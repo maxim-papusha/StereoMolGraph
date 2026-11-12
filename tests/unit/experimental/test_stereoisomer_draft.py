@@ -6,7 +6,9 @@ from stereomolgraph.experimental.stereoisomer_draft import (
     enumerate_stereo_assignments,
     locally_stereogenic_at_assignment,
 )
-from stereomolgraph.stereodescriptors import Tetrahedral
+import pytest
+
+from stereomolgraph.stereodescriptors import SquarePlanar, Tetrahedral
 
 
 def _tetrahedral_graph(ligands=("F", "Cl", "Br", "I")):
@@ -74,3 +76,29 @@ def test_dependency_estimate_only_uses_supplied_sites():
     assert sites[("atom", 0)].classification == "unresolved"
     assert ("atom", 1) in analysis.dependencies[("atom", 0)]
     assert ("atom", 2) in analysis.dependencies[("atom", 0)]
+
+
+def test_existing_square_planar_descriptor_has_three_states():
+    graph = StereoMolGraph()
+    graph.add_atom(0, "Pt")
+    for atom, element in enumerate(("F", "Cl", "Br", "I"), 1):
+        graph.add_atom(atom, element)
+        graph.add_bond(0, atom)
+    graph.set_atom_stereo(SquarePlanar((0, 1, 2, 3, 4), None))
+
+    analysis = detect_stereo_elements(graph)
+    assert len(analysis.sites) == 1
+    assert len(analysis.sites[0].states) == 3
+    assert len(list(enumerate_stereo_assignments(graph, analysis))) == 3
+    assert graph.get_atom_stereo(0).parity is None
+
+
+def test_stale_analysis_is_rejected():
+    graph = _tetrahedral_graph()
+    graph.set_atom_stereo(Tetrahedral((0, 1, 2, 3, 4), None))
+    analysis = detect_stereo_elements(graph)
+
+    # Same site key but a different ordered descriptor template.
+    graph.set_atom_stereo(Tetrahedral((0, 2, 1, 3, 4), None))
+    with pytest.raises(ValueError, match="analysis descriptors"):
+        list(enumerate_stereo_assignments(graph, analysis))
