@@ -168,16 +168,18 @@ class _StereoMixin(Generic[A, P]):
         return (ret_parity, *canon_atoms)
 
     def __eq__(self, other: Any) -> bool:
-        if not hasattr(other, "atoms") or not hasattr(other, "parity"):
+        if type(self) is not type(other):
             return NotImplemented
         s_atoms, o_atoms = self.atoms, other.atoms
         set_s_atoms = set(s_atoms)
         set_o_atoms = set(o_atoms)
 
         if self.parity is None or other.parity is None:
-            if set_s_atoms == set_o_atoms:
-                return True
-            return False
+            return (
+                self.parity is None
+                and other.parity is None
+                and Counter(s_atoms) == Counter(o_atoms)
+            )
 
         if self.parity in (1, -1):
             if other.parity == 0:
@@ -200,9 +202,6 @@ class _StereoMixin(Generic[A, P]):
 
             if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
-
-            if other.parity is None:
-                return set_s_atoms == set_o_atoms
 
             if self.parity == other.parity:
                 return o_atoms == s_atoms or o_atoms in self._perm_atoms()
