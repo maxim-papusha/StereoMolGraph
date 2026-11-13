@@ -149,20 +149,21 @@ class _StereoMixin(Generic[A, P]):
         return atoms  # type: ignore[return-value]
 
     def canonical_form(self) -> tuple[int, tuple[OInt, ...]]:
+        """Return the smallest allowed atom ordering, normalizing parity -1 to 1.
+
+        Unspecified parity allows every permutation, so sorting is sufficient.
+        """
         if self.parity == 1 or self.parity == 0:
-            canon_atoms = max(self._perm_atoms())
+            canon_atoms = min(self._perm_atoms())
             ret_parity = self.parity
         elif self.parity == -1:
             atoms = self._inverted_atoms()
-            canon_atoms = max(
+            canon_atoms = min(
                 tuple(atoms[i] for i in perm) for perm in self.PERMUTATION_GROUP
             )
             ret_parity = 1
         elif self.parity is None:
-            canon_atoms = max(
-                tuple(self.atoms[i] for i in perm)
-                for perm in itertools.permutations(range(len(self.atoms)))
-            )
+            canon_atoms = tuple(sorted(self.atoms))
             ret_parity = 2
         else:
             raise RuntimeError("Parity should be 1, -1, 0 or None")

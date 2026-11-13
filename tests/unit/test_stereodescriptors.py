@@ -13,6 +13,19 @@ from stereomolgraph.stereodescriptors import (
 from stereomolgraph.xyz2graph import atom_stereo_from_coords
 
 
+@pytest.mark.parametrize(
+    "stereo, expected",
+    [
+        (Tetrahedral((9, 4, 3, 2, 1), 1), (1, 9, 1, 2, 3, 4)),
+        (Tetrahedral((9, 4, 3, 2, 1), -1), (1, 9, 1, 2, 4, 3)),
+        (Tetrahedral((9, 4, 3, 2, 1), None), (2, 1, 2, 3, 4, 9)),
+        (Tetrahedral((9, 3, 4, 2, 1), -1), (1, 9, 1, 2, 3, 4)),
+    ],
+)
+def test_canonical_form_uses_smallest_order_and_normalizes_parity(stereo, expected):
+    assert stereo.canonical_form() == expected
+
+
 class TestPlanar:
     def test_are_planar_true(self):
         coords = np.array(
