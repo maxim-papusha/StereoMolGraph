@@ -324,14 +324,17 @@ def stereo_mol_graph_to_rdmol(
         if isinstance(b_stereo, PlanarBond):
             # mol.GetAtomWithIdx(rd_a1).SetHybridization(Chem.HybridizationType.SP2)
             # mol.GetAtomWithIdx(rd_a2).SetHybridization(Chem.HybridizationType.SP2)
-
-            rd_bond.SetBondType(Chem.BondType.DOUBLE)
+ 
+            if b_stereo.parity is None:
+                rd_bond.SetStereo(Chem.rdchem.BondStereo.STEREOANY)
+                continue
 
             if (a1, a2) == (new_a2, new_a1):
                 b_stereo = b_stereo.__class__(
                     atoms=tuple(b_stereo.atoms[i] for i in (4, 5, 3, 2, 0, 1)),
                     parity=b_stereo.parity,
                 )
+                rd_bond.SetBondType(Chem.BondType.DOUBLE)
 
             if b_stereo.atoms[0] and b_stereo.atoms[4]:
                 rd_bond.SetStereoAtoms(
