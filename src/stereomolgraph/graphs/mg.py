@@ -8,6 +8,7 @@ from collections.abc import (
     Sequence,
 )
 from copy import deepcopy
+from numbers import Integral
 from types import MappingProxyType
 from typing import Any, Optional, TypeAlias
 
@@ -34,6 +35,7 @@ class MolGraph:
     """
     Graph representing a molecular entity. Nodes represent atoms and edges
     represent bonds. All nodes have an `atom_type` attribute of type `Element`.
+    The optional `isotope` attribute is an integer mass number (0 if unspecified).
     The node ids should be integers. The graph is considered equal to another
     graph, iff. they are isomorphic and of the same type.
     """
@@ -71,7 +73,7 @@ class MolGraph:
 
     def _compute_colors(self) -> np.ndarray:
         """Compute the color refinement array. Override in subclasses."""
-        labels = label_hash(self, atom_labels=("atom_type",))
+        labels = label_hash(self)
         return color_refine_mg(self, atom_labels=labels)
 
     def _get_colors(self) -> np.ndarray:
@@ -166,6 +168,11 @@ class MolGraph:
         return tuple([v["atom_type"] for v in self._atom_attrs.values()])
 
     @property
+    def isotopes(self) -> tuple[int, ...]:
+        """Isotope mass numbers in atom order; 0 means unspecified."""
+        return tuple(attrs.get("isotope", 0) for attrs in self._atom_attrs.values())
+
+    @property
     def atoms_with_attributes(self) -> Mapping[AtomId, dict[str, Any]]:
         """
         :return: Returns all atoms in the MolGraph with their attributes
@@ -209,16 +216,36 @@ class MolGraph:
         """
         return atom in self._atom_attrs
 
-    def add_atom(self, atom: AtomId, atom_type: int | str | Element, **attr: Any):
-        """Adds atom to the MolGraph
+    @staticmethod
+    def _validate_isotope(isotope: int) -> int:
+        """Validate an isotope mass number."""
+        if (
+            not isinstance(isotope, Integral)
+            or isinstance(isotope, bool)
+            or not 0 <= isotope < 2**31
+        ):
+            raise ValueError("isotope must be a non-negative integer below 2**31")
+        return int(isotope)
 
-        :param atom: Atom ID
-        :param atom_type: Atom Type
+    def add_atom(
+        self,
+        atom: AtomId,
+        atom_type: int | str | Element,
+        isotope: int = 0,
+        **attr: Any,
+    ):
+        """Add an atom; isotope=0 indicates unspecified isotope composition.
+
+        Unspecified isotopes are not stored to preserve existing attributes.
         """
         self._check_mutable()
         atom_type = PERIODIC_TABLE[atom_type]
-
-        self._atom_attrs[atom] = {"atom_type": atom_type, **attr}
+        isotope = self._validate_isotope(isotope)
+        self._atom_attrs[atom] = {
+            "atom_type": atom_type,
+            **({"isotope": isotope} if isotope else {}),
+            **attr,
+        }
 
     def remove_atom(self, atom: AtomId):
         """Removes atom from graph.
@@ -256,6 +283,10 @@ class MolGraph:
         """
         return self._atom_attrs[atom]["atom_type"]
 
+    def get_atom_isotope(self, atom: AtomId) -> int:
+        """Return isotope mass number or 0 for an unspecified isotope."""
+        return self._atom_attrs[atom].get("isotope", 0)
+
     def set_atom_attribute(self, atom: AtomId, attr: str, value: Any):
         """
         sets the Value of the Attribute on Atom.
@@ -277,6 +308,13 @@ class MolGraph:
                     f"'{value}' can not be used as atom_type for "
                     f"{self.__class__.__name__}"
                 )
+        elif attr == "isotope":
+            isotope = self._validate_isotope(value)
+            if isotope:
+                self._atom_attrs[atom]["isotope"] = isotope
+            else:
+                self._atom_attrs[atom].pop("isotope", None)
+            return
         self._atom_attrs[atom][attr] = value
 
     def delete_atom_attribute(self, atom: AtomId, attr: str):

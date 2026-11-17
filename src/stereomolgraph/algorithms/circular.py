@@ -77,26 +77,32 @@ def numpy_int_multiset_hash(
 
 def label_hash(
     mg: MolGraph,
-    atom_labels: Collection[str] = ("atom_type",),
+    atom_labels: Collection[str] = ("atom_type", "isotope"),
 ) -> np.ndarray[tuple[int], np.dtype[np.int64]]:
-    """Generates a hash for each atom based on choosen attributes.
+    """Generate initial atom labels with isotope mass numbers by default.
 
-    :param mg: MolGraph object containing the atoms.
-    :param atom_labels: Iterable of attribute names to use for hashing.
+    The fast path encodes (atomic number Z, mass number A) as Z + (A << 8);
+    A=0 means unspecified isotope composition. An explicitly isotope-blind
+    label is available through ("atom_type",).
     """
-    if atom_labels == ("atom_type",):
+    labels = tuple(atom_labels)
+    if labels == ("atom_type",):
         atom_hash = mg.atom_types
+    elif labels == ("atom_type", "isotope"):
+        atom_hash = [
+            int(z) + (int(a) << 8)
+            for z, a in zip(mg.atom_types, mg.isotopes, strict=True)
+        ]
     else:
         atom_hash = [
             hash(
                 frozenset(
-                    (attr, mg.get_atom_attribute(atom, attr)) for attr in atom_labels
+                    (attr, mg.get_atom_attribute(atom, attr)) for attr in labels
                 )
             )
             for atom in mg.atoms
         ]
     return np.array(atom_hash, dtype=np.int64)
-
 
 def circular_generator(
     mg: MolGraph,
@@ -114,7 +120,7 @@ def circular_generator(
     if atom_labels is not None:
         assert len(atom_labels) == n_atoms
 
-    atom_hash = label_hash(mg, ("atom_type",)) if atom_labels is None else atom_labels
+    atom_hash = label_hash(mg) if atom_labels is None else atom_labels
     atom_hash_view = atom_hash.view()
     atom_hash_view.setflags(write=False)
     yield atom_hash_view
@@ -178,7 +184,7 @@ def circular_stereo_generator(
         assert len(atom_labels) == n_atoms
 
     init_atom_hash = (
-        label_hash(smg, ("atom_type",)) if atom_labels is None else atom_labels
+        label_hash(smg) if atom_labels is None else atom_labels
     )
     atom_hash = np.append(init_atom_hash, 0)  # 0 for "None" in Stereo.atoms
 
@@ -580,7 +586,7 @@ def color_refine_scrg(
 
 def color_refine_hash_mg(graph: MolGraph) -> int:
     """Color-refined hash for plain `MolGraph` objects."""
-    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    initial_color_array = label_hash(graph)
     color_array = color_refine_mg(graph, atom_labels=initial_color_array)
     return int(numpy_int_multiset_hash(color_array))
 
@@ -590,7 +596,7 @@ def color_refine_hash_smg(graph: StereoMolGraph) -> int:
 
     Drops the extra sentinel slot the stereo generator appends.
     """
-    initial_color_array = np.array(graph.atom_types, dtype=np.int64)
+    initial_color_array = label_hash(graph)
     color_array = color_refine_smg(graph, atom_labels=initial_color_array)
     return int(numpy_int_multiset_hash(color_array))
 
