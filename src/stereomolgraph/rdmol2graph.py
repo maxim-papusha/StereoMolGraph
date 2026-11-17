@@ -33,7 +33,11 @@ def mol_graph_from_rdmol(
         id_atom_map = {atom.GetIdx(): atom.GetIdx() for atom in rdmol.GetAtoms()}
 
     for atom in rdmol.GetAtoms():
-        graph.add_atom(id_atom_map[atom.GetIdx()], atom.GetSymbol())
+        graph.add_atom(
+            id_atom_map[atom.GetIdx()],
+            atom.GetSymbol(),
+            isotope=atom.GetIsotope(),
+        )
 
     for bond in rdmol.GetBonds():
         graph.add_bond(
@@ -177,7 +181,11 @@ class RDMol2StereoMolGraph:
             id_atom_map = {atom.GetIdx(): atom.GetIdx() for atom in rdmol.GetAtoms()}
 
         for atom in rdmol.GetAtoms():
-            graph.add_atom(id_atom_map[atom.GetIdx()], atom.GetSymbol())
+            graph.add_atom(
+            id_atom_map[atom.GetIdx()],
+            atom.GetSymbol(),
+            isotope=atom.GetIsotope(),
+        )
 
         for bond in rdmol.GetBonds():
             graph.add_bond(

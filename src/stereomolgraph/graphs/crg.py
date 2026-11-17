@@ -49,7 +49,7 @@ class CondensedReactionGraph(MolGraph):
 
     @override
     def _compute_colors(self) -> np.ndarray:
-        labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        labels = label_hash(self, atom_labels=("atom_type", "isotope", "reaction"))
         return color_refine_crg(self, atom_labels=labels)
 
     @override
@@ -216,7 +216,10 @@ class CondensedReactionGraph(MolGraph):
             if keep_attributes is True:
                 attrs = self._atom_attrs[atom]
             else:
-                attrs = {"atom_type": self._atom_attrs[atom]["atom_type"]}
+                attrs = {
+                    "atom_type": self._atom_attrs[atom]["atom_type"],
+                    "isotope": self.get_atom_isotope(atom),
+                }
             product.add_atom(atom, **attrs)
         for bond in self.bonds:
             bond_reaction = self._bond_attrs[bond].get("reaction", None)
@@ -244,7 +247,10 @@ class CondensedReactionGraph(MolGraph):
             if keep_attributes is True:
                 attrs = self._atom_attrs[atom]
             else:
-                attrs = {"atom_type": self._atom_attrs[atom]["atom_type"]}
+                attrs = {
+                    "atom_type": self._atom_attrs[atom]["atom_type"],
+                    "isotope": self.get_atom_isotope(atom),
+                }
             product.add_atom(atom, **attrs)
         for bond in self.bonds:
             bond_reaction = self._bond_attrs[bond].get("reaction", None)
@@ -306,14 +312,16 @@ class CondensedReactionGraph(MolGraph):
         :return: CondensedReactionGraph
         """
 
-        r_id_type = set(zip(reactant_graph.atoms, reactant_graph.atom_types))
-        p_id_type = set(zip(product_graph.atoms, product_graph.atom_types))
+        r_id_type = set(zip(reactant_graph.atoms, reactant_graph.atom_types, reactant_graph.isotopes))
+        p_id_type = set(zip(product_graph.atoms, product_graph.atom_types, product_graph.isotopes))
         assert r_id_type == p_id_type
 
         crg = cls()
 
-        for atom, atom_type in zip(reactant_graph.atoms, reactant_graph.atom_types):
-            crg.add_atom(atom, atom_type)
+        for atom, atom_type, isotope in zip(
+            reactant_graph.atoms, reactant_graph.atom_types, reactant_graph.isotopes
+        ):
+            crg.add_atom(atom, atom_type, isotope=isotope)
 
         bonds = set(reactant_graph.bonds) | set(product_graph.bonds)
 
@@ -326,7 +334,7 @@ class CondensedReactionGraph(MolGraph):
                 crg.add_formed_bond(*bond)
 
         if ts_graph is not None:
-            ts_id_type = set(zip(ts_graph.atoms, ts_graph.atom_types))
+            ts_id_type = set(zip(ts_graph.atoms, ts_graph.atom_types, ts_graph.isotopes))
             assert r_id_type == ts_id_type
             assert p_id_type == ts_id_type
 

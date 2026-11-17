@@ -103,6 +103,8 @@ def mol_graph_to_rdmol(
         if atom_type is None:
             raise RuntimeError(atom, graph.atoms, graph.atom_types)
         rd_atom = Chem.Atom(SYMBOLS[atom_type])
+        if isotope := graph.get_atom_isotope(atom):
+            rd_atom.SetIsotope(isotope)
         rd_atom.SetNoImplicit(True)
         atom_index = mol.AddAtom(rd_atom)
         idx_map_num_dict[atom_index] = atom
