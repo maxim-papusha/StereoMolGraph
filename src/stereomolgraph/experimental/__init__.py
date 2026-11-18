@@ -11,10 +11,14 @@ from stereomolgraph.experimental._isomers import (
     generate_fleeting_stereoisomers,
     generate_stereoisomers,
 )
+from stereomolgraph.experimental._isotope_stereoisomers import (
+    generate_isotope_stereoisomers,
+)
 from stereomolgraph.experimental._json import JSONHandler
 
 __all__ = [
     "generate_fleeting_stereoisomers",
     "generate_stereoisomers",
+    "generate_isotope_stereoisomers",
     "JSONHandler",
 ]

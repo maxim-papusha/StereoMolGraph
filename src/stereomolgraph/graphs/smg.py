@@ -27,7 +27,7 @@ from stereomolgraph.xyz2graph import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
 
     from rdkit import Chem
     from typing_extensions import Self
@@ -111,6 +111,32 @@ class StereoMolGraph(MolGraph):
     def bond_stereo(self) -> Mapping[Bond, BondStereo]:
         return MappingProxyType(self._bond_stereo)
 
+
+    def generate_isotope_stereoisomers(
+        self,
+        element: int | str,
+        isotope: int,
+        *,
+        source_isotope: int = 0,
+        min_substitutions: int = 1,
+        max_substitutions: int | None = None,
+        atoms: Iterable[AtomId] | None = None,
+        infer_tetrahedral: bool = True,
+    ) -> Iterator[StereoMolGraph]:
+        """Generate unique isotope-exchanged stereoisomers.
+
+        See :func:`stereomolgraph.experimental.generate_isotope_stereoisomers`.
+        """
+        from stereomolgraph.experimental import generate_isotope_stereoisomers
+
+        return generate_isotope_stereoisomers(
+            self, element, isotope,
+            source_isotope=source_isotope,
+            min_substitutions=min_substitutions,
+            max_substitutions=max_substitutions,
+            atoms=atoms,
+            infer_tetrahedral=infer_tetrahedral,
+        )
 
     def get_atom_stereo(self, atom: AtomId) -> None | AtomStereo:
         """Returns the stereo information of the atom if it exists else None.
