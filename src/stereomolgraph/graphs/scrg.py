@@ -62,7 +62,7 @@ class StereoCondensedReactionGraph(StereoMolGraph, CondensedReactionGraph):
 
     @override
     def _compute_colors(self) -> np.ndarray:
-        labels = label_hash(self, atom_labels=("atom_type", "reaction"))
+        labels = label_hash(self, atom_labels=("atom_type", "isotope", "reaction"))
         return color_refine_scrg(self, atom_labels=labels)
 
     @override

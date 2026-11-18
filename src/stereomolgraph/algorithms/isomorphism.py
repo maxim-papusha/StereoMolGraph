@@ -191,6 +191,17 @@ def _sanity_check_and_init(
     else:
         g1_labels, g2_labels = atom_labels
 
+    # Include exact atomic identity in addition to the refinement hash.
+    # This prevents collisions or user-provided labels from conflating isotopes.
+    g1_labels = {
+        a: (int(h), int(g1.get_atom_type(a)), g1.get_atom_isotope(a))
+        for a, h in g1_labels.items()
+    }
+    g2_labels = {
+        a: (int(h), int(g2.get_atom_type(a)), g2.get_atom_isotope(a))
+        for a, h in g2_labels.items()
+    }
+
     g1_labels_counter = Counter(g1_labels.values())
     g2_labels_counter = Counter(g2_labels.values())
 

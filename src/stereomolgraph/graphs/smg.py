@@ -68,7 +68,7 @@ class StereoMolGraph(MolGraph):
 
     @override
     def _compute_colors(self) -> np.ndarray:
-        labels = label_hash(self, atom_labels=("atom_type",))
+        labels = label_hash(self)
         return color_refine_smg(self, atom_labels=labels)
 
     @override
