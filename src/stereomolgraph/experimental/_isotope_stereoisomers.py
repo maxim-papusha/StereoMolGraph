@@ -183,17 +183,17 @@ def _orbit_representatives(
 def _isotope_patterns(
     graph: StereoMolGraph,
     options: dict[AtomId, tuple[int, ...]],
-    min_substitutions: int,
-    max_substitutions: int,
+    substitutions: int,
 ) -> Iterator[StereoMolGraph]:
-    """At every depth compute new atom orbits and expand unique patterns."""
+    """Generate exact-depth patterns; keep all intermediate states internal."""
     original = {atom: graph.get_atom_isotope(atom) for atom in graph.atoms}
     labels = _OrbitLabels(graph, options)
     frontier = [graph.copy()]
-    if min_substitutions == 0:
+    if substitutions == 0:
         yield graph.copy()
+        return
 
-    for depth in range(1, max_substitutions + 1):
+    for _depth in range(substitutions):
         def children() -> Iterator[StereoMolGraph]:
             for parent in frontier:
                 for atom in _orbit_representatives(parent, original, labels):
@@ -205,8 +205,8 @@ def _isotope_patterns(
         frontier = _unique_patterns(children(), labels)
         if not frontier:
             return
-        if depth >= min_substitutions:
-            yield from frontier
+
+    yield from frontier  # Only completed substitution patterns.
 
 
 def _equivalent_terminal_neighbors(graph: StereoMolGraph, atom: AtomId) -> bool:
@@ -358,16 +358,17 @@ def generate_isotope_stereoisomers(
     graph: StereoMolGraph,
     exchanges: IsotopeExchange | Iterable[IsotopeExchange],
     *,
-    min_substitutions: int = 1,
-    max_substitutions: int | None = None,
+    substitutions: int | None = None,
     infer_tetrahedral: bool = True,
 ) -> Iterator[StereoMolGraph]:
     """Generate each unique isotopically substituted stereoisomer exactly once.
 
     One or more IsotopeExchange rules give the element, target isotope choices,
     source isotope, and optionally the allowed atom IDs. Each atom is
-    exchanged at most once. The substitution limits count modified atoms
-    over all rules. Use explicit atoms for isotope exchange (including H).
+    exchanged at most once. By default every eligible position is exchanged;
+    alternatively, `substitutions=n` requests exactly n exchanges.
+    Intermediate or partially constructed patterns are never yielded.
+    Use explicit atoms for isotope exchange (including H).
 
     At each substitution depth, automorphisms of the partially substituted
     graph give atom orbits. Orbit labels include allowed target options to
@@ -384,30 +385,23 @@ def generate_isotope_stereoisomers(
     rules = (exchanges,) if isinstance(exchanges, IsotopeExchange) else tuple(exchanges)
     if not rules or any(not isinstance(rule, IsotopeExchange) for rule in rules):
         raise ValueError("exchanges must contain one or more IsotopeExchange rules")
-    if (
-        not isinstance(min_substitutions, int)
-        or isinstance(min_substitutions, bool)
-        or min_substitutions < 0
-    ):
-        raise ValueError("min_substitutions must be a non-negative integer")
-
     options = _exchange_options(graph, rules)
     eligible_count = sum(bool(targets) for targets in options.values())
-    if max_substitutions is None:
-        max_substitutions = eligible_count
+    if substitutions is None:
+        substitutions = eligible_count
     if (
-        not isinstance(max_substitutions, int)
-        or isinstance(max_substitutions, bool)
-        or not min_substitutions <= max_substitutions <= eligible_count
+        not isinstance(substitutions, int)
+        or isinstance(substitutions, bool)
+        or not 0 <= substitutions <= eligible_count
     ):
         raise ValueError(
-            "Expected min_substitutions <= max_substitutions <= eligible atom count"
+            "substitutions must be an integer between 0 and eligible atom count"
         )
+    if eligible_count == 0:
+        return
 
     seen: set[StereoMolGraph] = set()
-    for pattern in _isotope_patterns(
-        graph, options, min_substitutions, max_substitutions
-    ):
+    for pattern in _isotope_patterns(graph, options, substitutions):
         for product in _stereo_variants(pattern, infer_tetrahedral):
             product.freeze()
             if product not in seen:

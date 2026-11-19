@@ -117,17 +117,19 @@ class StereoMolGraph(MolGraph):
         self,
         exchanges: IsotopeExchange | Iterable[IsotopeExchange],
         *,
-        min_substitutions: int = 1,
-        max_substitutions: int | None = None,
+        substitutions: int | None = None,
         infer_tetrahedral: bool = True,
     ) -> Iterator[StereoMolGraph]:
-        """Generate stereoisomers from structured isotope exchange rules."""
+        """Return completed isotope-exchange stereoisomers only.
+
+        The default exchanges all eligible positions; `substitutions` can
+        request an exact number. Intermediate products are not returned.
+        """
         from stereomolgraph.experimental import generate_isotope_stereoisomers
 
         return generate_isotope_stereoisomers(
             self, exchanges,
-            min_substitutions=min_substitutions,
-            max_substitutions=max_substitutions,
+            substitutions=substitutions,
             infer_tetrahedral=infer_tetrahedral,
         )
 
