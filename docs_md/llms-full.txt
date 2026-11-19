@@ -28,162 +28,6 @@ StereoMolGraph implements the following magic methods:
 If you use StereoMolGraph, please cite the relevant publication(s):
 
 
-# _build/jupyter_execute/examples/react_stereoiso.md
-
-# Stereochemistry of Phosgenation Transition States
-
-```ipython3
-import rdkit.Chem as Chem
-
-from stereomolgraph import StereoCondensedReactionGraph
-from stereomolgraph.stereodescriptors import Tetrahedral
-from stereomolgraph.experimental import generate_fleeting_stereoisomers
-from stereomolgraph.ipython import View2D
-
-from IPython.core.interactiveshell import InteractiveShell
-
-InteractiveShell.ast_node_interactivity = "all"
-
-View2D.show_atom_numbers = True
-View2D.generate_bond_orders = False
-```
-
-```ipython3
-tmda_rdmol = Chem.AddHs(Chem.MolFromSmiles("NCCCCN"))
-phosgene_rdmol = Chem.AddHs(Chem.MolFromSmiles("ClC(Cl)=O"))
-
-scrg1 = StereoCondensedReactionGraph.from_rdmol(
-    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
-)
-scrg1
-```
-
-```ipython3
-scrg1.add_formed_bond(0, 19)
-scrg1.add_formed_bond(18, 7)
-scrg1.add_broken_bond(18, 19)
-scrg1.add_broken_bond(0, 7)
-scrg1
-```
-
-```ipython3
-n_neighbors = scrg1.bonded_to(0)
-c_neighbors = scrg1.bonded_to(19)
-scrg1.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *n_neighbors), parity=None))
-scrg1.set_atom_stereo_change(
-    fleeting=Tetrahedral(atoms=(19, *c_neighbors), parity=None)
-)
-```
-
-```ipython3
-isomers = list(generate_fleeting_stereoisomers(scrg1))
-len(isomers)
-for iso in isomers:
-    iso
-```
-
-```ipython3
-scrg2 = StereoCondensedReactionGraph.from_rdmol(
-    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
-)
-scrg2
-```
-
-```ipython3
-scrg2.add_formed_bond(0, 19)
-scrg2.add_formed_bond(18, 17)
-scrg2.add_formed_bond(5, 7)
-
-scrg2.add_broken_bond(18, 19)
-scrg2.add_broken_bond(5, 17)
-scrg2.add_broken_bond(0, 7)
-scrg2
-```
-
-```ipython3
-scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(5, *scrg2.bonded_to(5))))
-scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *scrg2.bonded_to(0))))
-scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(19, *scrg2.bonded_to(19))))
-```
-
-```ipython3
-isomers2 = list(generate_fleeting_stereoisomers(scrg2))
-len(isomers2)
-
-for iso in isomers2:
-    iso
-```
-
-
-# _build/jupyter_execute/examples/stereoiso.md
-
-# Finding Stereoisomers of Molecules
-
-```ipython3
-from rdkit import Chem
-
-from stereomolgraph import StereoMolGraph
-from stereomolgraph.experimental import generate_stereoisomers
-from stereomolgraph.ipython import View2D
-
-from IPython.core.interactiveshell import InteractiveShell
-
-InteractiveShell.ast_node_interactivity = "all"
-
-View2D.show_atom_numbers = True
-View2D.show_h = False
-View2D.generate_bond_orders = False
-```
-
-```ipython3
-rdmol = Chem.AddHs(
-    Chem.MolFromSmiles("[CH]1([CH](C1C2[CH]([CH]2C(=O)O)C(=O)O)C(=O)O)C(=O)O")
-)
-smg = StereoMolGraph.from_rdmol(rdmol, stereo_complete=False)
-smg
-```
-
-## Construction from `rdkit.Mol`
-
-When constructing from an `rdkit.Mol` with `stereo_complete=False`, any atom without explicitly defined stereochemistry is treated as **undefined**.
-
-Using `generate_stereoisomers` will enumerate all **distinct stereoisomers** without producing duplicates.
-
-```ipython3
-isomers = list(generate_stereoisomers(smg, enantiomers=False))
-# enantiomes are removed
-len(isomers)
-```
-
-```ipython3
-for isomer in isomers:
-    isomer
-```
-
-```ipython3
-all_isomers_stereo = []
-
-for i in isomers:
-    rdmol = i.to_rdmol(generate_bond_orders=True)
-
-    stereocenters = Chem.FindMolChiralCenters(
-        rdmol, includeUnassigned=False, force=True
-    )
-
-    isomer_stereo = []
-    for atom_idx, stereo in stereocenters:
-        atom = rdmol.GetAtomWithIdx(atom_idx)
-        atom_idx = atom.GetIdx()
-        isomer_stereo.append((atom_idx, stereo))
-
-    isomer_stereo.sort()
-    all_isomers_stereo.append(isomer_stereo)
-
-all_isomers_stereo.sort()
-all_isomers_stereo
-```
-
-
 # agent-guide.md
 
 # Using StereoMolGraph with coding agents
@@ -193,72 +37,71 @@ This is a task-oriented entry point for agent-generated Python code. The
 
 ## Install
 
-\`\`\`bash
+```bash
 python -m pip install stereomolgraph
-\`\`\`
+```
 
 ## Main graph classes
 
 Prefer importing from the package root:
 
-\`\`\`python
+```python
 from stereomolgraph import (
-MolGraph,
-StereoMolGraph,
-CondensedReactionGraph,
-StereoCondensedReactionGraph,
+    MolGraph,
+    StereoMolGraph,
+    CondensedReactionGraph,
+    StereoCondensedReactionGraph,
 )
-\`\`\`
+```
 
-- \`MolGraph\`: molecular connectivity without stereodescriptors.
-- \`StereoMolGraph\`: molecular connectivity with local stereodescriptors.
-- \`CondensedReactionGraph\`: graph representation of a reaction.
-- \`StereoCondensedReactionGraph\`: reaction graphs including stereo changes.
+- `MolGraph`: molecular connectivity without stereodescriptors.
+- `StereoMolGraph`: molecular connectivity with local stereodescriptors.
+- `CondensedReactionGraph`: graph representation of a reaction.
+- `StereoCondensedReactionGraph`: reaction graphs including stereo changes.
 
 ## Convert an RDKit molecule
 
-\`\`\`python
+```python
 from rdkit import Chem
 from stereomolgraph import StereoMolGraph
 
-rdmol = Chem.AddHs(Chem.MolFromSmiles(“C[C@H]()Cl”))
+rdmol = Chem.AddHs(Chem.MolFromSmiles("C[C@H](F)Cl"))
 graph = StereoMolGraph.from_rdmol(rdmol)
 print(graph.n_atoms)
 print(graph.atom_stereo)
-\`\`\`
+```
 
 Explicit hydrogens are required for bidirectional RDKit conversion.
-\`StereoMolGraph.from_rdmol\` accepts \`stereo_complete\`, \`resonance\`, and
-\`lone_pair_stereo\` keyword arguments. Consult its docstring for their meaning.
+`StereoMolGraph.from_rdmol` accepts `stereo_complete`, `resonance`, and
+`lone_pair_stereo` keyword arguments. Consult its docstring for their meaning.
 
 ## Construct a connectivity graph
 
-\`\`\`python
+```python
 from stereomolgraph import MolGraph
 
 graph = MolGraph()
-graph.add_atom(0, “C”)
-graph.add_atom(1, “O”)
+graph.add_atom(0, "C")
+graph.add_atom(1, "O")
 graph.add_bond(0, 1)
-\`\`\`
+```
 
 ## Equality and mutability
 
 - Graph equality tests graph isomorphism, not equality of atom identifiers.
   Stereo graphs additionally compare local stereochemistry.
 - Freeze a graph before using it as a set element or dictionary key:
-
-  \`\`\`python
+  ```python
   graph.freeze()
   unique_graphs = {graph}
-  \`\`\`
+  ```
 
 ## Scientific conventions and common pitfalls
 
 - Bond orders, charge, and electronic state are not part of core graph identity.
   Graph equality is **not** a complete chemical identity comparison.
 - Stereo descriptors represent relative local configurations. Parity values
-  are **not** CIP \`R\`/\`S\` labels.
+  are **not** CIP `R`/`S` labels.
 - Do not silently turn undefined or partially assigned stereochemistry into
   specified stereochemistry.
 - Check public method signatures instead of assuming RDKit and StereoMolGraph
@@ -267,8 +110,8 @@ graph.add_bond(0, 1)
 ## Agent-readable documentation
 
 The human-readable Sphinx documentation is the source of truth. It is
-automatically converted into individual Markdown pages, \`llms.txt\` and
-\`llms-full.txt\` using the \`sphinx-llm\` extension.
+automatically converted into individual Markdown pages, `llms.txt` and
+`llms-full.txt` using the `sphinx-llm` extension.
 See the [repository agent instructions](https://github.com/maxim-papusha/StereoMolGraph/blob/doc_md/AGENTS.md).
 
 
@@ -1039,7 +882,7 @@ determine the connectivity of the atoms.
   * **product_geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the product
   * **switching_function** (`BondsFromDistance`) – function to define the connectivity
     from geometry,
-    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9ba433750>`)
+    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6c55f890>`)
 * **Return type:**
   `Self`
 * **Returns:**
@@ -2404,7 +2247,7 @@ function. Uses the Default switching function if none are given.
 * **Parameters:**
   * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
   * **switching_function** (`BondsFromDistance`) – Function to determine if two atoms are
-    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d06190>`)
+    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6b416190>`)
 * **Return type:**
   `Self`
 * **Returns:**
@@ -2455,7 +2298,7 @@ is taken from the transition state geometry.
   * **ts_geo** (`None` | [`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the transition state (default: `None`)
   * **switching_function** (`BondsFromDistance`) – function to define the connectivity from
     geometry,
-    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d062c0>`)
+    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6b4162c0>`)
 * **Return type:**
   `Self`
 * **Returns:**
@@ -2943,7 +2786,7 @@ function. Uses the Default switching function if none are given.
 * **Parameters:**
   * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
   * **switching_function** (`BondsFromDistance`) – Function to determine if two atoms are
-    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d06190>`)
+    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6b416190>`)
 * **Return type:**
   `Self`
 * **Returns:**

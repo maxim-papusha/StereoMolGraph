@@ -31,8 +31,6 @@
 - [Periodic Table](reference/periodic_table.md): Mapping of atomic numbers and symbols to Element objects.
 - [Experimental](reference/experimental.md): The &#96;stereomolgraph.experimental&#96; package contains features whose
 - [Changelog](changelog.md): - added GeometryProtocol definition as a potential external interface.
-- [Stereochemistry of Phosgenation Transition States](_build/jupyter_execute/examples/react_stereoiso.md): &#96;&#96;&#96;ipython3
-- [Finding Stereoisomers of Molecules](_build/jupyter_execute/examples/stereoiso.md): &#96;&#96;&#96;ipython3
 - [Stereochemistry of Phosgenation Transition States](examples/react_stereoiso.md): &#96;&#96;&#96;ipython3
 - [Bond Orders](reference/algorithms/bond_orders.md): Page content
 - [Theory](theory.md): | Graph Class                    | Connectivity   | Connectivity &lt;br&gt; Change   | Stereo   | Stereo &lt;...

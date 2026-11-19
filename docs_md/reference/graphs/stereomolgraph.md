@@ -477,7 +477,7 @@ function. Uses the Default switching function if none are given.
 * **Parameters:**
   * **geo** ([`GeometryProtocol`](../coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
   * **switching_function** (`BondsFromDistance`) – Function to determine if two atoms are
-    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d06190>`)
+    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6b416190>`)
 * **Return type:**
   `Self`
 * **Returns:**

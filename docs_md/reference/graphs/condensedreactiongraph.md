@@ -182,7 +182,7 @@ determine the connectivity of the atoms.
   * **product_geo** ([`GeometryProtocol`](../coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the product
   * **switching_function** (`BondsFromDistance`) – function to define the connectivity
     from geometry,
-    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9ba433750>`)
+    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x781c6c55f890>`)
 * **Return type:**
   `Self`
 * **Returns:**

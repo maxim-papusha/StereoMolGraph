@@ -2,7 +2,7 @@
 
 > Stereochemistry-aware molecular and reaction graphs for Python.
 
-Agent-readable Markdown generated from Sphinx on commits to the \`doc_md\` branch.
+Agent-readable Markdown generated from Sphinx on commits to the `doc_md` branch.
 
 ## Start here
 
