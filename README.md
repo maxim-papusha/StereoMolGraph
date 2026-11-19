@@ -51,11 +51,18 @@ explicitly present in the graph.
 ```python
 from stereomolgraph import IsotopeExchange, StereoMolGraph
 
-# Start with an existing StereoMolGraph containing explicit H atoms.
-products = graph.generate_isotope_stereoisomers(
-    IsotopeExchange("H", (2, 3), positions=None),
+# Methane with explicit hydrogens.
+graph = StereoMolGraph()
+graph.add_atom(0, "C")
+for atom in range(1, 5):
+    graph.add_atom(atom, "H")
+    graph.add_bond(0, atom)
+
+products = list(graph.generate_isotope_stereoisomers(
+    IsotopeExchange("H", (2, 3)),
     substitutions=2,
-)
+))
+assert len(products) == 3  # CH2D2, CH2DT, CH2T2
 ```
 
 Only molecules with **exactly two substitutions** are returned in this example.
