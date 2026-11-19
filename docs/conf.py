@@ -59,7 +59,19 @@ extensions = [
     # BibTeX citations
     "sphinxcontrib.bibtex",
     "sphinx.ext.intersphinx",
+    # Machine-readable Markdown, llms.txt and llms-full.txt
+    "sphinx_llm.txt",
 ]
+
+# Publish Markdown pages alongside HTML on Read the Docs.
+# The GitHub Actions workflow also mirrors these pages in docs_md/.
+llms_txt_suffix_mode = "replace"
+llms_txt_nested_enabled = False
+llms_txt_full_build = True
+llms_txt_description = (
+    "StereoMolGraph: stereochemistry-aware molecular and reaction graphs "
+    "in Python, including RDKit conversion, symmetry and isomorphism."
+)
 
 intersphinx_mapping = {
     # "python": ("https://docs.python.org/3", None),

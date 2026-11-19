@@ -65,7 +65,8 @@ docs = ["rdkit>=2022.9.1,<2025",
        "sphinx-autodoc-typehints",
        "sphinx-copybutton",
        "sphinx-design",
-       "sphinxcontrib-bibtex"]
+       "sphinxcontrib-bibtex",
+       "sphinx-llm>=1.1,<2"]
 
 dev = ["pytest>=7.1.2",
        "hypothesis",

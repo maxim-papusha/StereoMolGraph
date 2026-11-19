@@ -1,0 +1,8 @@
+# StereoMolGraph
+
+> Stereochemistry-aware molecular and reaction graphs for Python.
+
+- [Documentation overview](docs_md/index.md)
+- [Agent usage guide](docs_md/agent-guide.md)
+- [API reference](docs_md/reference/index.md)
+- [Full documentation](docs_md/llms-full.txt)

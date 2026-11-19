@@ -1,0 +1,50 @@
+name: Build agent-readable Markdown docs
+
+on:
+  push:
+    branches: [doc_md]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: markdown-docs
+  cancel-in-progress: false
+
+jobs:
+  markdown-docs:
+    if: github.ref == 'refs/heads/doc_md'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install documentation dependencies
+        run: python -m pip install -e '.[docs]'
+
+      - name: Build Sphinx HTML and Markdown
+        run: python -m sphinx -b html docs docs/_build/html
+
+      - name: Export Markdown mirror
+        run: python scripts/export_markdown_docs.py
+
+      - name: Commit generated files when changed
+        run: |
+          git add -A docs_md llms.txt
+          if git diff --cached --quiet; then
+            echo 'Markdown documentation is up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: regenerate agent-readable Markdown [skip ci]'
+          git push origin HEAD:doc_md

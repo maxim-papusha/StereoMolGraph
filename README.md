@@ -42,6 +42,21 @@ Install from PyPI:
 pip install stereomolgraph
 ```
 
+## Documentation for coding agents
+
+Agent-readable Markdown is automatically generated from the Sphinx documentation.
+Start with [the agent guide](docs_md/agent-guide.md), the [Markdown index](llms.txt),
+or the [complete Markdown documentation](docs_md/llms-full.txt).
+The authoritative documentation sources remain in `docs/`.
+
+To regenerate locally:
+
+```bash
+python -m pip install -e '.[docs]'
+python -m sphinx -b html docs docs/_build/html
+python scripts/export_markdown_docs.py
+```
+
 ## Feedback and support
 
 Bug reports, feature requests, and questions are welcome through

@@ -65,6 +65,7 @@ If you use StereoMolGraph, please cite the relevant publication(s):
    :hidden:
 
    installation
+   agent-guide
    tutorial/index
    reference/index
    changelog
