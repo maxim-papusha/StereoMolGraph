@@ -1,23 +1,69 @@
-"""Symmetry-distinct isotope exchange and stereoisomer generation.
+"""Automorphism-orbit-based isotope exchange and stereoisomer generation.
 
-Explicit atoms are required for isotope exchange (including hydrogens).
-The stereo enumerator uses all undefined descriptors supplied by the caller
-and can infer tetrahedral sites for ordinary four-coordinate main-group atoms.
+Atoms, including hydrogens, must be explicit. Exchange rules can specify
+elements, alternative isotope mass numbers, and allowed atom IDs.
 """
 
 from __future__ import annotations
 
 import itertools
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from numbers import Integral
 
-from stereomolgraph.graphs.mg import AtomId
+import numpy as np
+
+from stereomolgraph.algorithms.isomorphism import vf2pp_all_isomorphisms
+from stereomolgraph.algorithms.symmetry import atom_automorphism_classes
+from stereomolgraph.graphs.mg import AtomId, MolGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.periodic_table import PERIODIC_TABLE
 from stereomolgraph.stereodescriptors import Tetrahedral
 
 
+@dataclass(frozen=True)
+class IsotopeExchange:
+    """One exchange rule; positions refer to atom IDs, not array indices.
+
+    atom_type: element symbol or atomic number, e.g. 'H' or 1.
+    isotopes: possible target mass numbers, e.g. (2, 3) for D and T.
+    source_isotope: original mass number, 0 means unspecified.
+    positions: optional set of eligible atom IDs; None allows all matching.
+    """
+
+    atom_type: int | str
+    isotopes: tuple[int, ...]
+    source_isotope: int = 0
+    positions: frozenset[AtomId] | None = None
+
+    def __post_init__(self) -> None:
+        try:
+            atomic_number = int(PERIODIC_TABLE[self.atom_type])
+        except (KeyError, TypeError) as exc:
+            raise ValueError(f"Unknown atom type: {self.atom_type!r}") from exc
+        object.__setattr__(self, "atom_type", atomic_number)
+        source = MolGraph._validate_isotope(self.source_isotope)
+        object.__setattr__(self, "source_isotope", source)
+        try:
+            values = tuple(self.isotopes)
+        except TypeError as exc:
+            raise ValueError("isotopes must be a nonempty sequence") from exc
+        if not values:
+            raise ValueError("isotopes must contain target mass numbers")
+        targets = tuple(sorted(set(MolGraph._validate_isotope(x) for x in values)))
+        if any(x == 0 or x == source for x in targets):
+            raise ValueError("target isotopes must be positive and differ from source")
+        object.__setattr__(self, "isotopes", targets)
+        if self.positions is not None:
+            positions = frozenset(self.positions)
+            if any(not isinstance(a, Integral) or isinstance(a, bool) for a in positions):
+                raise ValueError("positions must contain integer atom IDs")
+            object.__setattr__(self, "positions", positions)
+
+
 def _unique_graphs(graphs: Iterable[StereoMolGraph]) -> list[StereoMolGraph]:
-    """Deduplicate using the library's hash and exact stereo isomorphism."""
+    """Deduplicate completed stereo graphs by exact graph equality."""
     seen: set[StereoMolGraph] = set()
     unique = []
     for graph in graphs:
@@ -28,38 +74,138 @@ def _unique_graphs(graphs: Iterable[StereoMolGraph]) -> list[StereoMolGraph]:
     return unique
 
 
+def _exchange_options(
+    graph: StereoMolGraph, rules: tuple[IsotopeExchange, ...]
+) -> dict[AtomId, tuple[int, ...]]:
+    """Precompute original site eligibility and all permitted target masses."""
+    options: dict[AtomId, set[int]] = {atom: set() for atom in graph.atoms}
+    atoms = set(graph.atoms)
+    for rule in rules:
+        if rule.positions is not None and not rule.positions <= atoms:
+            raise ValueError(
+                f"Unknown exchange atom IDs: {sorted(rule.positions - atoms)}"
+            )
+        for atom in graph.atoms:
+            if rule.positions is not None and atom not in rule.positions:
+                continue
+            if int(graph.get_atom_type(atom)) != rule.atom_type:
+                continue
+            if graph.get_atom_isotope(atom) == rule.source_isotope:
+                options[atom].update(rule.isotopes)
+    return {atom: tuple(sorted(targets)) for atom, targets in options.items()}
+
+
+class _OrbitLabels:
+    """Stable integer labels for (element, current isotope, site options).
+
+    Including the static per-atom allowed target masses prevents an
+    automorphism from moving a partially labeled pattern to a position
+    with different future substitution possibilities.
+    """
+
+    def __init__(
+        self, graph: StereoMolGraph, options: dict[AtomId, tuple[int, ...]]
+    ) -> None:
+        self.options = options
+        identities = {
+            (int(graph.get_atom_type(atom)), mass, options[atom])
+            for atom in graph.atoms
+            for mass in (graph.get_atom_isotope(atom), *options[atom])
+        }
+        self.lookup = {item: index for index, item in enumerate(sorted(identities))}
+
+    def signatures(self, graph: StereoMolGraph) -> tuple:
+        return tuple(
+            (int(graph.get_atom_type(atom)), graph.get_atom_isotope(atom),
+             self.options[atom])
+            for atom in graph.atoms
+        )
+
+    def labels(self, graph: StereoMolGraph) -> np.ndarray:
+        values = self.signatures(graph)
+        return np.fromiter(
+            (self.lookup[item] for item in values),
+            dtype=np.int64, count=len(values)
+        )
+
+    def invariant(self, graph: StereoMolGraph) -> tuple:
+        return tuple(sorted(Counter(self.signatures(graph)).items()))
+
+
+def _unique_patterns(
+    candidates: Iterable[StereoMolGraph], labels: _OrbitLabels
+) -> list[StereoMolGraph]:
+    """Deduplicate constrained patterns across different parent paths."""
+    buckets: dict[tuple, list[tuple[StereoMolGraph, np.ndarray]]] = defaultdict(list)
+    unique = []
+    for candidate in candidates:
+        key = labels.invariant(candidate)
+        candidate_colors = labels.labels(candidate)
+        if any(
+            next(
+                vf2pp_all_isomorphisms(
+                    candidate, previous, stereo=True,
+                    atom_labels=(candidate_colors, previous_colors)
+                ),
+                None
+            ) is not None
+            for previous, previous_colors in buckets[key]
+        ):
+            continue
+        buckets[key].append((candidate, candidate_colors))
+        unique.append(candidate)
+    return unique
+
+
+def _orbit_representatives(
+    graph: StereoMolGraph,
+    originals: dict[AtomId, int],
+    labels: _OrbitLabels,
+) -> Iterator[AtomId]:
+    """Return one eligible site from each automorphism orbit at this step."""
+    colors = labels.labels(graph)
+    mappings = vf2pp_all_isomorphisms(
+        graph, graph, stereo=True, atom_labels=(colors, colors)
+    )
+    orbits = atom_automorphism_classes(graph, mappings=mappings)
+    visited: set[AtomId] = set()
+    for atom in sorted(graph.atoms):
+        if (
+            atom in visited
+            or not labels.options[atom]
+            or graph.get_atom_isotope(atom) != originals[atom]
+        ):
+            continue
+        visited.update(orbits[atom])
+        yield atom
+
+
 def _isotope_patterns(
     graph: StereoMolGraph,
-    sites: tuple[AtomId, ...],
-    source_isotope: int,
-    target_isotope: int,
+    options: dict[AtomId, tuple[int, ...]],
     min_substitutions: int,
     max_substitutions: int,
 ) -> Iterator[StereoMolGraph]:
-    """Generate isotope-placement orbit representatives at each depth.
-
-    Each frontier contains only unique isotope patterns. Exact graph
-    isomorphism collapses all substitution orders and symmetry-equivalent
-    sites, without enumerating the potentially factorial automorphism group.
-    """
+    """At every depth compute new atom orbits and expand unique patterns."""
+    original = {atom: graph.get_atom_isotope(atom) for atom in graph.atoms}
+    labels = _OrbitLabels(graph, options)
     frontier = [graph.copy()]
     if min_substitutions == 0:
         yield graph.copy()
 
-    for count in range(1, max_substitutions + 1):
-        def augment() -> Iterator[StereoMolGraph]:
+    for depth in range(1, max_substitutions + 1):
+        def children() -> Iterator[StereoMolGraph]:
             for parent in frontier:
-                for atom in sites:
-                    if parent.get_atom_isotope(atom) != source_isotope:
-                        continue
-                    child = parent.copy()
-                    child.set_atom_attribute(atom, "isotope", target_isotope)
-                    yield child
+                for atom in _orbit_representatives(parent, original, labels):
+                    for isotope in options[atom]:
+                        child = parent.copy()
+                        child.set_atom_attribute(atom, "isotope", isotope)
+                        yield child
 
-        frontier = _unique_graphs(augment())
+        frontier = _unique_patterns(children(), labels)
         if not frontier:
             return
-        if count >= min_substitutions:
+        if depth >= min_substitutions:
             yield from frontier
 
 
@@ -210,77 +356,60 @@ def _stereo_variants(
 
 def generate_isotope_stereoisomers(
     graph: StereoMolGraph,
-    element: int | str,
-    isotope: int,
+    exchanges: IsotopeExchange | Iterable[IsotopeExchange],
     *,
-    source_isotope: int = 0,
     min_substitutions: int = 1,
     max_substitutions: int | None = None,
-    atoms: Iterable[AtomId] | None = None,
     infer_tetrahedral: bool = True,
 ) -> Iterator[StereoMolGraph]:
-    """Enumerate unique isotope-exchanged stereoisomers.
+    """Generate each unique isotopically substituted stereoisomer exactly once.
 
-    Example: H -> D at one or more explicit H atoms::
+    One or more IsotopeExchange rules give the element, target isotope choices,
+    source isotope, and optionally the allowed atom IDs. Each atom is
+    exchanged at most once. The substitution limits count modified atoms
+    over all rules. Use explicit atoms for isotope exchange (including H).
 
-        products = generate_isotope_stereoisomers(
-            graph, "H", 2, min_substitutions=1, max_substitutions=2
-        )
+    At each substitution depth, automorphisms of the partially substituted
+    graph give atom orbits. Orbit labels include allowed target options to
+    preserve positional restrictions. A second exact isomorphism filter
+    removes duplicates reached through different augmentation orders.
 
-    Isotope=0 denotes an unspecified source isotope; to replace an explicitly
-    labeled isotope, pass its mass number as `source_isotope`.
-
-    Only atoms matching the requested element and source isotope are exchanged.
-    Stereochemical constraints with assigned parity are preserved. Undefined
-    stereo descriptors are enumerated, and missing tetrahedral descriptors are
-    inferred for four-coordinate C, N, Si, P, and Ge atoms when enabled.
-    Other stereo element types must have appropriate descriptors in the input.
-
-    Returns each distinct molecule once, including both enantiomers. Requires
-    explicit exchangeable atoms; it does not add implicit hydrogens or infer
-    other geometries from bond orders alone. Isotope patterns and resulting
-    stereo configurations are compared by exact graph isomorphism after hash
-    filtering. The number of distinct products can grow exponentially.
+    Undefined stereochemical descriptors and newly inferred tetrahedral
+    elements are enumerated without inverting originally defined parity.
+    A final global exact stereo-aware set removes duplicates even between
+    different isotope rules. Both distinct enantiomers are returned.
     """
     if not isinstance(graph, StereoMolGraph):
         raise TypeError("graph must be a StereoMolGraph")
-    atomic_number = int(PERIODIC_TABLE[element])
-    source_isotope = graph._validate_isotope(source_isotope)
-    isotope = graph._validate_isotope(isotope)
-    if not isotope or isotope == source_isotope:
-        raise ValueError("target isotope must be positive and differ from source")
-    if not isinstance(min_substitutions, int) or isinstance(min_substitutions, bool):
-        raise ValueError("min_substitutions must be an integer")
-    if min_substitutions < 0:
-        raise ValueError("min_substitutions must be non-negative")
+    rules = (exchanges,) if isinstance(exchanges, IsotopeExchange) else tuple(exchanges)
+    if not rules or any(not isinstance(rule, IsotopeExchange) for rule in rules):
+        raise ValueError("exchanges must contain one or more IsotopeExchange rules")
+    if (
+        not isinstance(min_substitutions, int)
+        or isinstance(min_substitutions, bool)
+        or min_substitutions < 0
+    ):
+        raise ValueError("min_substitutions must be a non-negative integer")
 
-    allowed = None if atoms is None else set(atoms)
-    if allowed is not None and not allowed <= set(graph.atoms):
-        raise ValueError("atoms must be a subset of graph.atoms")
-
-    sites = tuple(
-        sorted(
-            atom for atom in graph.atoms
-            if (allowed is None or atom in allowed)
-            and int(graph.get_atom_type(atom)) == atomic_number
-            and graph.get_atom_isotope(atom) == source_isotope
-        )
-    )
+    options = _exchange_options(graph, rules)
+    eligible_count = sum(bool(targets) for targets in options.values())
     if max_substitutions is None:
-        max_substitutions = len(sites)
+        max_substitutions = eligible_count
     if (
         not isinstance(max_substitutions, int)
         or isinstance(max_substitutions, bool)
-        or max_substitutions < min_substitutions
-        or max_substitutions > len(sites)
+        or not min_substitutions <= max_substitutions <= eligible_count
     ):
         raise ValueError(
-            "max_substitutions must be an integer between "
-            "min_substitutions and the number of eligible atoms"
+            "Expected min_substitutions <= max_substitutions <= eligible atom count"
         )
 
+    seen: set[StereoMolGraph] = set()
     for pattern in _isotope_patterns(
-        graph, sites, source_isotope, isotope,
-        min_substitutions, max_substitutions
+        graph, options, min_substitutions, max_substitutions
     ):
-        yield from _stereo_variants(pattern, infer_tetrahedral)
+        for product in _stereo_variants(pattern, infer_tetrahedral):
+            product.freeze()
+            if product not in seen:
+                seen.add(product)
+                yield product.copy()
