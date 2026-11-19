@@ -270,7 +270,8 @@ def generate_isotope_stereoisomers(
     for rule in rules:
         if rule.positions is not None and not rule.positions <= set(graph.atoms):
             raise ValueError(
-                f"Unknown exchange atom IDs: {sorted(rule.positions - set(graph.atoms))}"
+                "Unknown exchange atom IDs: "
+                f"{sorted(rule.positions - set(graph.atoms))}"
             )
         for atom in graph.atoms:
             if (
