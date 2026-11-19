@@ -1,0 +1,3317 @@
+# index.md
+
+# Stereochemistry-Aware Molecular and Reaction Graphs
+
+![StereoMolGraph](_static/img/logo_smg.png)![StereoMolGraph](_static/img/logo_smg_dark.png)
+
+[![pypi](https://img.shields.io/pypi/v/StereoMolGraph?style=flat-square&logo=pypi&logoColor=white&color=3775A9)](https://pypi.org/project/StereoMolGraph/) [![python](https://img.shields.io/pypi/pyversions/StereoMolGraph?style=flat-square&logo=python&logoColor=white&color=3776AB&label=Python)](https://pypi.org/project/StereoMolGraph/) [![license](https://img.shields.io/badge/License-MIT-d4a017?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![tests](https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml) [![github](https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white)](https://github.com/maxim-papusha/StereoMolGraph)  [![doi](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
+
+Welcome to the documentation for **StereoMolGraph**.
+
+This package provides a collection of [graph classes](reference/graphs/index.md) for the representation of molecules and chemical reactions in a modular.
+The core focus is to allow the user to work with chiral molecules in a consistent way with a simple interface.
+All arising algorithmic difficulties are taken care of by the internal implementations.
+
+Its treatment of stereochemistry is based on rigorously defined local [stereodescriptors](reference/stereodescriptors.md), which are derived from group-theoretical principles.
+
+Building on this formal foundation, a range of graph [algorithms](reference/algorithms/index.md) is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
+
+# Magic Methods
+
+StereoMolGraph implements the following magic methods:
+
+* `__eq__`: based on [graph isomorphism](reference/algorithms/isomorphism.md) and stereochemical equivalence [[1](index.md#id4)]
+* `__hash__`: based on Circular Stereo Algorithm [[2](index.md#id5)]
+
+# Citations
+
+If you use StereoMolGraph, please cite the relevant publication(s):
+
+
+# _build/jupyter_execute/examples/react_stereoiso.md
+
+# Stereochemistry of Phosgenation Transition States
+
+```ipython3
+import rdkit.Chem as Chem
+
+from stereomolgraph import StereoCondensedReactionGraph
+from stereomolgraph.stereodescriptors import Tetrahedral
+from stereomolgraph.experimental import generate_fleeting_stereoisomers
+from stereomolgraph.ipython import View2D
+
+from IPython.core.interactiveshell import InteractiveShell
+
+InteractiveShell.ast_node_interactivity = "all"
+
+View2D.show_atom_numbers = True
+View2D.generate_bond_orders = False
+```
+
+```ipython3
+tmda_rdmol = Chem.AddHs(Chem.MolFromSmiles("NCCCCN"))
+phosgene_rdmol = Chem.AddHs(Chem.MolFromSmiles("ClC(Cl)=O"))
+
+scrg1 = StereoCondensedReactionGraph.from_rdmol(
+    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
+)
+scrg1
+```
+
+```ipython3
+scrg1.add_formed_bond(0, 19)
+scrg1.add_formed_bond(18, 7)
+scrg1.add_broken_bond(18, 19)
+scrg1.add_broken_bond(0, 7)
+scrg1
+```
+
+```ipython3
+n_neighbors = scrg1.bonded_to(0)
+c_neighbors = scrg1.bonded_to(19)
+scrg1.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *n_neighbors), parity=None))
+scrg1.set_atom_stereo_change(
+    fleeting=Tetrahedral(atoms=(19, *c_neighbors), parity=None)
+)
+```
+
+```ipython3
+isomers = list(generate_fleeting_stereoisomers(scrg1))
+len(isomers)
+for iso in isomers:
+    iso
+```
+
+```ipython3
+scrg2 = StereoCondensedReactionGraph.from_rdmol(
+    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
+)
+scrg2
+```
+
+```ipython3
+scrg2.add_formed_bond(0, 19)
+scrg2.add_formed_bond(18, 17)
+scrg2.add_formed_bond(5, 7)
+
+scrg2.add_broken_bond(18, 19)
+scrg2.add_broken_bond(5, 17)
+scrg2.add_broken_bond(0, 7)
+scrg2
+```
+
+```ipython3
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(5, *scrg2.bonded_to(5))))
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *scrg2.bonded_to(0))))
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(19, *scrg2.bonded_to(19))))
+```
+
+```ipython3
+isomers2 = list(generate_fleeting_stereoisomers(scrg2))
+len(isomers2)
+
+for iso in isomers2:
+    iso
+```
+
+
+# _build/jupyter_execute/examples/stereoiso.md
+
+# Finding Stereoisomers of Molecules
+
+```ipython3
+from rdkit import Chem
+
+from stereomolgraph import StereoMolGraph
+from stereomolgraph.experimental import generate_stereoisomers
+from stereomolgraph.ipython import View2D
+
+from IPython.core.interactiveshell import InteractiveShell
+
+InteractiveShell.ast_node_interactivity = "all"
+
+View2D.show_atom_numbers = True
+View2D.show_h = False
+View2D.generate_bond_orders = False
+```
+
+```ipython3
+rdmol = Chem.AddHs(
+    Chem.MolFromSmiles("[CH]1([CH](C1C2[CH]([CH]2C(=O)O)C(=O)O)C(=O)O)C(=O)O")
+)
+smg = StereoMolGraph.from_rdmol(rdmol, stereo_complete=False)
+smg
+```
+
+## Construction from `rdkit.Mol`
+
+When constructing from an `rdkit.Mol` with `stereo_complete=False`, any atom without explicitly defined stereochemistry is treated as **undefined**.
+
+Using `generate_stereoisomers` will enumerate all **distinct stereoisomers** without producing duplicates.
+
+```ipython3
+isomers = list(generate_stereoisomers(smg, enantiomers=False))
+# enantiomes are removed
+len(isomers)
+```
+
+```ipython3
+for isomer in isomers:
+    isomer
+```
+
+```ipython3
+all_isomers_stereo = []
+
+for i in isomers:
+    rdmol = i.to_rdmol(generate_bond_orders=True)
+
+    stereocenters = Chem.FindMolChiralCenters(
+        rdmol, includeUnassigned=False, force=True
+    )
+
+    isomer_stereo = []
+    for atom_idx, stereo in stereocenters:
+        atom = rdmol.GetAtomWithIdx(atom_idx)
+        atom_idx = atom.GetIdx()
+        isomer_stereo.append((atom_idx, stereo))
+
+    isomer_stereo.sort()
+    all_isomers_stereo.append(isomer_stereo)
+
+all_isomers_stereo.sort()
+all_isomers_stereo
+```
+
+
+# agent-guide.md
+
+# Using StereoMolGraph with coding agents
+
+This is a task-oriented entry point for agent-generated Python code. The
+[Sphinx API reference](reference/index.md) provides detailed signatures.
+
+## Install
+
+\`\`\`bash
+python -m pip install stereomolgraph
+\`\`\`
+
+## Main graph classes
+
+Prefer importing from the package root:
+
+\`\`\`python
+from stereomolgraph import (
+MolGraph,
+StereoMolGraph,
+CondensedReactionGraph,
+StereoCondensedReactionGraph,
+)
+\`\`\`
+
+- \`MolGraph\`: molecular connectivity without stereodescriptors.
+- \`StereoMolGraph\`: molecular connectivity with local stereodescriptors.
+- \`CondensedReactionGraph\`: graph representation of a reaction.
+- \`StereoCondensedReactionGraph\`: reaction graphs including stereo changes.
+
+## Convert an RDKit molecule
+
+\`\`\`python
+from rdkit import Chem
+from stereomolgraph import StereoMolGraph
+
+rdmol = Chem.AddHs(Chem.MolFromSmiles(“C[C@H]()Cl”))
+graph = StereoMolGraph.from_rdmol(rdmol)
+print(graph.n_atoms)
+print(graph.atom_stereo)
+\`\`\`
+
+Explicit hydrogens are required for bidirectional RDKit conversion.
+\`StereoMolGraph.from_rdmol\` accepts \`stereo_complete\`, \`resonance\`, and
+\`lone_pair_stereo\` keyword arguments. Consult its docstring for their meaning.
+
+## Construct a connectivity graph
+
+\`\`\`python
+from stereomolgraph import MolGraph
+
+graph = MolGraph()
+graph.add_atom(0, “C”)
+graph.add_atom(1, “O”)
+graph.add_bond(0, 1)
+\`\`\`
+
+## Equality and mutability
+
+- Graph equality tests graph isomorphism, not equality of atom identifiers.
+  Stereo graphs additionally compare local stereochemistry.
+- Freeze a graph before using it as a set element or dictionary key:
+
+  \`\`\`python
+  graph.freeze()
+  unique_graphs = {graph}
+  \`\`\`
+
+## Scientific conventions and common pitfalls
+
+- Bond orders, charge, and electronic state are not part of core graph identity.
+  Graph equality is **not** a complete chemical identity comparison.
+- Stereo descriptors represent relative local configurations. Parity values
+  are **not** CIP \`R\`/\`S\` labels.
+- Do not silently turn undefined or partially assigned stereochemistry into
+  specified stereochemistry.
+- Check public method signatures instead of assuming RDKit and StereoMolGraph
+  APIs have the same semantics.
+
+## Agent-readable documentation
+
+The human-readable Sphinx documentation is the source of truth. It is
+automatically converted into individual Markdown pages, \`llms.txt\` and
+\`llms-full.txt\` using the \`sphinx-llm\` extension.
+See the [repository agent instructions](https://github.com/maxim-papusha/StereoMolGraph/blob/doc_md/AGENTS.md).
+
+
+# changelog.md
+
+# Changelog
+
+## [unreleased]
+
+- added GeometryProtocol definition as a potential external interface.
+- added Symmetry numbers of graphs
+
+## [0.0.21b]
+
+### Changed
+
+- Graphs are immutable and hashable after .freeze() and .copy() can create mutable copies.
+- JSONHandlar creates frozen graphs by default.
+
+## [0.0.1b]
+
+- Initial release
+
+
+# examples/react_stereoiso.md
+
+# Stereochemistry of Phosgenation Transition States
+
+```ipython3
+import rdkit.Chem as Chem
+
+from stereomolgraph import StereoCondensedReactionGraph
+from stereomolgraph.stereodescriptors import Tetrahedral
+from stereomolgraph.experimental import generate_fleeting_stereoisomers
+from stereomolgraph.ipython import View2D
+
+from IPython.core.interactiveshell import InteractiveShell
+
+InteractiveShell.ast_node_interactivity = "all"
+
+View2D.show_atom_numbers = True
+View2D.generate_bond_orders = False
+```
+
+```ipython3
+tmda_rdmol = Chem.AddHs(Chem.MolFromSmiles("NCCCCN"))
+phosgene_rdmol = Chem.AddHs(Chem.MolFromSmiles("ClC(Cl)=O"))
+
+scrg1 = StereoCondensedReactionGraph.from_rdmol(
+    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
+)
+scrg1
+```
+
+```ipython3
+scrg1.add_formed_bond(0, 19)
+scrg1.add_formed_bond(18, 7)
+scrg1.add_broken_bond(18, 19)
+scrg1.add_broken_bond(0, 7)
+scrg1
+```
+
+```ipython3
+n_neighbors = scrg1.bonded_to(0)
+c_neighbors = scrg1.bonded_to(19)
+scrg1.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *n_neighbors), parity=None))
+scrg1.set_atom_stereo_change(
+    fleeting=Tetrahedral(atoms=(19, *c_neighbors), parity=None)
+)
+```
+
+```ipython3
+isomers = list(generate_fleeting_stereoisomers(scrg1))
+len(isomers)
+for iso in isomers:
+    iso
+```
+
+```ipython3
+scrg2 = StereoCondensedReactionGraph.from_rdmol(
+    Chem.CombineMols(tmda_rdmol, phosgene_rdmol)
+)
+scrg2
+```
+
+```ipython3
+scrg2.add_formed_bond(0, 19)
+scrg2.add_formed_bond(18, 17)
+scrg2.add_formed_bond(5, 7)
+
+scrg2.add_broken_bond(18, 19)
+scrg2.add_broken_bond(5, 17)
+scrg2.add_broken_bond(0, 7)
+scrg2
+```
+
+```ipython3
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(5, *scrg2.bonded_to(5))))
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(0, *scrg2.bonded_to(0))))
+scrg2.set_atom_stereo_change(fleeting=Tetrahedral(atoms=(19, *scrg2.bonded_to(19))))
+```
+
+```ipython3
+isomers2 = list(generate_fleeting_stereoisomers(scrg2))
+len(isomers2)
+
+for iso in isomers2:
+    iso
+```
+
+
+# examples/stereoiso.md
+
+# Finding Stereoisomers of Molecules
+
+```ipython3
+from rdkit import Chem
+
+from stereomolgraph import StereoMolGraph
+from stereomolgraph.experimental import generate_stereoisomers
+from stereomolgraph.ipython import View2D
+
+from IPython.core.interactiveshell import InteractiveShell
+
+InteractiveShell.ast_node_interactivity = "all"
+
+View2D.show_atom_numbers = True
+View2D.show_h = False
+View2D.generate_bond_orders = False
+```
+
+```ipython3
+rdmol = Chem.AddHs(
+    Chem.MolFromSmiles("[CH]1([CH](C1C2[CH]([CH]2C(=O)O)C(=O)O)C(=O)O)C(=O)O")
+)
+smg = StereoMolGraph.from_rdmol(rdmol, stereo_complete=False)
+smg
+```
+
+## Construction from `rdkit.Mol`
+
+When constructing from an `rdkit.Mol` with `stereo_complete=False`, any atom without explicitly defined stereochemistry is treated as **undefined**.
+
+Using `generate_stereoisomers` will enumerate all **distinct stereoisomers** without producing duplicates.
+
+```ipython3
+isomers = list(generate_stereoisomers(smg, enantiomers=False))
+# enantiomes are removed
+len(isomers)
+```
+
+```ipython3
+for isomer in isomers:
+    isomer
+```
+
+```ipython3
+all_isomers_stereo = []
+
+for i in isomers:
+    rdmol = i.to_rdmol(generate_bond_orders=True)
+
+    stereocenters = Chem.FindMolChiralCenters(
+        rdmol, includeUnassigned=False, force=True
+    )
+
+    isomer_stereo = []
+    for atom_idx, stereo in stereocenters:
+        atom = rdmol.GetAtomWithIdx(atom_idx)
+        atom_idx = atom.GetIdx()
+        isomer_stereo.append((atom_idx, stereo))
+
+    isomer_stereo.sort()
+    all_isomers_stereo.append(isomer_stereo)
+
+all_isomers_stereo.sort()
+all_isomers_stereo
+```
+
+
+# installation.md
+
+# Installation
+
+StereoMolGraph can be installed on Linux, MacOS, or Windows environment with **Python 3.10 – 3.13**.
+
+## Install from PyPI
+
+```bash
+pip install stereomolgraph
+```
+
+
+# reference/algorithms/bond_orders.md
+
+# Bond Orders
+
+
+# reference/algorithms/circular.md
+
+# Circular Algorithm
+
+### stereomolgraph.algorithms.circular.numpy_int_multiset_hash(arr: np.ndarray[tuple[int, ...], np.dtype[np.int64]], out: None | np.ndarray[tuple[Literal[1], ...], np.dtype[np.int64]] = None) → np.ndarray
+
+Hash function for a multiset (order-independent with duplicates) of integers.
+Works by sorting the elements and then applying the tuple hashing function.
+
+* **Return type:**
+  `ndarray`
+
+### stereomolgraph.algorithms.circular.label_hash(mg: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), atom_labels: Collection[str] = ('atom_type',)) → ndarray[tuple[int], dtype[int64]]
+
+Generates a hash for each atom based on choosen attributes.
+
+* **Parameters:**
+  * **mg** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – MolGraph object containing the atoms.
+  * **atom_labels** (`Collection`[`str`]) – Iterable of attribute names to use for hashing. (default: `('atom_type',)`)
+* **Return type:**
+  `ndarray`[`tuple`[`int`], `dtype`[`int64`]]
+
+### stereomolgraph.algorithms.circular.circular_generator(mg: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), atom_labels: None | ndarray[tuple[int], dtype[int64]] = None) → Iterator[ndarray[tuple[int], dtype[int64]]]
+
+Color refinement algorithm for MolGraph.
+
+This algorithm refines the atom coloring based on their connectivity.
+Identical to the Weisfeiler-Lehman (1-WL) algorithm.
+
+* **Parameters:**
+  * **mg** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – MolGraph object containing the atoms and their connectivity.
+  * **max_iter** – Maximum number of iterations for refinement.
+    Default is None, which means it will run until convergence.
+* **Return type:**
+  `Iterator`[`ndarray`[`tuple`[`int`], `dtype`[`int64`]]]
+
+### stereomolgraph.algorithms.circular.circular_stereo_generator(smg: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), atom_labels: None | ndarray[tuple[int], dtype[int64]] = None) → Iterator[ndarray[tuple[int], dtype[int64]]]
+
+Generator of the Circular Stereo Algorithm for StereoMolGraph [[2](index.md#id5)].
+
+* **Return type:**
+  `Iterator`[`ndarray`[`tuple`[`int`], `dtype`[`int64`]]]
+
+### stereomolgraph.algorithms.circular.color_refine_hash_mg(graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) → int
+
+Color-refined hash for plain MolGraph objects.
+
+* **Return type:**
+  `int`
+
+### stereomolgraph.algorithms.circular.color_refine_hash_smg(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)) → int
+
+Color-refined hash for StereoMolGraph objects.
+
+Drops the extra sentinel slot the stereo generator appends.
+
+* **Return type:**
+  `int`
+
+### stereomolgraph.algorithms.circular.color_refine_hash_crg(graph: [CondensedReactionGraph](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph)) → int
+
+Color-refined hash for CondensedReactionGraph objects.
+
+* **Return type:**
+  `int`
+
+### stereomolgraph.algorithms.circular.color_refine_hash_scrg(graph: [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)) → int
+
+Color-refined hash for StereoCondensedReactionGraph objects.
+
+* **Return type:**
+  `int`
+
+### stereomolgraph.algorithms.circular.circular_fingerprint(graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), radius: int = 3, n_bits: int = 2048, count: bool = True, accumulate: bool = True, include_hydrogens: bool = False) → ndarray
+
+Build a circular fingerprint for a molecular graph.
+
+If `accumulate` is `True`, identifiers from every radius up to the
+requested radius are included. Otherwise, only the last radius is used.
+If `include_hydrogens` is `False`, atom environments centered on
+hydrogens are excluded.
+
+* **Parameters:**
+  * **graph** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – Molecular graph to fingerprint.
+  * **radius** (`int`) – Maximum refinement radius to include. (default: `3`)
+  * **n_bits** (`int`) – Length of the folded fingerprint. If `0` or `None`,
+    return the unique integer identifiers instead of a folded bit/count vector. (default: `2048`)
+  * **count** (`bool`) – If `True`, all unique values are used once. (default: `True`)
+  * **accumulate** (`bool`) – Whether to include identifiers from all radii up to
+    `radius` instead of only the final radius. (default: `True`)
+  * **include_hydrogens** (`bool`) – Whether to include hydrogen-centered
+    environments. (default: `False`)
+* **Return type:**
+  `ndarray`
+
+### stereomolgraph.algorithms.circular.circular_stereo_fingerprint(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), radius: int = 3, n_bits: int = 2048, count: bool = True, accumulate: bool = True, include_hydrogens: bool = False) → ndarray
+
+Build a circular stereo fingerprint for a molecular graph.
+
+If `accumulate` is `True`, identifiers from every radius up to the
+requested radius are included. Otherwise, only the last radius is used.
+If `include_hydrogens` is `False`, atom environments centered on
+hydrogens are excluded.
+
+* **Parameters:**
+  * **graph** ([`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)) – Molecular graph to fingerprint.
+  * **radius** (`int`) – Maximum refinement radius to include. (default: `3`)
+  * **n_bits** (`int`) – Length of the folded fingerprint. If `0` or `None`,
+    return the unique integer identifiers instead of a folded bit/count vector. (default: `2048`)
+  * **count** (`bool`) – If `True`, all unique values are used once. (default: `True`)
+  * **accumulate** (`bool`) – Whether to include identifiers from all radii up to
+    `radius` instead of only the final radius. (default: `True`)
+  * **include_hydrogens** (`bool`) – Whether to include hydrogen-centered
+    environments. (default: `False`)
+* **Return type:**
+  `ndarray`
+
+
+# reference/algorithms/index.md
+
+# Algorithms
+
+
+# reference/algorithms/isomorphism.md
+
+# Isomorphism
+
+### stereomolgraph.algorithms.isomorphism.vf2pp_all_isomorphisms(g1: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph) | [CondensedReactionGraph](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph) | [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph), g2: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph) | [CondensedReactionGraph](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph) | [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph), atom_labels: None | tuple[np.ndarray[tuple[int], np.dtype[np.int64]], np.ndarray[tuple[int], np.dtype[np.int64]]] = None, stereo: bool = False, stereo_change: bool = False, subgraph: bool = False) → Iterator[dict[AtomId, AtomId]]
+
+Find all isomorphisms between two graphs [[1](index.md#id4)].
+
+* **Parameters:**
+  * **g1** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph) | [`CondensedReactionGraph`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph) | [`StereoCondensedReactionGraph`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)) – First graph
+  * **g2** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph) | [`CondensedReactionGraph`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph) | [`StereoCondensedReactionGraph`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)) – Second graph
+  * **atom_labels** (`None` | `tuple`[`ndarray`[`tuple`[`int`], `dtype`[`int64`]], `ndarray`[`tuple`[`int`], `dtype`[`int64`]]]) – Optional precomputed graph-ordered atom-label arrays for both
+    graphs, if none defaults to color refinement. (default: `None`)
+  * **stereo** (`bool`) – Whether to consider stereochemistry in the isomorphism (default: `False`)
+  * **stereo_change** (`bool`) – Whether to consider stereochemistry changes in the isomorphism (default: `False`)
+  * **subgraph** (`bool`) – Whether to find subgraph isomorphisms instead of graph isomorphisms
+    (Currently only limited support and not well tested.) (default: `False`)
+* **Return type:**
+  `Iterator`[`dict`[`int`, `int`]]
+* **Returns:**
+  An iterator of all isomorphisms, where each isomorphism is represented as a
+  dictionary mapping atom ids of g1 to atom ids of g2.
+
+
+# reference/algorithms/symmetry.md
+
+# Symmetry
+
+### stereomolgraph.algorithms.symmetry.bond_automorphism_classes(smg: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), mappings: Iterable[Mapping[int, int]] | None = None) → dict[frozenset[int], set[frozenset[int]]]
+
+Bonds are only considered if both of its atoms have other substituents
+and therefore can have a internal rotation.
+
+* **Return type:**
+  `dict`[`frozenset`[`int`], `set`[`frozenset`[`int`]]]
+
+### stereomolgraph.algorithms.symmetry.symmetry_number(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), atom_labels=None) → int
+
+Calculated from the number of graph isomorphisms which conserve the
+stereo information.
+symmetry_number = internal_symmetry_number \* rotational_symmetry_number
+
+* **Return type:**
+  `int`
+
+### stereomolgraph.algorithms.symmetry.external_symmetry_number(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), mappings: Iterable[dict[int, int]] | None = None) → int
+
+Calculate the upper bound of the external symmetry number for StereoMolGraph
+
+* **Return type:**
+  `int`
+
+
+# reference/coords.md
+
+# Coords
+
+### *class* stereomolgraph.coords.GeometryProtocol(\*args, \*\*kwargs)
+
+Protocol for geometry-like objects used throughout StereoMolGraph.
+
+Implementations must provide atom types and Cartesian coordinates in the
+same atom order.
+
+* **Variables:**
+  * **atom_types** – Atom types for each atom in the geometry.
+  * **coords** – Cartesian coordinates with shape `(n_atoms, 3)` in
+    Angstrom.
+
+### stereomolgraph.coords.are_planar(points: ndarray[tuple[N, Literal[3]], NP_FLOAT], threshold: float = 0.35) → bool
+
+Checks if all atoms are in one plane
+
+Checks if the all atoms are planar within a given threshold.
+The threshold is the maximal distance of an atom from the plane of
+three other atoms.
+
+* **Parameters:**
+  * **points** (*np.ndarray*) – coordinates of the atoms
+  * **threshold** (*float*) – maximal distance of atom from plane [Angstrom] (default: `0.35`)
+* **Returns:**
+  True if all atoms are planar
+* **Return type:**
+  bool
+
+### stereomolgraph.coords.handedness(coords: ndarray[tuple[Literal[4], Literal[3]], NP_FLOAT]) → ndarray[tuple[Literal[1]], dtype[int8]]
+
+Calculates the orientation of the atom 4 from the plane defined
+by the first three atoms from their coordinates.
+
+* **Return type:**
+  `ndarray`[`tuple`[`Literal`[`1`]], `dtype`[`int8`]]
+
+### *class* stereomolgraph.coords.Geometry(atom_types: Sequence[int | str] = (), coords: ndarray[tuple[int, int], NP_FLOAT] = array([], shape=(0, 3), dtype=float64))
+
+Represents a molecular geometry, i.e. the coordinates and atom types.
+
+* **Parameters:**
+  * **atom_types** (`Sequence`[`int` | `str`]) – tuple of Element objects (default: `()`)
+  * **coords** (`ndarray`[`tuple`[`int`, `int`], `TypeVar`(`NP_FLOAT`, bound= `dtype`[`floating`], contravariant=True)]) – Cartesian coordinates of atoms in Angstrom (default: `array([], shape=(0, 3), dtype=float64)`)
+
+#### *classmethod* from_xyz_file(path: PathLike[str] | str) → [Geometry](reference/coords.md#stereomolgraph.coords.Geometry)
+
+Create a Geometry from an XYZ file.
+
+* **Return type:**
+  [`Geometry`](reference/coords.md#stereomolgraph.coords.Geometry)
+
+#### *classmethod* from_xyz(xyz_string: str) → [Geometry](reference/coords.md#stereomolgraph.coords.Geometry)
+
+Create a Geometry from an XYZ-format string.
+
+This mirrors [`from_xyz_file()`](reference/coords.md#stereomolgraph.coords.Geometry.from_xyz_file) but reads from a string instead of a
+file path.
+
+* **Return type:**
+  [`Geometry`](reference/coords.md#stereomolgraph.coords.Geometry)
+
+#### *classmethod* from_xyz_file_multi(path: PathLike[str] | str) → tuple[[Geometry](reference/coords.md#stereomolgraph.coords.Geometry), ...]
+
+Create multiple Geometries from an XYZ file containing multiple structures.
+
+* **Parameters:**
+  **path** (`PathLike`[`str`] | `str`) – Path to XYZ file containing one or more structures
+* **Return type:**
+  `tuple`[[`Geometry`](reference/coords.md#stereomolgraph.coords.Geometry), `...`]
+* **Returns:**
+  Tuple of Geometry objects
+
+#### *classmethod* from_xyz_multi(xyz_string: str) → tuple[[Geometry](reference/coords.md#stereomolgraph.coords.Geometry), ...]
+
+Create multiple Geometries from an XYZ-format string containing multiple structures.
+
+* **Parameters:**
+  **xyz_string** (`str`) – XYZ-format string containing one or more structures
+* **Return type:**
+  `tuple`[[`Geometry`](reference/coords.md#stereomolgraph.coords.Geometry), `...`]
+* **Returns:**
+  Tuple of Geometry objects
+
+#### xyz_str(comment: None | str = None) → str
+
+returns the xyz representation of this geometry as a string
+
+* **Parameters:**
+  **comment** (`None` | `str`) – comment for 2nd line of xyz file (default: `None`)
+* **Return type:**
+  `str`
+* **Returns:**
+  xyz representation of this geometry
+
+
+# reference/experimental.md
+
+# Experimental
+
+#### WARNING
+The `stereomolgraph.experimental` package contains features whose
+interfaces may change without notice. Use at your own risk.
+
+<a id="module-stereomolgraph.experimental"></a>
+
+Experimental functionality for StereoMolGraph.
+
+#### WARNING
+This module contains **experimental** features. The interfaces may
+change without notice between versions. Use at your own risk.
+
+### stereomolgraph.experimental.generate_fleeting_stereoisomers(graph: [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph), enantiomers: bool = True, atoms: None | Iterable[AtomId] = None, bonds: None | Iterable[Bond] = None) → Iterator[[StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)]
+
+Generate all unique fleeting stereoisomers of a
+StereoCondensedReactionGraph.
+
+Stereoisomers are constructed by enumerating all combinations of
+fleeting stereochemical parities. Only fleeting stereocenters with
+undefined parity (`None`) are considered; predefined parities remain
+unchanged.
+
+If `enantiomers` is `False`, both enantiomers of each fleeting
+stereoisomer are returned. Otherwise, only one representative per
+enantiomeric pair is included.
+
+* **Parameters:**
+  * **enantiomers** (`bool`) – Whether to remove enantiomers. (default: `True`)
+  * **atoms** (`None` | `Iterable`[`int`]) – Optional subset of atoms to consider for stereoisomerism. (default: `None`)
+  * **bonds** (`None` | `Iterable`[`frozenset`[`int`]]) – Optional subset of bonds to consider for stereoisomerism. (default: `None`)
+* **Yields:**
+  Unique fleeting stereoisomers of the input graph.
+* **Return type:**
+  `Iterator`[[`StereoCondensedReactionGraph`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)]
+
+### stereomolgraph.experimental.generate_stereoisomers(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), enantiomers: bool = False, atoms: None | Iterable[int] = None, bonds: None | Iterable[frozenset[int]] = None) → Iterator[[StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)]
+
+Generate all unique stereoisomers of a StereoMolGraph.
+
+Stereoisomers are constructed by enumerating all combinations of
+stereochemical parities. Only stereocenters with undefined parity
+(`None`) are considered; predefined parities remain unchanged.
+
+If `enantiomers` is `False`, both enantiomers of each stereoisomer
+are returned. Otherwise, only one representative per enantiomeric pair
+is included.
+
+* **Parameters:**
+  * **enantiomers** (`bool`) – Whether to remove enantiomers. (default: `False`)
+  * **atoms** (`None` | `Iterable`[`int`]) – Optional subset of atoms to consider for stereoisomerism. (default: `None`)
+  * **bonds** (`None` | `Iterable`[`frozenset`[`int`]]) – Optional subset of bonds to consider for stereoisomerism. (default: `None`)
+* **Yields:**
+  Unique stereoisomers of the input graph.
+* **Return type:**
+  `Iterator`[[`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)]
+
+### *class* stereomolgraph.experimental.JSONHandler
+
+Serialize and deserialize StereoMolGraph-related graphs to JSON.
+
+
+# reference/graph2rdmol.md
+
+# Graph2RDMol
+
+### stereomolgraph.graph2rdmol.stereo_mol_graph_to_rdmol(graph: [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), generate_bond_orders=False, allow_charged_fragments=False, charge=0) → tuple[RWMol, dict[int, int]]
+
+Creates a RDKit mol object using the connectivity of the mol graph.
+Stereochemistry is added to the mol object.
+
+* **Returns:**
+  RDKit molecule
+* **Return type:**
+  Chem.rdchem.RWMol
+
+### stereomolgraph.graph2rdmol.condensed_reaction_graph_to_rdmol(graph: [CondensedReactionGraph](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph), generate_bond_orders: bool = False, allow_charged_fragments: bool = False, charge: int = 0) → tuple[RWMol, dict[int, int]]
+
+Convert a CondensedReactionGraph to an RDKit molecule.
+
+* **Parameters:**
+  * **graph** ([`CondensedReactionGraph`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph)) – CondensedReactionGraph to convert
+  * **generate_bond_orders** (`bool`) – If True, compute bond orders for the CRG (default: `False`)
+  * **allow_charged_fragments** (`bool`) – If True, allow charged fragments (default: `False`)
+  * **charge** (`int`) – Total charge of the molecule (default: `0`)
+* **Return type:**
+  `tuple`[`RWMol`, `dict`[`int`, `int`]]
+* **Returns:**
+  RDKit molecule and index-to-atom-id mapping
+
+### stereomolgraph.graph2rdmol.stereo_condensed_reaction_graph_to_rdmol(graph: [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph), generate_bond_orders: bool = False, allow_charged_fragments: bool = False, charge: int = 0) → tuple[RWMol, dict[int, int]]
+
+Convert a StereoCondensedReactionGraph to an RDKit molecule.
+
+The stereo changes are merged into a flat StereoMolGraph which is then
+converted via [`stereo_mol_graph_to_rdmol()`](reference/graph2rdmol.md#stereomolgraph.graph2rdmol.stereo_mol_graph_to_rdmol).
+
+* **Parameters:**
+  * **graph** ([`StereoCondensedReactionGraph`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph)) – StereoCondensedReactionGraph to convert
+  * **generate_bond_orders** (`bool`) – If True, compute bond orders for the SCRG (default: `False`)
+  * **allow_charged_fragments** (`bool`) – If True, allow charged fragments (default: `False`)
+  * **charge** (`int`) – Total charge of the molecule (default: `0`)
+* **Return type:**
+  `tuple`[`RWMol`, `dict`[`int`, `int`]]
+* **Returns:**
+  RDKit molecule and index-to-atom-id mapping
+
+
+# reference/graphs/condensedreactiongraph.md
+
+# CondensedReactionGraph
+
+### *class* stereomolgraph.CondensedReactionGraph(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None, frozen: bool = False)
+
+Bases: [`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+
+Graph representing a reaction. Atoms are nodes and (potentially changing)
+bonds are edges. Every node has to have an attribute “atom_type” of type
+Element. Edges can have an attribute “reaction” of type Change.
+This is used to represent the change in connectivity during the reaction.
+
+Two graphs are equal, iff. they are isomporhic and of the same type.
+
+#### \_\_hash_\_() → int
+
+Return hash(self).
+
+* **Return type:**
+  `int`
+
+#### \_\_eq_\_(other: object) → bool
+
+Return self==value.
+
+* **Return type:**
+  `bool`
+
+#### add_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – id of atom1
+  * **atom2** (`int`) – id of atom2
+
+#### set_bond_attribute(atom1: int, atom2: int, attr: str, value: Any)
+
+sets the Attribute of the bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+
+#### add_formed_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to FORMED.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### add_broken_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to BROKEN.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### add_fleeting_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to FLEETING.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_formed_bonds() → set[frozenset[int]]
+
+Returns all bonds that are formed during the reaction
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  formed bonds
+
+#### get_broken_bonds() → set[frozenset[int]]
+
+Returns all bonds that are broken during the reaction
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  broken bonds
+
+#### get_fleeting_bonds() → set[frozenset[int]]
+
+Returns all bonds that are fleeting during the reaction.
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  fleeting bonds
+
+#### active_atoms(additional_layer: int = 0) → set[int]
+
+Atoms involved in the reaction with additional layers of atoms
+in the neighborhood.
+
+* **Parameters:**
+  **additional_layer** (`int`) – Number of additional layers of atoms to
+  include, defaults to 0 (default: `0`)
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Atoms involved in the reaction
+
+#### reactant(keep_attributes: bool = True) → [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+
+Reactant of the reaction
+
+Creates the reactant of the reaction.
+Formed bonds are not present in the reactant.
+
+* **Parameters:**
+  **keep_attributes** (`bool`) – attributes on atoms and bonds to be kept,
+  defaults to True (default: `True`)
+* **Return type:**
+  [`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+* **Returns:**
+  Reactant of the reaction
+
+#### product(keep_attributes: bool = True) → [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+
+Product of the reaction
+
+Creates the product of the reaction.
+Broken bonds are not present in the product.
+
+* **Parameters:**
+  **keep_attributes** (`bool`) – attributes on atoms and bonds to be kept,
+  defaults to True (default: `True`)
+* **Return type:**
+  [`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+* **Returns:**
+  Product of the reaction
+
+#### reverse_reaction() → Self
+
+Creates the reaction in the opposite direction.
+
+Broken bonds are turned into formed bonds and the other way around.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  Reversed reaction
+
+#### *classmethod* from_graphs(reactant_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), product_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), ts_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None) → Self
+
+Creates a CondensedReactionGraph from reactant and product MolGraphs
+
+CondensedReactionGraph  is constructed from bond changes from reactant
+to the product. The atoms order and atom types of the reactant and
+product have to be the same.
+
+* **Parameters:**
+  * **reactant_graph** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – reactant of the reaction
+  * **product_graph** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – product of the reaction
+* **Return type:**
+  `Self`
+* **Returns:**
+  CondensedReactionGraph
+
+#### *classmethod* from_geometries(reactant_geo: ~stereomolgraph.coords.GeometryProtocol, product_geo: ~stereomolgraph.coords.GeometryProtocol, ts_geo: ~stereomolgraph.coords.GeometryProtocol | None = None, switching_function: ~stereomolgraph.coords.BondsFromDistance = <stereomolgraph.coords.BondsFromDistance object>) → Self
+
+Creates a CondensedReactionGraph from reactant
+and product Geometries.
+
+CondensedReactionGraph  is constructed from bond changes from reactant
+to the product. The atoms order and atom types of the reactant and
+product have to be the same. The switching function is used to
+determine the connectivity of the atoms.
+
+* **Parameters:**
+  * **reactant_geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the reactant
+  * **product_geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the product
+  * **switching_function** (`BondsFromDistance`) – function to define the connectivity
+    from geometry,
+    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9ba433750>`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  CondensedReactionGraph
+
+#### \_\_init_\_(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None, frozen: bool = False)
+
+#### *property* frozen *: bool*
+
+Whether the graph is currently frozen (immutable).
+
+#### freeze() → Self
+
+Freeze the graph, making it immutable and hashable.
+
+A frozen graph can be used in sets and as dict keys.
+Mutation methods will raise `TypeError`.
+Use [`copy()`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph.copy) to get a mutable copy.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  self (for chaining)
+
+#### *property* atoms *: Collection[int]*
+
+* **Returns:**
+  Returns all atoms of the molecule
+
+#### *property* atom_types *: tuple[int, ...]*
+
+* **Returns:**
+  Returns all atom types in the MolGraph
+
+#### *property* atoms_with_attributes *: Mapping[int, dict[str, Any]]*
+
+* **Returns:**
+  Returns all atoms in the MolGraph with their attributes
+
+#### *property* bonds *: Collection[frozenset[int]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph
+
+#### *property* bonds_with_attributes *: Mapping[frozenset[int], dict[str, Any]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph with their attributes
+
+#### *property* neighbors *: Mapping[int, frozenset[int]]*
+
+* **Returns:**
+  Returns all neighbors of the atoms in the MolGraph
+
+#### *property* n_atoms *: int*
+
+* **Returns:**
+  Returns number of atoms in the MolGraph
+
+#### has_atom(atom: int) → bool
+
+Returns True if the molecules contains an atom with this id.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Return type:**
+  `bool`
+* **Returns:**
+  value
+
+#### add_atom(atom: int, atom_type: int | str, \*\*attr: Any)
+
+Adds atom to the MolGraph
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **atom_type** (`int` | `str`) – Atom Type
+
+#### remove_atom(atom: int)
+
+Removes atom from graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom ID
+* **Raises:**
+  KeyError if atom is not in graph.
+
+#### get_atom_attribute(atom: int, attr: str) → Any | None
+
+Returns the value of the attribute of the atom or None if the atom does
+not have this attribute.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `Optional`[`Any`]
+* **Returns:**
+  Returns the value of the attribute of the atom
+
+#### get_atom_type(atom: int) → int
+
+Returns the atom type of the atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `int`
+* **Returns:**
+  Returns the atom type of the atom
+
+#### set_atom_attribute(atom: int, attr: str, value: Any)
+
+sets the Value of the Attribute on Atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+* **Raises:**
+  * **KeyError** – Atom not in graph
+  * **ValueError** – The attribute “atom_type” can only have values of
+    type Element
+
+#### delete_atom_attribute(atom: int, attr: str)
+
+Deletes the Attribute of the Atom
+Raises KeyError if attribute is not present.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **ValueError** – The attribute “atom_type” can not be deleted
+
+#### get_atom_attributes(atom: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+Returns the attributes of the atom. If no attributes are given, all
+attributes are returned.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns all or just the chosen attributes of the atom
+
+#### has_bond(atom1: int, atom2: int) → bool
+
+Returns True if bond is in MolGraph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+* **Return type:**
+  `bool`
+* **Returns:**
+  If the bond is in MolGraph
+
+#### remove_bond(atom1: int, atom2: int)
+
+Removes bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_bond_attribute(atom1: int, atom2: int, attr: str) → Any
+
+Returns the value of the attribute of the bond between Atom1 and Atom2.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+* **Return type:**
+  `Any`
+* **Returns:**
+  Returns the value of the attribute of the bond
+  between Atom1 and Atom2
+
+#### delete_bond_attribute(atom1: int, atom2: int, attr: str)
+
+Deletes the Attribute of the bond between Atom1 and Atom2
+
+* **Parameters:**
+  * **atom1** (`int`)
+  * **atom2** (`int`) – Atom1
+  * **attr** (`str`) – Attribute
+
+#### get_bond_attributes(atom1: int, atom2: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns chosen attributes of the bond between Atom1 and Atom2
+
+#### bonded_to(atom: int) → frozenset[int]
+
+Returns the atoms connected to the atom.
+
+* **Parameters:**
+  **atom** (`int`) – Id of the atom.
+* **Return type:**
+  `frozenset`[`int`]
+* **Returns:**
+  tuple of atoms connected to the atom.
+
+#### connectivity_matrix() → ndarray[tuple[int, int], dtype[int8]]
+
+Returns a connectivity matrix of the graph as a list of lists.
+Order is the same as in self.atoms()
+1 if nodes are connected, 0 if not.
+
+* **Return type:**
+  `ndarray`[`tuple`[`int`, `int`], `dtype`[`int8`]]
+* **Returns:**
+  Connectivity matrix as list of lists
+
+#### node_connected_component(atom: int) → set[int]
+
+* **Parameters:**
+  **atom** (`int`) – atom id
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Returns the connected component that includes atom_id
+
+#### connected_components() → list[set[int]]
+
+* **Return type:**
+  `list`[`set`[`int`]]
+* **Returns:**
+  Returns the connected components of the graph
+
+#### subgraph(atoms: Iterable[int]) → Self
+
+Returns a subgraph copy only containing the given atoms
+
+* **Parameters:**
+  **atoms** (`Iterable`[`int`]) – Iterable of atom ids to be
+* **Return type:**
+  `Self`
+* **Returns:**
+  Subgraph
+
+#### copy(frozen: bool = False) → Self
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  returns a copy of self
+
+#### relabel_atoms(mapping: dict[int, int], copy: bool = True) → Self
+
+Changes the atom labels according to mapping.
+
+* **Parameters:**
+  * **mapping** (`dict`[`int`, `int`]) – dict used for map old atom labels to new atom labels
+  * **copy** (`bool`) – defines if the relabeling is done inplace or a new object
+    should be created (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  this object (self) or a new instance of self._\_class_\_
+
+#### *classmethod* from_rdmol(rdmol: Mol) → Self
+
+Creates a StereoMolGraph from an RDKit Mol object.
+Implicit Hydrogens are added to the graph.
+Stereo information is conserved. Double bonds, aromatic bonds and
+conjugated bonds are interpreted as planar. Atoms with 5 bonding
+partners are assumed to be TrigonalBipyramidal and allow interchange
+of the substituents (berry pseudorotation). Atoms with 6 bonding
+partners are assumed to be octahedral and do not allow interchange of
+the substituents.
+
+* **Parameters:**
+  **rdmol** (`Mol`) – RDKit Mol object
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph
+
+#### bonds_from_bond_order_matrix(matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+Adds bonds the the graph based on bond orders from a matrix
+
+* **Parameters:**
+  * **matrix** (`ndarray`) – Bond order Matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+
+#### *classmethod* compose(mol_graphs: Iterable[[MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) → Self
+
+Combines all graphs in the iterable into one. Duplicate nodes or edges
+are overwritten, such that the resulting graph only contains one node
+or edge with that name. Duplicate attributes of duplicate nodes or
+edges are also overwritten in order of iteration.
+
+* **Parameters:**
+  **molgraphs** – Iterable of MolGraph that will be composed into a
+  single MolGraph
+* **Return type:**
+  `Self`
+
+#### *classmethod* from_atom_types_and_bond_order_matrix(atom_types: Sequence[int | str], matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+* **Parameters:**
+  * **atom_types** (`Sequence`[`int` | `str`]) – list of atom types as integers or symbols,
+    must correspond to the matrix
+  * **matrix** (`ndarray`) – np.matrix of bond orders or connectivities ([0..1])
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry_and_bond_order_matrix(geo: [GeometryProtocol](reference/coords.md#stereomolgraph.coords.GeometryProtocol), matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False) → Self
+
+Creates a graph of a molecule from a Geometry and a bond order matrix.
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **matrix** (`ndarray`) – Bond order matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Graph of Molecule
+
+#### \_\_str_\_() → str
+
+Return str(self).
+
+* **Return type:**
+  `str`
+
+#### \_\_repr_\_()
+
+Return repr(self).
+
+
+# reference/graphs/index.md
+
+# Graphs
+
+#### Graph Classes Comparison
+
+| Graph Class                                                                                                               | Connectivity   | Connectivity Change   | Stereo   | Stereo Change   |
+|---------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------|----------|-----------------|
+| [`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)                                         | ✓              |                       |          |                 |
+| [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)                             | ✓              |                       | ✓        |                 |
+| [`CondensedReactionGraph`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph)             | ✓              | ✓                     |          |                 |
+| [`StereoCondensedReactionGraph`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph) | ✓              | ✓                     | ✓        | ✓               |
+
+
+# reference/graphs/molgraph.md
+
+# MolGraph
+
+### *class* stereomolgraph.MolGraph(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None, frozen: bool = False)
+
+Graph representing a molecular entity. Nodes represent atoms and edges
+represent bonds. All nodes have an atom_type attribute of type Element.
+The node ids should be integers. The graph is considered equal to another
+graph, iff. they are isomorphic and of the same type.
+
+#### \_\_init_\_(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None, frozen: bool = False)
+
+#### \_\_hash_\_() → int
+
+Return hash(self).
+
+* **Return type:**
+  `int`
+
+#### \_\_eq_\_(other: object) → bool
+
+Return self==value.
+
+* **Return type:**
+  `bool`
+
+#### *property* frozen *: bool*
+
+Whether the graph is currently frozen (immutable).
+
+#### freeze() → Self
+
+Freeze the graph, making it immutable and hashable.
+
+A frozen graph can be used in sets and as dict keys.
+Mutation methods will raise `TypeError`.
+Use [`copy()`](reference/graphs/molgraph.md#stereomolgraph.MolGraph.copy) to get a mutable copy.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  self (for chaining)
+
+#### *property* atoms *: Collection[int]*
+
+* **Returns:**
+  Returns all atoms of the molecule
+
+#### *property* atom_types *: tuple[int, ...]*
+
+* **Returns:**
+  Returns all atom types in the MolGraph
+
+#### *property* atoms_with_attributes *: Mapping[int, dict[str, Any]]*
+
+* **Returns:**
+  Returns all atoms in the MolGraph with their attributes
+
+#### *property* bonds *: Collection[frozenset[int]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph
+
+#### *property* bonds_with_attributes *: Mapping[frozenset[int], dict[str, Any]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph with their attributes
+
+#### *property* neighbors *: Mapping[int, frozenset[int]]*
+
+* **Returns:**
+  Returns all neighbors of the atoms in the MolGraph
+
+#### *property* n_atoms *: int*
+
+* **Returns:**
+  Returns number of atoms in the MolGraph
+
+#### has_atom(atom: int) → bool
+
+Returns True if the molecules contains an atom with this id.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Return type:**
+  `bool`
+* **Returns:**
+  value
+
+#### add_atom(atom: int, atom_type: int | str, \*\*attr: Any)
+
+Adds atom to the MolGraph
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **atom_type** (`int` | `str`) – Atom Type
+
+#### remove_atom(atom: int)
+
+Removes atom from graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom ID
+* **Raises:**
+  KeyError if atom is not in graph.
+
+#### get_atom_attribute(atom: int, attr: str) → Any | None
+
+Returns the value of the attribute of the atom or None if the atom does
+not have this attribute.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `Optional`[`Any`]
+* **Returns:**
+  Returns the value of the attribute of the atom
+
+#### get_atom_type(atom: int) → int
+
+Returns the atom type of the atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `int`
+* **Returns:**
+  Returns the atom type of the atom
+
+#### set_atom_attribute(atom: int, attr: str, value: Any)
+
+sets the Value of the Attribute on Atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+* **Raises:**
+  * **KeyError** – Atom not in graph
+  * **ValueError** – The attribute “atom_type” can only have values of
+    type Element
+
+#### delete_atom_attribute(atom: int, attr: str)
+
+Deletes the Attribute of the Atom
+Raises KeyError if attribute is not present.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **ValueError** – The attribute “atom_type” can not be deleted
+
+#### get_atom_attributes(atom: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+Returns the attributes of the atom. If no attributes are given, all
+attributes are returned.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns all or just the chosen attributes of the atom
+
+#### has_bond(atom1: int, atom2: int) → bool
+
+Returns True if bond is in MolGraph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+* **Return type:**
+  `bool`
+* **Returns:**
+  If the bond is in MolGraph
+
+#### add_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### remove_bond(atom1: int, atom2: int)
+
+Removes bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_bond_attribute(atom1: int, atom2: int, attr: str) → Any
+
+Returns the value of the attribute of the bond between Atom1 and Atom2.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+* **Return type:**
+  `Any`
+* **Returns:**
+  Returns the value of the attribute of the bond
+  between Atom1 and Atom2
+
+#### set_bond_attribute(atom1: int, atom2: int, attr: str, value: Any)
+
+sets the Attribute of the bond between Atom1 and Atom2.
+The Attribute “bond_order” can only have numerical values.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+
+#### delete_bond_attribute(atom1: int, atom2: int, attr: str)
+
+Deletes the Attribute of the bond between Atom1 and Atom2
+
+* **Parameters:**
+  * **atom1** (`int`)
+  * **atom2** (`int`) – Atom1
+  * **attr** (`str`) – Attribute
+
+#### get_bond_attributes(atom1: int, atom2: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns chosen attributes of the bond between Atom1 and Atom2
+
+#### bonded_to(atom: int) → frozenset[int]
+
+Returns the atoms connected to the atom.
+
+* **Parameters:**
+  **atom** (`int`) – Id of the atom.
+* **Return type:**
+  `frozenset`[`int`]
+* **Returns:**
+  tuple of atoms connected to the atom.
+
+#### connectivity_matrix() → ndarray[tuple[int, int], dtype[int8]]
+
+Returns a connectivity matrix of the graph as a list of lists.
+Order is the same as in self.atoms()
+1 if nodes are connected, 0 if not.
+
+* **Return type:**
+  `ndarray`[`tuple`[`int`, `int`], `dtype`[`int8`]]
+* **Returns:**
+  Connectivity matrix as list of lists
+
+#### node_connected_component(atom: int) → set[int]
+
+* **Parameters:**
+  **atom** (`int`) – atom id
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Returns the connected component that includes atom_id
+
+#### connected_components() → list[set[int]]
+
+* **Return type:**
+  `list`[`set`[`int`]]
+* **Returns:**
+  Returns the connected components of the graph
+
+#### subgraph(atoms: Iterable[int]) → Self
+
+Returns a subgraph copy only containing the given atoms
+
+* **Parameters:**
+  **atoms** (`Iterable`[`int`]) – Iterable of atom ids to be
+* **Return type:**
+  `Self`
+* **Returns:**
+  Subgraph
+
+#### copy(frozen: bool = False) → Self
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  returns a copy of self
+
+#### relabel_atoms(mapping: dict[int, int], copy: bool = True) → Self
+
+Changes the atom labels according to mapping.
+
+* **Parameters:**
+  * **mapping** (`dict`[`int`, `int`]) – dict used for map old atom labels to new atom labels
+  * **copy** (`bool`) – defines if the relabeling is done inplace or a new object
+    should be created (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  this object (self) or a new instance of self._\_class_\_
+
+#### *classmethod* from_rdmol(rdmol: Mol) → Self
+
+Creates a StereoMolGraph from an RDKit Mol object.
+Implicit Hydrogens are added to the graph.
+Stereo information is conserved. Double bonds, aromatic bonds and
+conjugated bonds are interpreted as planar. Atoms with 5 bonding
+partners are assumed to be TrigonalBipyramidal and allow interchange
+of the substituents (berry pseudorotation). Atoms with 6 bonding
+partners are assumed to be octahedral and do not allow interchange of
+the substituents.
+
+* **Parameters:**
+  **rdmol** (`Mol`) – RDKit Mol object
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph
+
+#### bonds_from_bond_order_matrix(matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+Adds bonds the the graph based on bond orders from a matrix
+
+* **Parameters:**
+  * **matrix** (`ndarray`) – Bond order Matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+
+#### *classmethod* compose(mol_graphs: Iterable[[MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) → Self
+
+Combines all graphs in the iterable into one. Duplicate nodes or edges
+are overwritten, such that the resulting graph only contains one node
+or edge with that name. Duplicate attributes of duplicate nodes or
+edges are also overwritten in order of iteration.
+
+* **Parameters:**
+  **molgraphs** – Iterable of MolGraph that will be composed into a
+  single MolGraph
+* **Return type:**
+  `Self`
+
+#### *classmethod* from_atom_types_and_bond_order_matrix(atom_types: Sequence[int | str], matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+* **Parameters:**
+  * **atom_types** (`Sequence`[`int` | `str`]) – list of atom types as integers or symbols,
+    must correspond to the matrix
+  * **matrix** (`ndarray`) – np.matrix of bond orders or connectivities ([0..1])
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry_and_bond_order_matrix(geo: [GeometryProtocol](reference/coords.md#stereomolgraph.coords.GeometryProtocol), matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False) → Self
+
+Creates a graph of a molecule from a Geometry and a bond order matrix.
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **matrix** (`ndarray`) – Bond order matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Graph of Molecule
+
+#### \_\_str_\_() → str
+
+Return str(self).
+
+* **Return type:**
+  `str`
+
+#### \_\_repr_\_()
+
+Return repr(self).
+
+
+# reference/graphs/stereocondensedreactiongraph.md
+
+# StereoCondensedReactionGraph
+
+### *class* stereomolgraph.StereoCondensedReactionGraph(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None)
+
+Bases: [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph), [`CondensedReactionGraph`](reference/graphs/condensedreactiongraph.md#stereomolgraph.CondensedReactionGraph)
+
+`CondenedReactionGraph` with the ability to store stereochemistry
+information for atoms and (potentially changing) bonds.
+
+#### \_\_hash_\_() → int
+
+Return hash(self).
+
+* **Return type:**
+  `int`
+
+#### \_\_init_\_(mol_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) | None = None)
+
+#### \_\_eq_\_(other: object) → bool
+
+Return self==value.
+
+* **Return type:**
+  `bool`
+
+#### active_atoms(additional_layer: int = 0, stereo: bool = False) → set[int]
+
+Atoms involved in the reaction with additional layers of atoms
+in the neighborhood.
+
+* **Parameters:**
+  * **additional_layer** (`int`) – Number of additional layers of atoms to
+    include, defaults to 0 (default: `0`)
+  * **stereo** (`bool`) – Whether to include atoms involved in stereochemistry changes
+    defaults to False (default: `False`)
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Atoms involved in the reaction
+
+#### reactant(keep_attributes: bool = True) → [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+
+Returns the reactant of the reaction
+
+* **Parameters:**
+  **keep_attributes** (`bool`) – If attributes should be kept , defaults to True (default: `True`)
+* **Return type:**
+  [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+* **Returns:**
+  reactant
+
+#### product(keep_attributes: bool = True) → [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+
+Returns the product of the reaction
+
+* **Parameters:**
+  **keep_attributes** (`bool`) – If attributes should be kept, defaults to True (default: `True`)
+* **Return type:**
+  [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+* **Returns:**
+  product
+
+#### ts(infer_non_fleeting_stereo: bool = True) → [StereoMolGraph](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+
+Returns a StereoCondensedReactionGraph representing the transition state of
+the reaction. Stereochemistry is taken from the fleeting stereo changes if
+present, otherwise from the broken or formed stereo changes. If both broken and
+formed stereo changes are present for a stereo element, the transition state
+stereo is not defined and the stereo information is not included in the
+transition state graph.
+
+* **Return type:**
+  [`StereoMolGraph`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph)
+
+#### reverse_reaction() → Self
+
+Creates the reaction in the opposite direction.
+
+Broken bonds and stereochemistry changes are turned into formed
+and the other way around.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  Reversed reaction
+
+#### copy(frozen: bool = False) → Self
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  returns a copy of self
+
+#### relabel_atoms(mapping: dict[int, int], copy: bool = True) → Self
+
+Relabels the atoms of the graph and the chiral information accordingly
+
+* **Parameters:**
+  * **mapping** (`dict`[`int`, `int`]) – Mapping of old atom ids to new atom ids
+  * **copy** (`bool`) – If the graph should be copied before relabeling,
+    defaults to True (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns the relabeled graph or None if copy is False
+
+#### enantiomer() → Self
+
+Creates the enantiomer of the StereoCondensedReactionGraph by inversion
+of all chiral stereochemistries. The result can be identical to the
+molecule itself if the molecule is not chiral.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  Enantiomer
+
+#### *classmethod* compose(mol_graphs: Iterable[[MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) → Self
+
+Creates a MolGraph object from a list of MolGraph objects
+
+* **Parameters:**
+  **mol_graphs** (`Iterable`[[`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) – list of MolGraph objects
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns Combined MolGraph
+
+#### *property* frozen *: bool*
+
+Whether the graph is currently frozen (immutable).
+
+#### freeze() → Self
+
+Freeze the graph, making it immutable and hashable.
+
+A frozen graph can be used in sets and as dict keys.
+Mutation methods will raise `TypeError`.
+Use [`copy()`](reference/graphs/stereocondensedreactiongraph.md#stereomolgraph.StereoCondensedReactionGraph.copy) to get a mutable copy.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  self (for chaining)
+
+#### *property* atoms *: Collection[int]*
+
+* **Returns:**
+  Returns all atoms of the molecule
+
+#### *property* atom_types *: tuple[int, ...]*
+
+* **Returns:**
+  Returns all atom types in the MolGraph
+
+#### *property* atoms_with_attributes *: Mapping[int, dict[str, Any]]*
+
+* **Returns:**
+  Returns all atoms in the MolGraph with their attributes
+
+#### *property* bonds *: Collection[frozenset[int]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph
+
+#### *property* bonds_with_attributes *: Mapping[frozenset[int], dict[str, Any]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph with their attributes
+
+#### *property* neighbors *: Mapping[int, frozenset[int]]*
+
+* **Returns:**
+  Returns all neighbors of the atoms in the MolGraph
+
+#### *property* n_atoms *: int*
+
+* **Returns:**
+  Returns number of atoms in the MolGraph
+
+#### has_atom(atom: int) → bool
+
+Returns True if the molecules contains an atom with this id.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Return type:**
+  `bool`
+* **Returns:**
+  value
+
+#### add_atom(atom: int, atom_type: int | str, \*\*attr: Any)
+
+Adds atom to the MolGraph
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **atom_type** (`int` | `str`) – Atom Type
+
+#### remove_atom(atom: int)
+
+Removes an atom from the graph and deletes all chiral information
+associated with it
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+
+#### get_atom_attribute(atom: int, attr: str) → Any | None
+
+Returns the value of the attribute of the atom or None if the atom does
+not have this attribute.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `Optional`[`Any`]
+* **Returns:**
+  Returns the value of the attribute of the atom
+
+#### get_atom_type(atom: int) → int
+
+Returns the atom type of the atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `int`
+* **Returns:**
+  Returns the atom type of the atom
+
+#### set_atom_attribute(atom: int, attr: str, value: Any)
+
+sets the Value of the Attribute on Atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+* **Raises:**
+  * **KeyError** – Atom not in graph
+  * **ValueError** – The attribute “atom_type” can only have values of
+    type Element
+
+#### delete_atom_attribute(atom: int, attr: str)
+
+Deletes the Attribute of the Atom
+Raises KeyError if attribute is not present.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **ValueError** – The attribute “atom_type” can not be deleted
+
+#### get_atom_attributes(atom: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+Returns the attributes of the atom. If no attributes are given, all
+attributes are returned.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns all or just the chosen attributes of the atom
+
+#### has_bond(atom1: int, atom2: int) → bool
+
+Returns True if bond is in MolGraph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+* **Return type:**
+  `bool`
+* **Returns:**
+  If the bond is in MolGraph
+
+#### add_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – id of atom1
+  * **atom2** (`int`) – id of atom2
+
+#### remove_bond(atom1: int, atom2: int)
+
+Removes bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_bond_attribute(atom1: int, atom2: int, attr: str) → Any
+
+Returns the value of the attribute of the bond between Atom1 and Atom2.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+* **Return type:**
+  `Any`
+* **Returns:**
+  Returns the value of the attribute of the bond
+  between Atom1 and Atom2
+
+#### set_bond_attribute(atom1: int, atom2: int, attr: str, value: Any)
+
+sets the Attribute of the bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+
+#### delete_bond_attribute(atom1: int, atom2: int, attr: str)
+
+Deletes the Attribute of the bond between Atom1 and Atom2
+
+* **Parameters:**
+  * **atom1** (`int`)
+  * **atom2** (`int`) – Atom1
+  * **attr** (`str`) – Attribute
+
+#### get_bond_attributes(atom1: int, atom2: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns chosen attributes of the bond between Atom1 and Atom2
+
+#### get_atom_stereo(atom: int) → None | [AtomStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo)
+
+Returns the stereo information of the atom if it exists else None.
+Raises a ValueError if the atom is not in the graph.
+
+* **Parameters:**
+  * **atom** (`int`) – atom
+  * **default** – Default value if no stereo information is found,
+    defaults to None
+* **Return type:**
+  `None` | [`AtomStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo)
+* **Returns:**
+  Stereo information of atom
+
+#### set_atom_stereo(atom_stereo: [AtomStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo))
+
+Adds stereo information to the graph
+
+* **Parameters:**
+  * **atom** – Atoms to be used for chiral information
+  * **stereo** – Chiral information
+
+#### delete_atom_stereo(atom: int)
+
+Deletes stereo information from the graph
+
+* **Parameters:**
+  **atom** (`int`) – Atom to be used for stereo information
+
+#### get_bond_stereo(bond: Iterable[int]) → None | [BondStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)
+
+Gets the stereo information of the bond or None
+if it does not exist.
+Raises a ValueError if the bond s not in the graph.
+
+* **Parameters:**
+  **bond** (`Iterable`[`int`]) – Bond
+* **Return type:**
+  `None` | [`BondStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)
+* **Returns:**
+  stereo information of bond
+
+#### set_bond_stereo(bond_stereo: [BondStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo))
+
+Stets the stereo information of the bond
+
+* **Parameters:**
+  * **bond** – Bond
+  * **bond_stereo** ([`BondStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)) – Stereo information of the bond
+
+#### delete_bond_stereo(bond: Iterable[int])
+
+Deletes the stereo information of the bond
+
+* **Parameters:**
+  **bond** (`Iterable`[`int`]) – Bond
+
+#### add_formed_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to FORMED.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### add_broken_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to BROKEN.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### add_fleeting_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds a bond between atom1 and atom2 with reaction attribute
+set to FLEETING.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_formed_bonds() → set[frozenset[int]]
+
+Returns all bonds that are formed during the reaction
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  formed bonds
+
+#### get_broken_bonds() → set[frozenset[int]]
+
+Returns all bonds that are broken during the reaction
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  broken bonds
+
+#### get_fleeting_bonds() → set[frozenset[int]]
+
+Returns all bonds that are fleeting during the reaction.
+
+* **Return type:**
+  `set`[`frozenset`[`int`]]
+* **Returns:**
+  fleeting bonds
+
+#### bonded_to(atom: int) → frozenset[int]
+
+Returns the atoms connected to the atom.
+
+* **Parameters:**
+  **atom** (`int`) – Id of the atom.
+* **Return type:**
+  `frozenset`[`int`]
+* **Returns:**
+  tuple of atoms connected to the atom.
+
+#### connectivity_matrix() → ndarray[tuple[int, int], dtype[int8]]
+
+Returns a connectivity matrix of the graph as a list of lists.
+Order is the same as in self.atoms()
+1 if nodes are connected, 0 if not.
+
+* **Return type:**
+  `ndarray`[`tuple`[`int`, `int`], `dtype`[`int8`]]
+* **Returns:**
+  Connectivity matrix as list of lists
+
+#### node_connected_component(atom: int) → set[int]
+
+* **Parameters:**
+  **atom** (`int`) – atom id
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Returns the connected component that includes atom_id
+
+#### connected_components() → list[set[int]]
+
+* **Return type:**
+  `list`[`set`[`int`]]
+* **Returns:**
+  Returns the connected components of the graph
+
+#### subgraph(atoms: Iterable[int]) → Self
+
+Returns a subgraph of the graph with the given atoms and the chiral
+information accordingly. Stereo is retained when all referenced real
+atoms remain; `None` lone-pair placeholders do not need to be selected.
+
+* **Parameters:**
+  **atoms** (`Iterable`[`int`]) – Atoms to be used for the subgraph
+* **Return type:**
+  `Self`
+* **Returns:**
+  Subgraph
+
+#### *classmethod* from_rdmol(rdmol: Mol, , stereo_complete: bool = False, resonance: bool = True, lone_pair_stereo: bool = True) → Self
+
+Creates a StereoMolGraph from an RDKit Mol object.
+All hydrogens have to be explicit.
+Stereo information is conserved for tetrahedral atoms and
+double bonds.
+
+* **Parameters:**
+  * **rdmol** (`Mol`) – RDKit Mol object
+  * **stereo_complete** (`bool`) – If True, we assume that the stereochemistry
+    in the RDKit Mol is complete and all non chiral
+    tetrahedral centers are set to an arbitrary
+    configuration instead of None. (default: `False`)
+  * **resonance** (`bool`) – If True, resonance structures are considered (default: `True`)
+  * **lone_pair_stereo** (`bool`) – If True, lone pair stereo is considered (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph
+
+#### bonds_from_bond_order_matrix(matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+Adds bonds the the graph based on bond orders from a matrix
+
+* **Parameters:**
+  * **matrix** (`ndarray`) – Bond order Matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+
+#### *classmethod* from_atom_types_and_bond_order_matrix(atom_types: Sequence[int | str], matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+* **Parameters:**
+  * **atom_types** (`Sequence`[`int` | `str`]) – list of atom types as integers or symbols,
+    must correspond to the matrix
+  * **matrix** (`ndarray`) – np.matrix of bond orders or connectivities ([0..1])
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry_and_bond_order_matrix(geo: [GeometryProtocol](reference/coords.md#stereomolgraph.coords.GeometryProtocol), matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False) → Self
+
+Creates a CiralMolGraph object from a Geometry and a bond order matrix
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **matrix** (`ndarray`) – Bond order matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry(geo: ~stereomolgraph.coords.GeometryProtocol, switching_function: ~stereomolgraph.coords.BondsFromDistance = <stereomolgraph.coords.BondsFromDistance object>) → Self
+
+Creates a StereoMolGraph object from a Geometry and a switching
+function. Uses the Default switching function if none are given.
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **switching_function** (`BondsFromDistance`) – Function to determine if two atoms are
+    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d06190>`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph of molecule
+
+#### *classmethod* from_graphs(reactant_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), product_graph: [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph), ts_graph: None | [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) = None) → Self
+
+Creates a StereoCondensedReactionGraph from reactant and product
+StereoMolGraphs.
+
+StereoCondensedReactionGraph  is constructed from bond changes from
+reactant to the product. The atoms order and atom types of the reactant
+and product have to be the same.
+
+* **Parameters:**
+  * **reactant_graph** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – reactant of the reaction
+  * **product_graph** ([`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)) – product of the reaction
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoCondensedReactionGraph
+
+#### \_\_str_\_() → str
+
+Return str(self).
+
+* **Return type:**
+  `str`
+
+#### \_\_repr_\_()
+
+Return repr(self).
+
+#### *classmethod* from_geometries(reactant_geo: ~stereomolgraph.coords.GeometryProtocol, product_geo: ~stereomolgraph.coords.GeometryProtocol, ts_geo: None | ~stereomolgraph.coords.GeometryProtocol = None, switching_function: ~stereomolgraph.coords.BondsFromDistance = <stereomolgraph.coords.BondsFromDistance object>) → Self
+
+Creates a StereoCondensedReactionGraph from reactant, product and
+transition state Geometries.
+
+StereoCondensedReactionGraph  is constructed from bond changes from
+reactant to the product. The atoms order and atom types of the reactant
+and product have to be the same. The switching function is used to
+determine the connectivity of the atoms. Only the stereo information
+is taken from the transition state geometry.
+
+* **Parameters:**
+  * **reactant_geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the reactant
+  * **product_geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the product
+  * **ts_geo** (`None` | [`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – geometry of the transition state (default: `None`)
+  * **switching_function** (`BondsFromDistance`) – function to define the connectivity from
+    geometry,
+    defaults to StepSwitchingFunction() (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d062c0>`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  CondensedReactionGraph
+
+
+# reference/graphs/stereomolgraph.md
+
+# StereoMolGraph
+
+### *class* stereomolgraph.StereoMolGraph(mol_graph: None | [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) = None)
+
+Bases: [`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)
+
+[`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph) with the ability to store stereochemistry information
+for atoms and bonds.
+
+Two graphs compare equal, if they are isomorphic and have the same
+stereochemistry.
+
+#### \_\_hash_\_() → int
+
+Return hash(self).
+
+* **Return type:**
+  `int`
+
+#### \_\_init_\_(mol_graph: None | [MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph) = None)
+
+#### \_\_eq_\_(other: object) → bool
+
+Return self==value.
+
+* **Return type:**
+  `bool`
+
+#### get_atom_stereo(atom: int) → None | [AtomStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo)
+
+Returns the stereo information of the atom if it exists else None.
+Raises a ValueError if the atom is not in the graph.
+
+* **Parameters:**
+  * **atom** (`int`) – atom
+  * **default** – Default value if no stereo information is found,
+    defaults to None
+* **Return type:**
+  `None` | [`AtomStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo)
+* **Returns:**
+  Stereo information of atom
+
+#### set_atom_stereo(atom_stereo: [AtomStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.AtomStereo))
+
+Adds stereo information to the graph
+
+* **Parameters:**
+  * **atom** – Atoms to be used for chiral information
+  * **stereo** – Chiral information
+
+#### delete_atom_stereo(atom: int)
+
+Deletes stereo information from the graph
+
+* **Parameters:**
+  **atom** (`int`) – Atom to be used for stereo information
+
+#### get_bond_stereo(bond: Iterable[int]) → None | [BondStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)
+
+Gets the stereo information of the bond or None
+if it does not exist.
+Raises a ValueError if the bond s not in the graph.
+
+* **Parameters:**
+  **bond** (`Iterable`[`int`]) – Bond
+* **Return type:**
+  `None` | [`BondStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)
+* **Returns:**
+  stereo information of bond
+
+#### set_bond_stereo(bond_stereo: [BondStereo](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo))
+
+Stets the stereo information of the bond
+
+* **Parameters:**
+  * **bond** – Bond
+  * **bond_stereo** ([`BondStereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.BondStereo)) – Stereo information of the bond
+
+#### delete_bond_stereo(bond: Iterable[int])
+
+Deletes the stereo information of the bond
+
+* **Parameters:**
+  **bond** (`Iterable`[`int`]) – Bond
+
+#### remove_atom(atom: int)
+
+Removes an atom from the graph and deletes all chiral information
+associated with it
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+
+#### copy(frozen: bool = False) → Self
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  returns a copy of self
+
+#### relabel_atoms(mapping: dict[int, int], copy: bool = True) → Self
+
+Relabels the atoms of the graph and the chiral information accordingly
+
+* **Parameters:**
+  * **mapping** (`dict`[`int`, `int`]) – Mapping of old atom ids to new atom ids
+  * **copy** (`bool`) – If the graph should be copied before relabeling,
+    defaults to True (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns the relabeled graph
+
+#### subgraph(atoms: Iterable[int]) → Self
+
+Returns a subgraph of the graph with the given atoms and the chiral
+information accordingly. Stereo is retained when all referenced real
+atoms remain; `None` lone-pair placeholders do not need to be selected.
+
+* **Parameters:**
+  **atoms** (`Iterable`[`int`]) – Atoms to be used for the subgraph
+* **Return type:**
+  `Self`
+* **Returns:**
+  Subgraph
+
+#### enantiomer() → Self
+
+Creates the enantiomer of the StereoMolGraph by inversion of all atom
+stereocenters. The result can be identical to the molecule itself if
+no enantiomer exists.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  Enantiomer
+
+#### *property* frozen *: bool*
+
+Whether the graph is currently frozen (immutable).
+
+#### freeze() → Self
+
+Freeze the graph, making it immutable and hashable.
+
+A frozen graph can be used in sets and as dict keys.
+Mutation methods will raise `TypeError`.
+Use [`copy()`](reference/graphs/stereomolgraph.md#stereomolgraph.StereoMolGraph.copy) to get a mutable copy.
+
+* **Return type:**
+  `Self`
+* **Returns:**
+  self (for chaining)
+
+#### *property* atoms *: Collection[int]*
+
+* **Returns:**
+  Returns all atoms of the molecule
+
+#### *property* atom_types *: tuple[int, ...]*
+
+* **Returns:**
+  Returns all atom types in the MolGraph
+
+#### *property* atoms_with_attributes *: Mapping[int, dict[str, Any]]*
+
+* **Returns:**
+  Returns all atoms in the MolGraph with their attributes
+
+#### *property* bonds *: Collection[frozenset[int]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph
+
+#### *property* bonds_with_attributes *: Mapping[frozenset[int], dict[str, Any]]*
+
+* **Returns:**
+  Returns all bonds in the MolGraph with their attributes
+
+#### *property* neighbors *: Mapping[int, frozenset[int]]*
+
+* **Returns:**
+  Returns all neighbors of the atoms in the MolGraph
+
+#### *property* n_atoms *: int*
+
+* **Returns:**
+  Returns number of atoms in the MolGraph
+
+#### has_atom(atom: int) → bool
+
+Returns True if the molecules contains an atom with this id.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Return type:**
+  `bool`
+* **Returns:**
+  value
+
+#### add_atom(atom: int, atom_type: int | str, \*\*attr: Any)
+
+Adds atom to the MolGraph
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **atom_type** (`int` | `str`) – Atom Type
+
+#### get_atom_attribute(atom: int, attr: str) → Any | None
+
+Returns the value of the attribute of the atom or None if the atom does
+not have this attribute.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `Optional`[`Any`]
+* **Returns:**
+  Returns the value of the attribute of the atom
+
+#### get_atom_type(atom: int) → int
+
+Returns the atom type of the atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  **atom** (`int`) – Atom
+* **Raises:**
+  **KeyError** – Atom not in graph
+* **Return type:**
+  `int`
+* **Returns:**
+  Returns the atom type of the atom
+
+#### set_atom_attribute(atom: int, attr: str, value: Any)
+
+sets the Value of the Attribute on Atom.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+* **Raises:**
+  * **KeyError** – Atom not in graph
+  * **ValueError** – The attribute “atom_type” can only have values of
+    type Element
+
+#### delete_atom_attribute(atom: int, attr: str)
+
+Deletes the Attribute of the Atom
+Raises KeyError if attribute is not present.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom ID
+  * **attr** (`str`) – Attribute
+* **Raises:**
+  **ValueError** – The attribute “atom_type” can not be deleted
+
+#### get_atom_attributes(atom: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+Returns the attributes of the atom. If no attributes are given, all
+attributes are returned.
+Raises KeyError if atom is not in graph.
+
+* **Parameters:**
+  * **atom** (`int`) – Atom
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns all or just the chosen attributes of the atom
+
+#### has_bond(atom1: int, atom2: int) → bool
+
+Returns True if bond is in MolGraph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+* **Return type:**
+  `bool`
+* **Returns:**
+  If the bond is in MolGraph
+
+#### add_bond(atom1: int, atom2: int, \*\*attr: Any)
+
+Adds bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### remove_bond(atom1: int, atom2: int)
+
+Removes bond between Atom1 and Atom2.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+
+#### get_bond_attribute(atom1: int, atom2: int, attr: str) → Any
+
+Returns the value of the attribute of the bond between Atom1 and Atom2.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+* **Return type:**
+  `Any`
+* **Returns:**
+  Returns the value of the attribute of the bond
+  between Atom1 and Atom2
+
+#### set_bond_attribute(atom1: int, atom2: int, attr: str, value: Any)
+
+sets the Attribute of the bond between Atom1 and Atom2.
+The Attribute “bond_order” can only have numerical values.
+Raises KeyError if bond is not in graph.
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attr** (`str`) – Attribute
+  * **value** (`Any`) – Value
+
+#### delete_bond_attribute(atom1: int, atom2: int, attr: str)
+
+Deletes the Attribute of the bond between Atom1 and Atom2
+
+* **Parameters:**
+  * **atom1** (`int`)
+  * **atom2** (`int`) – Atom1
+  * **attr** (`str`) – Attribute
+
+#### get_bond_attributes(atom1: int, atom2: int, attributes: Iterable[str] | None = None) → Mapping[str, Any]
+
+* **Parameters:**
+  * **atom1** (`int`) – Atom1
+  * **atom2** (`int`) – Atom2
+  * **attributes** (`Optional`[`Iterable`[`str`]]) – Specific attributes to return (default: `None`)
+* **Return type:**
+  `Mapping`[`str`, `Any`]
+* **Returns:**
+  Returns chosen attributes of the bond between Atom1 and Atom2
+
+#### bonded_to(atom: int) → frozenset[int]
+
+Returns the atoms connected to the atom.
+
+* **Parameters:**
+  **atom** (`int`) – Id of the atom.
+* **Return type:**
+  `frozenset`[`int`]
+* **Returns:**
+  tuple of atoms connected to the atom.
+
+#### connectivity_matrix() → ndarray[tuple[int, int], dtype[int8]]
+
+Returns a connectivity matrix of the graph as a list of lists.
+Order is the same as in self.atoms()
+1 if nodes are connected, 0 if not.
+
+* **Return type:**
+  `ndarray`[`tuple`[`int`, `int`], `dtype`[`int8`]]
+* **Returns:**
+  Connectivity matrix as list of lists
+
+#### node_connected_component(atom: int) → set[int]
+
+* **Parameters:**
+  **atom** (`int`) – atom id
+* **Return type:**
+  `set`[`int`]
+* **Returns:**
+  Returns the connected component that includes atom_id
+
+#### connected_components() → list[set[int]]
+
+* **Return type:**
+  `list`[`set`[`int`]]
+* **Returns:**
+  Returns the connected components of the graph
+
+#### *classmethod* from_rdmol(rdmol: Mol, , stereo_complete: bool = False, resonance: bool = True, lone_pair_stereo: bool = True) → Self
+
+Creates a StereoMolGraph from an RDKit Mol object.
+All hydrogens have to be explicit.
+Stereo information is conserved for tetrahedral atoms and
+double bonds.
+
+* **Parameters:**
+  * **rdmol** (`Mol`) – RDKit Mol object
+  * **stereo_complete** (`bool`) – If True, we assume that the stereochemistry
+    in the RDKit Mol is complete and all non chiral
+    tetrahedral centers are set to an arbitrary
+    configuration instead of None. (default: `False`)
+  * **resonance** (`bool`) – If True, resonance structures are considered (default: `True`)
+  * **lone_pair_stereo** (`bool`) – If True, lone pair stereo is considered (default: `True`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph
+
+#### bonds_from_bond_order_matrix(matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+Adds bonds the the graph based on bond orders from a matrix
+
+* **Parameters:**
+  * **matrix** (`ndarray`) – Bond order Matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+
+#### *classmethod* from_atom_types_and_bond_order_matrix(atom_types: Sequence[int | str], matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False)
+
+* **Parameters:**
+  * **atom_types** (`Sequence`[`int` | `str`]) – list of atom types as integers or symbols,
+    must correspond to the matrix
+  * **matrix** (`ndarray`) – np.matrix of bond orders or connectivities ([0..1])
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Returns:**
+  Returns MolGraph
+
+#### \_\_repr_\_()
+
+Return repr(self).
+
+#### *classmethod* compose(mol_graphs: Iterable[[MolGraph](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) → Self
+
+Creates a MolGraph object from a list of MolGraph objects.
+
+Duplicate nodes or edges are overwritten, such that the resulting
+graph only contains one node or edge with that name. Duplicate
+attributes of duplicate nodes, edges and the stereochemistry are also
+overwritten in order of iteration.
+
+* **Parameters:**
+  **mol_graphs** (`Iterable`[[`MolGraph`](reference/graphs/molgraph.md#stereomolgraph.MolGraph)]) – list of MolGraph objects
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry_and_bond_order_matrix(geo: [GeometryProtocol](reference/coords.md#stereomolgraph.coords.GeometryProtocol), matrix: ndarray, threshold: float = 0.5, include_bond_order: bool = False) → Self
+
+Creates a CiralMolGraph object from a Geometry and a bond order matrix
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **matrix** (`ndarray`) – Bond order matrix
+  * **threshold** (`float`) – Threshold for bonds to be included as edges,
+    defaults to 0.5 (default: `0.5`)
+  * **include_bond_order** (`bool`) – If bond orders should be included as edge
+    attributes, defaults to False (default: `False`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  Returns MolGraph
+
+#### *classmethod* from_geometry(geo: ~stereomolgraph.coords.GeometryProtocol, switching_function: ~stereomolgraph.coords.BondsFromDistance = <stereomolgraph.coords.BondsFromDistance object>) → Self
+
+Creates a StereoMolGraph object from a Geometry and a switching
+function. Uses the Default switching function if none are given.
+
+* **Parameters:**
+  * **geo** ([`GeometryProtocol`](reference/coords.md#stereomolgraph.coords.GeometryProtocol)) – Geometry
+  * **switching_function** (`BondsFromDistance`) – Function to determine if two atoms are
+    connected (default: `<stereomolgraph.coords.BondsFromDistance object at 0x79a9b7d06190>`)
+* **Return type:**
+  `Self`
+* **Returns:**
+  StereoMolGraph of molecule
+
+#### \_\_str_\_() → str
+
+Return str(self).
+
+* **Return type:**
+  `str`
+
+
+# reference/index.md
+
+# API Reference
+
+# API Reference
+
+* [Graphs](reference/graphs/index.md)
+* [Algorithms](reference/algorithms/index.md)
+* [Stereodescriptors](reference/stereodescriptors.md)
+* [RDMol2Graph](reference/rdmol2graph.md)
+* [Graph2RDMol](reference/graph2rdmol.md)
+* [Coords](reference/coords.md)
+* [IPython](reference/ipython.md)
+* [Periodic Table](reference/periodic_table.md)
+* [Experimental](reference/experimental.md)
+
+
+# reference/ipython.md
+
+# IPython
+
+### *class* stereomolgraph.ipython.View2D(height: int = 300, width: int = 300, show_atom_numbers: bool = True, show_h: bool = True, generate_bond_orders: bool = False, dummy_atoms: bool = False, color_planar_bond_changes: bool = False)
+
+A class to visualize a MolGraph in 2D using RDKit’s MolDraw2DSVG.
+This class can be used in IPython environments to display the graph as an
+SVG image.
+
+* **Parameters:**
+  * **height** – Height of the SVG image in pixels
+  * **width** – Width of the SVG image in pixels
+  * **show_atom_numbers** – Whether to show atom numbers in the visualization
+  * **show_h** – Whether to show hydrogen atoms in the visualization
+  * **generate_bond_orders** – Whether to generate bond orders for the
+    visualization using
+    `connectivity2bond_orders()`
+  * **dummy_atoms** – Whether to include dummy atoms in the visualization
+
+#### height *: `int`*
+
+Alias for field number 0
+
+#### width *: `int`*
+
+Alias for field number 1
+
+#### show_atom_numbers *: `bool`*
+
+Alias for field number 2
+
+#### show_h *: `bool`*
+
+Alias for field number 3
+
+#### generate_bond_orders *: `bool`*
+
+Alias for field number 4
+
+#### dummy_atoms *: `bool`*
+
+Alias for field number 5
+
+#### color_planar_bond_changes *: `bool`*
+
+Alias for field number 6
+
+
+# reference/periodic_table.md
+
+# Periodic Table
+
+### stereomolgraph.periodic_table.PERIODIC_TABLE *: Mapping[str | int | Element, Element]* *= mappingproxy({'H': 1, 1: 1, 'h': 1, 'He': 2, 2: 2, 'HE': 2, 'he': 2, 'Li': 3, 3: 3, 'LI': 3, 'li': 3, 'Be': 4, 4: 4, 'BE': 4, 'be': 4, 'B': 5, 5: 5, 'b': 5, 'C': 6, 6: 6, 'c': 6, 'N': 7, 7: 7, 'n': 7, 'O': 8, 8: 8, 'o': 8, 'F': 9, 9: 9, 'f': 9, 'Ne': 10, 10: 10, 'NE': 10, 'ne': 10, 'Na': 11, 11: 11, 'NA': 11, 'na': 11, 'Mg': 12, 12: 12, 'MG': 12, 'mg': 12, 'Al': 13, 13: 13, 'AL': 13, 'al': 13, 'Si': 14, 14: 14, 'SI': 14, 'si': 14, 'P': 15, 15: 15, 'p': 15, 'S': 16, 16: 16, 's': 16, 'Cl': 17, 17: 17, 'CL': 17, 'cl': 17, 'Ar': 18, 18: 18, 'AR': 18, 'ar': 18, 'K': 19, 19: 19, 'k': 19, 'Ca': 20, 20: 20, 'CA': 20, 'ca': 20, 'Sc': 21, 21: 21, 'SC': 21, 'sc': 21, 'Ti': 22, 22: 22, 'TI': 22, 'ti': 22, 'V': 23, 23: 23, 'v': 23, 'Cr': 24, 24: 24, 'CR': 24, 'cr': 24, 'Mn': 25, 25: 25, 'MN': 25, 'mn': 25, 'Fe': 26, 26: 26, 'FE': 26, 'fe': 26, 'Co': 27, 27: 27, 'CO': 27, 'co': 27, 'Ni': 28, 28: 28, 'NI': 28, 'ni': 28, 'Cu': 29, 29: 29, 'CU': 29, 'cu': 29, 'Zn': 30, 30: 30, 'ZN': 30, 'zn': 30, 'Ga': 31, 31: 31, 'GA': 31, 'ga': 31, 'Ge': 32, 32: 32, 'GE': 32, 'ge': 32, 'As': 33, 33: 33, 'AS': 33, 'as': 33, 'Se': 34, 34: 34, 'SE': 34, 'se': 34, 'Br': 35, 35: 35, 'BR': 35, 'br': 35, 'Kr': 36, 36: 36, 'KR': 36, 'kr': 36, 'Rb': 37, 37: 37, 'RB': 37, 'rb': 37, 'Sr': 38, 38: 38, 'SR': 38, 'sr': 38, 'Y': 39, 39: 39, 'y': 39, 'Zr': 40, 40: 40, 'ZR': 40, 'zr': 40, 'Nb': 41, 41: 41, 'NB': 41, 'nb': 41, 'Mo': 42, 42: 42, 'MO': 42, 'mo': 42, 'Tc': 43, 43: 43, 'TC': 43, 'tc': 43, 'Ru': 44, 44: 44, 'RU': 44, 'ru': 44, 'Rh': 45, 45: 45, 'RH': 45, 'rh': 45, 'Pd': 46, 46: 46, 'PD': 46, 'pd': 46, 'Ag': 47, 47: 47, 'AG': 47, 'ag': 47, 'Cd': 48, 48: 48, 'CD': 48, 'cd': 48, 'In': 49, 49: 49, 'IN': 49, 'in': 49, 'Sn': 50, 50: 50, 'SN': 50, 'sn': 50, 'Sb': 51, 51: 51, 'SB': 51, 'sb': 51, 'Te': 52, 52: 52, 'TE': 52, 'te': 52, 'I': 53, 53: 53, 'i': 53, 'Xe': 54, 54: 54, 'XE': 54, 'xe': 54, 'Cs': 55, 55: 55, 'CS': 55, 'cs': 55, 'Ba': 56, 56: 56, 'BA': 56, 'ba': 56, 'La': 57, 57: 57, 'LA': 57, 'la': 57, 'Ce': 58, 58: 58, 'CE': 58, 'ce': 58, 'Pr': 59, 59: 59, 'PR': 59, 'pr': 59, 'Nd': 60, 60: 60, 'ND': 60, 'nd': 60, 'Pm': 61, 61: 61, 'PM': 61, 'pm': 61, 'Sm': 62, 62: 62, 'SM': 62, 'sm': 62, 'Eu': 63, 63: 63, 'EU': 63, 'eu': 63, 'Gd': 64, 64: 64, 'GD': 64, 'gd': 64, 'Tb': 65, 65: 65, 'TB': 65, 'tb': 65, 'Dy': 66, 66: 66, 'DY': 66, 'dy': 66, 'Ho': 67, 67: 67, 'HO': 67, 'ho': 67, 'Er': 68, 68: 68, 'ER': 68, 'er': 68, 'Tm': 69, 69: 69, 'TM': 69, 'tm': 69, 'Yb': 70, 70: 70, 'YB': 70, 'yb': 70, 'Lu': 71, 71: 71, 'LU': 71, 'lu': 71, 'Hf': 72, 72: 72, 'HF': 72, 'hf': 72, 'Ta': 73, 73: 73, 'TA': 73, 'ta': 73, 'W': 74, 74: 74, 'w': 74, 'Re': 75, 75: 75, 'RE': 75, 're': 75, 'Os': 76, 76: 76, 'OS': 76, 'os': 76, 'Ir': 77, 77: 77, 'IR': 77, 'ir': 77, 'Pt': 78, 78: 78, 'PT': 78, 'pt': 78, 'Au': 79, 79: 79, 'AU': 79, 'au': 79, 'Hg': 80, 80: 80, 'HG': 80, 'hg': 80, 'Tl': 81, 81: 81, 'TL': 81, 'tl': 81, 'Pb': 82, 82: 82, 'PB': 82, 'pb': 82, 'Bi': 83, 83: 83, 'BI': 83, 'bi': 83, 'Po': 84, 84: 84, 'PO': 84, 'po': 84, 'At': 85, 85: 85, 'AT': 85, 'at': 85, 'Rn': 86, 86: 86, 'RN': 86, 'rn': 86, 'Fr': 87, 87: 87, 'FR': 87, 'fr': 87, 'Ra': 88, 88: 88, 'RA': 88, 'ra': 88, 'Ac': 89, 89: 89, 'AC': 89, 'ac': 89, 'Th': 90, 90: 90, 'TH': 90, 'th': 90, 'Pa': 91, 91: 91, 'PA': 91, 'pa': 91, 'U': 92, 92: 92, 'u': 92, 'Np': 93, 93: 93, 'NP': 93, 'np': 93, 'Pu': 94, 94: 94, 'PU': 94, 'pu': 94, 'Am': 95, 95: 95, 'AM': 95, 'am': 95, 'Cm': 96, 96: 96, 'CM': 96, 'cm': 96, 'Bk': 97, 97: 97, 'BK': 97, 'bk': 97, 'Cf': 98, 98: 98, 'CF': 98, 'cf': 98, 'Es': 99, 99: 99, 'ES': 99, 'es': 99, 'Fm': 100, 100: 100, 'FM': 100, 'fm': 100, 'Md': 101, 101: 101, 'MD': 101, 'md': 101, 'No': 102, 102: 102, 'NO': 102, 'no': 102, 'Lr': 103, 103: 103, 'LR': 103, 'lr': 103, 'Rf': 104, 104: 104, 'RF': 104, 'rf': 104, 'Db': 105, 105: 105, 'DB': 105, 'db': 105, 'Sg': 106, 106: 106, 'SG': 106, 'sg': 106, 'Bh': 107, 107: 107, 'BH': 107, 'bh': 107, 'Hs': 108, 108: 108, 'HS': 108, 'hs': 108, 'Mt': 109, 109: 109, 'MT': 109, 'mt': 109, 'Ds': 110, 110: 110, 'DS': 110, 'ds': 110, 'Rg': 111, 111: 111, 'RG': 111, 'rg': 111, 'Cn': 112, 112: 112, 'CN': 112, 'cn': 112, 'Nh': 113, 113: 113, 'NH': 113, 'nh': 113, 'Fl': 114, 114: 114, 'FL': 114, 'fl': 114, 'Mc': 115, 115: 115, 'MC': 115, 'mc': 115, 'Lv': 116, 116: 116, 'LV': 116, 'lv': 116, 'Ts': 117, 117: 117, 'TS': 117, 'ts': 117, 'Og': 118, 118: 118, 'OG': 118, 'og': 118})*
+
+Mapping of atomic numbers and symbols to Element objects.
+
+### stereomolgraph.periodic_table.COVALENT_RADII *: Mapping[Element, float]* *= mappingproxy({1: 0.32, 2: 0.46, 3: 1.33, 4: 1.02, 5: 0.85, 6: 0.75, 7: 0.71, 8: 0.63, 9: 0.64, 10: 0.67, 11: 1.55, 12: 1.39, 13: 1.26, 14: 1.16, 15: 1.11, 16: 1.03, 17: 0.99, 18: 0.96, 19: 1.96, 20: 1.71, 21: 1.48, 22: 1.36, 23: 1.34, 24: 1.22, 25: 1.19, 26: 1.16, 27: 1.11, 28: 1.1, 29: 1.12, 30: 1.18, 31: 1.24, 32: 1.21, 33: 1.21, 34: 1.16, 35: 1.14, 36: 1.17, 37: 2.1, 38: 1.85, 39: 1.63, 40: 1.54, 41: 1.47, 42: 1.38, 43: 1.28, 44: 1.25, 45: 1.25, 46: 1.2, 47: 1.28, 48: 1.36, 49: 1.42, 50: 1.4, 51: 1.4, 52: 1.36, 53: 1.33, 54: 1.31, 55: 2.32, 56: 1.96, 57: 1.8, 58: 1.63, 59: 1.76, 60: 1.74, 61: 1.73, 62: 1.72, 63: 1.68, 64: 1.69, 65: 1.68, 66: 1.67, 67: 1.66, 68: 1.65, 69: 1.64, 70: 1.7, 71: 1.62, 72: 1.52, 73: 1.46, 74: 1.37, 75: 1.31, 76: 1.29, 77: 1.22, 78: 1.23, 79: 1.24, 80: 1.33, 81: 1.44, 82: 1.44, 83: 1.51, 84: 1.45, 85: 1.47, 86: 1.42, 87: 2.23, 88: 2.01, 89: 1.86, 90: 1.75, 91: 1.69, 92: 1.7, 93: 1.71, 94: 1.72, 95: 1.66, 96: 1.66, 97: 1.68, 98: 1.68, 99: 1.65, 100: 1.67, 101: 1.73, 102: 1.76, 103: 1.61, 104: 1.57, 105: 1.49, 106: 1.43, 107: 1.41, 108: 1.34, 109: 1.29, 110: 1.28, 111: 1.21, 112: 1.22, 113: 1.36, 114: 1.43, 115: 1.62, 116: 1.75, 117: 1.65, 118: 1.57})*
+
+Covalent radii of elements in Angstrom.
+(Pekka Pyykkö and Michiko Atsumi.
+Molecular Double-Bond Covalent Radii for Elements Li-E112.
+Chemistry - A European Journal, 15(46):12770–12779, nov 2009.
+doi:10.1002/chem.200901472.)
+
+
+# reference/rdmol2graph.md
+
+# RDMol2Graph
+
+### *class* stereomolgraph.rdmol2graph.RDMol2StereoMolGraph(stereo_complete: bool = False, use_atom_map_number: bool = False, lone_pair_stereo: bool = True, resonance: bool = True, \_max_resonance_structures: int = 1000, \_radical_resonance_as_cation: bool = True, \_min_trans_ring_size: int = 7) → None
+
+Convert an RDKit `rdkit.Chem.Mol` to a `StereoMolGraph`.
+
+All aromatic bonds are considered to be cis. Double bonds in rings are
+assumed to be cis for rings of size <= 7.
+
+* **Parameters:**
+  * **stereo_complete** (`bool`) – If `True`, attempt to infer complete stereo
+    parities when possible. Defaults to `False`. (default: `False`)
+  * **use_atom_map_number** (`bool`) – Use RDKit atom map numbers as atom identifiers
+    instead of RDKit atom indices. Defaults to `False`. (default: `False`)
+  * **lone_pair_stereo** (`bool`) – Include stereochemistry that depends on lone
+    pairs (if present). Defaults to `True`. (default: `True`)
+  * **resonance** (`bool`) – Enumerate resonance structures and merge bond stereo
+    information from them. Defaults to `True`. (default: `True`)
+
+
+# reference/stereodescriptors.md
+
+# Stereodescriptors
+
+Stereodescriptors are standardized notations that precisely define the 3D spatial arrangement of atoms around a molecular center. These descriptors combine three key aspects of molecular geometry:
+
+- **Hybridization state**
+- **Stereochemical configuration**
+- **Relative positioning** of substituents
+
+They serve as fundamental building blocks for representing molecular stereochemical perception in algorithms.
+
+**Order Sensitivity**
+Stereodescriptor assignments depend critically on the input order of ligand atoms.
+
+**Permutation Invariance**
+Within their defined symmetry group, stereodescriptors are invariant to permitted atom permutations.
+
+**Chiral Centers**
+Tetrahedral atoms and other chiral elements use `1`/`-1` parity to distinguish enantiomers.
+
+**Achiral Centers**
+Use parity `0`
+
+**Special Case: \`\`None\`\`**
+The `None` parity is used for:
+1. Represents unknown or unspecified stereochemistry
+2. Allows non-enantiomeric rearrangements (e.g., square planar ligand exchange)
+3. Functions as a stereochemical wildcard in substructure searching
+
+When using stereodescriptors, remember they encode *local* configuration. Global molecular chirality emerges from combinations of local descriptors and molecular topology.
+
+### *class* stereomolgraph.stereodescriptors.Stereo(atoms: A, parity: P = None)
+
+Protocol to represent the orientation of a group of atoms in space.
+This is used to represent local stereochemistry and simultaneously the
+hybridization of atoms.
+
+#### atoms *: `TypeVar`(`A`, bound= `tuple`[`None` | `int`, `...`], covariant=True)*
+
+Atoms are a order dependent tuple of integers.
+
+#### parity *: `TypeVar`(`P`, bound= `Optional`[`Literal`[`1`, `0`, `-1`]], covariant=True)*
+
+parity is a number that defines the orientation of the atoms. If None,
+the relative orientation of the atoms is not defined.
+If 0 the orientation is defined and part of a achiral stereochemistry.
+If 1 or -1 the orientation is defined and part of a chiral stereochemistry.
+
+#### *property* PERMUTATION_GROUP *: Iterable[A]*
+
+Defines all allowed permutations defined by the symmetry group under
+which the stereochemistry is invariant.
+
+#### invert() → Self
+
+Inverts the stereo. If the stereo is achiral, it returns itself.
+
+* **Return type:**
+  `Self`
+
+#### get_isomers() → Set[Self]
+
+Returns all stereoisomers of the stereochemistry. Not just the
+inverted ones, but all possible stereoisomers.
+
+* **Return type:**
+  `Set`[`Self`]
+
+### *class* stereomolgraph.stereodescriptors.AtomStereo(atoms: A, parity: P = None)
+
+Bases: [`Stereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.Stereo)[`A`, `P`], `Protocol`, `Generic`[`A`, `P`]
+
+### *class* stereomolgraph.stereodescriptors.BondStereo(atoms: A, parity: P = None)
+
+Bases: [`Stereo`](reference/stereodescriptors.md#stereomolgraph.stereodescriptors.Stereo)[`A`, `P`], `Protocol`, `Generic`[`A`, `P`]
+
+### *class* stereomolgraph.stereodescriptors.Tetrahedral(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[1, -1]]
+
+Represents all possible configurations of atoms for a Tetrahedral
+Stereochemistry:
+
+```default
+parity = 1      parity = -1
+    4                4
+    |                |
+    0                0
+ /  ¦  \          /  ¦  \
+2   1   3        3   1   2
+```
+
+Atoms of the tetrahedral stereochemistry are ordered in a way that when the
+first atom is rotated to the back, the other atoms in order are rotated in
+the direction defined by the stereo.
+
+* **Variables:**
+  * **atoms** – Atoms of the stereochemistry
+  * **parity** – Stereochemistry
+  * **PERMUTATION_GROUP** – Permutations allowed by the stereochemistry
+
+### *class* stereomolgraph.stereodescriptors.SquarePlanar(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[0]]
+
+Represents all possible configurations of atoms for a
+SquarePlanar Stereochemistry:
+
+```default
+1     4
+ \   /
+   0
+ /   \
+2     3
+```
+
+Atoms of the Square Planar stereochemistry are ordered in a way that
+
+* **Variables:**
+  * **atoms** – Atoms of the stereochemistry
+  * **parity** – Stereochemistry
+
+### *class* stereomolgraph.stereodescriptors.TrigonalBipyramidal(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[1, -1]]
+
+Represents all possible configurations of atoms for a
+TrigonalBipyramidal Stereochemistry:
+
+```default
+parity = 1             parity = -1
+ 3   1                     1   3
+  ◁  ¦                    ¦  ▷
+     0  — 5           5 —  0
+  ◀  ¦                    ¦  ▶
+ 4   2                     2   4
+```
+
+Atoms of the trigonal bipyramidal stereochemistry are ordered in a way that
+when the first two atoms are the top and bottom of the bipyramid. The last
+three equatorial atoms are ordered in a way that when the first atom is
+rotated to the back, the other atoms in order are rotated in the direction
+defined by the stereo.
+
+* **Variables:**
+  * **atoms** – Atoms of the stereochemistry
+  * **parity** – Stereochemistry
+
+### *class* stereomolgraph.stereodescriptors.Octahedral(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[1, -1]]
+
+Represents all possible configurations of atoms for a Octahedral
+Stereochemistry:
+
+```default
+parity = 1             parity = -1
+ 3  1   6                3  2  6
+  ◁ ¦ /                  ◁ ¦ /
+    0                       0
+  / ¦ ▶                  / ¦  ▶
+ 4  2  5                4   1  5
+```
+
+### *class* stereomolgraph.stereodescriptors.PlanarBond(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`None` | `int`, `None` | `int`, `int`, `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[0]]
+
+Represents all possible configurations of atoms for a
+Planar Structure and should be used for aromatic and double bonds:
+
+```default
+0        4
+ \      /
+  2 == 3
+ /      \
+1        5
+```
+
+All atoms of the double bond are in one plane. Atoms 2 and 3 are the center
+Atoms 0 and 1 are bonded to 2 and atoms 4 and 5 are bonded to 3.
+The stereochemistry is defined by the relative orientation
+of the atoms 0, 1, 4 and 5.
+
+* **Variables:**
+  * **atoms** – Atoms of the stereochemistry
+  * **parity** – Stereochemistry
+  * **PERMUTATION_GROUP** – Permutations allowed by the stereochemistry
+
+### *class* stereomolgraph.stereodescriptors.AtropBond(atoms: A, parity: P = None)
+
+Bases: `_StereoMixin`[`tuple`[`None` | `int`, `None` | `int`, `int`, `int`, `None` | `int`, `None` | `int`], `None` | `Literal`[1, -1]]
+
+Represents all possible configurations of atoms for a
+Atropostereoisomer bond:
+
+```default
+parity = 1          parity = -1
+1       5           1        5
+ \     /            ◀      /
+  2 - 3               2 - 3
+◀      \            /      \
+0        4         0         4
+```
+
+
+# theory.md
+
+# Theory
+
+| Graph Class                    | Connectivity   | Connectivity <br> Change   | Stereo   | Stereo <br> Change   |
+|--------------------------------|----------------|----------------------------|----------|----------------------|
+| `Molgraph`                     | ✓              |                            |          |                      |
+| `CondensedReactionGraph`       | ✓              | ✓                          |          |                      |
+| `StereoMolGraph`               | ✓              |                            | ✓        |                      |
+| `StereoCondensedReactionGraph` | ✓              | ✓                          | ✓        | ✓                    |
+
+
+# tutorial/geo.md
+
+# Comparing chiral Geometries
+
+StereoMolGraphs can be constructed from cartesian coordinates / xyz files.
+Relative location of atoms is extracted automatically.
+One challenging example of chiral molecules is Twistane. We show how to compare two enantiomers of twistane starting from their cartesian coordinates.
+
+
+# tutorial/index.md
+
+# Tutorials
+
+# Tutorials
+
+* [Comparing chiral Geometries](tutorial/geo.md)
+* [Finding Stereoisomers of Molecules](examples/stereoiso.md)
+
+
+# tutorial/rdkit.md
+
+# RDKit Interoperability
+
+StereoMolGraphs(SMGs) can be used with `RDKit <https://www.rdkit.org/>`\_, a popular cheminformatics toolkit and we recommend its usage for parsing of InChIs or SMILES.
+:doc:`graph2rdmol </reference/graph2rdmol>` and :doc:`rdmol2graph </reference/rdmol2graph>` functions allow for easy conversion between StereoMolGraph’s graph representations and RDKit’s `Mol` objects.
+
+## Relevant details
+
+- SMGs use explicit hydrogen atoms.
+  -> use rdkit.Chem.AddHs bevore conversion
+- Stereochemistry is converted.
+- StereoMolGraph does not have bond orders nor charges and they are ignored
+
+

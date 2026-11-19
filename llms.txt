@@ -2,7 +2,24 @@
 
 > Stereochemistry-aware molecular and reaction graphs for Python.
 
+Agent-readable Markdown generated from Sphinx on commits to the \`doc_md\` branch.
+
+## Start here
+
 - [Documentation overview](docs_md/index.md)
 - [Agent usage guide](docs_md/agent-guide.md)
-- [API reference](docs_md/reference/index.md)
+- [Installation](docs_md/installation.md)
+
+## API reference
+
+- [MolGraph](docs_md/reference/graphs/molgraph.md)
+- [StereoMolGraph](docs_md/reference/graphs/stereomolgraph.md)
+- [CondensedReactionGraph](docs_md/reference/graphs/condensedreactiongraph.md)
+- [StereoCondensedReactionGraph](docs_md/reference/graphs/stereocondensedreactiongraph.md)
+- [Algorithms](docs_md/reference/algorithms/index.md)
+
+## Complete documentation
+
+- [Page index](docs_md/llms.txt)
 - [Full documentation](docs_md/llms-full.txt)
+- [Browsable documentation](https://stereomolgraph.readthedocs.io/)

@@ -1,0 +1,26 @@
+# Stereochemistry-Aware Molecular and Reaction Graphs
+
+![StereoMolGraph](_static/img/logo_smg.png)![StereoMolGraph](_static/img/logo_smg_dark.png)
+
+[![pypi](https://img.shields.io/pypi/v/StereoMolGraph?style=flat-square&logo=pypi&logoColor=white&color=3775A9)](https://pypi.org/project/StereoMolGraph/) [![python](https://img.shields.io/pypi/pyversions/StereoMolGraph?style=flat-square&logo=python&logoColor=white&color=3776AB&label=Python)](https://pypi.org/project/StereoMolGraph/) [![license](https://img.shields.io/badge/License-MIT-d4a017?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![tests](https://img.shields.io/github/actions/workflow/status/maxim-papusha/StereoMolGraph/run_unit_test.yaml?branch=main&style=flat-square&label=tests)](https://github.com/maxim-papusha/StereoMolGraph/actions/workflows/run_unit_test.yaml) [![github](https://img.shields.io/badge/GitHub-repository-2F3E46?style=flat-square&logo=github&logoColor=white)](https://github.com/maxim-papusha/StereoMolGraph)  [![doi](https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c02523-ffcc00?style=flat-square)](https://doi.org/10.1021/acs.jcim.5c02523)
+
+Welcome to the documentation for **StereoMolGraph**.
+
+This package provides a collection of [graph classes](reference/graphs/index.md) for the representation of molecules and chemical reactions in a modular.
+The core focus is to allow the user to work with chiral molecules in a consistent way with a simple interface.
+All arising algorithmic difficulties are taken care of by the internal implementations.
+
+Its treatment of stereochemistry is based on rigorously defined local [stereodescriptors](reference/stereodescriptors.md), which are derived from group-theoretical principles.
+
+Building on this formal foundation, a range of graph [algorithms](reference/algorithms/index.md) is implemented in a stereochemistry-aware manner, enabling consistent handling of symmetry, equivalence, and stereochemical transformations.
+
+# Magic Methods
+
+StereoMolGraph implements the following magic methods:
+
+* `__eq__`: based on [graph isomorphism](reference/algorithms/isomorphism.md) and stereochemical equivalence [[1](#id4)]
+* `__hash__`: based on Circular Stereo Algorithm [[2](#id5)]
+
+# Citations
+
+If you use StereoMolGraph, please cite the relevant publication(s):

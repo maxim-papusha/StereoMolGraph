@@ -1,10 +1,18 @@
 # Generated Markdown documentation
 
-This folder is automatically regenerated from the Sphinx documentation by
-`.github/workflows/build_md_docs.yml` on pushes to `doc_md`.
+**Do not edit files in this directory manually.** The documentation sources
+are in [\`docs/\`](../docs/) and Python docstrings. GitHub Actions regenerates this
+mirror on every push to \`doc_md\`.
 
-The generated [documentation index](index.md), [agent guide](agent-guide.md),
-[llms.txt](llms.txt), and [llms-full.txt](llms-full.txt) will appear after
-GitHub Actions completes the first build.
+- [Documentation overview](index.md)
+- [Agent guide](agent-guide.md)
+- [LLM index](llms.txt)
+- [Full documentation](llms-full.txt)
 
-Do not edit generated documentation here; edit `docs/` or source docstrings.
+Regenerate locally from the repository root:
+
+\`\`\`bash
+python -m pip install -e '.[docs]'
+python -m sphinx -b html docs docs/_build/html
+python scripts/export_markdown_docs.py
+\`\`\`

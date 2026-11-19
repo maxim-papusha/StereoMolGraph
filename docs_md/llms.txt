@@ -1,0 +1,43 @@
+# StereoMolGraph
+
+> StereoMolGraph: stereochemistry-aware molecular and reaction graphs in Python, including RDKit conversion, symmetry and isomorphism.
+
+
+2025, Maxim Papusha
+
+## Pages
+
+- [Stereochemistry-Aware Molecular and Reaction Graphs](index.md): StereoMolGraphStereoMolGraph
+- [Installation](installation.md): StereoMolGraph can be installed on Linux, MacOS, or Windows environment with &#42;&#42;Python 3.10 – 3.13&#42;&#42;.
+- [Using StereoMolGraph with coding agents](agent-guide.md): This is a task-oriented entry point for agent-generated Python code. The
+- [Tutorials](tutorial/index.md): &#42; Comparing chiral Geometries
+- [Comparing chiral Geometries](tutorial/geo.md): StereoMolGraphs can be constructed from cartesian coordinates / xyz files.
+- [Finding Stereoisomers of Molecules](examples/stereoiso.md): &#96;&#96;&#96;ipython3
+- [API Reference](reference/index.md): &#42; Algorithms
+- [Graphs](reference/graphs/index.md): | Graph Class                                                                                       ...
+- [MolGraph](reference/graphs/molgraph.md): Graph representing a molecular entity. Nodes represent atoms and edges
+- [CondensedReactionGraph](reference/graphs/condensedreactiongraph.md): Bases: &#96;MolGraph&#96;
+- [StereoMolGraph](reference/graphs/stereomolgraph.md): Bases: &#96;MolGraph&#96;
+- [StereoCondensedReactionGraph](reference/graphs/stereocondensedreactiongraph.md): Bases: &#96;StereoMolGraph&#96;, &#96;CondensedReactionGraph&#96;
+- [Algorithms](reference/algorithms/index.md): Main documentation page
+- [Isomorphism](reference/algorithms/isomorphism.md): Find all isomorphisms between two graphs &#91;1&#93;.
+- [Circular Algorithm](reference/algorithms/circular.md): Hash function for a multiset (order-independent with duplicates) of integers.
+- [Symmetry](reference/algorithms/symmetry.md): Bonds are only considered if both of its atoms have other substituents
+- [Stereodescriptors](reference/stereodescriptors.md): Stereodescriptors are standardized notations that precisely define the 3D spatial arrangement of ato...
+- [RDMol2Graph](reference/rdmol2graph.md): Convert an RDKit &#96;rdkit.Chem.Mol&#96; to a &#96;StereoMolGraph&#96;.
+- [Graph2RDMol](reference/graph2rdmol.md): Creates a RDKit mol object using the connectivity of the mol graph.
+- [Coords](reference/coords.md): Protocol for geometry-like objects used throughout StereoMolGraph.
+- [IPython](reference/ipython.md): A class to visualize a MolGraph in 2D using RDKit’s MolDraw2DSVG.
+- [Periodic Table](reference/periodic_table.md): Mapping of atomic numbers and symbols to Element objects.
+- [Experimental](reference/experimental.md): The &#96;stereomolgraph.experimental&#96; package contains features whose
+- [Changelog](changelog.md): - added GeometryProtocol definition as a potential external interface.
+- [Stereochemistry of Phosgenation Transition States](_build/jupyter_execute/examples/react_stereoiso.md): &#96;&#96;&#96;ipython3
+- [Finding Stereoisomers of Molecules](_build/jupyter_execute/examples/stereoiso.md): &#96;&#96;&#96;ipython3
+- [Stereochemistry of Phosgenation Transition States](examples/react_stereoiso.md): &#96;&#96;&#96;ipython3
+- [Bond Orders](reference/algorithms/bond_orders.md): Page content
+- [Theory](theory.md): | Graph Class                    | Connectivity   | Connectivity &lt;br&gt; Change   | Stereo   | Stereo &lt;...
+- [RDKit Interoperability](tutorial/rdkit.md): StereoMolGraphs(SMGs) can be used with &#96;RDKit &lt;https://www.rdkit.org/&gt;&#96;&#92;&#95;, a popular cheminformatics...
+
+## Optional
+
+- [llms-full.txt](llms-full.txt): Complete documentation in a single file.
