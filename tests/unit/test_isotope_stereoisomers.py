@@ -2,8 +2,11 @@
 
 import pytest
 
-from stereomolgraph import StereoMolGraph
-from stereomolgraph.experimental import IsotopeExchange, generate_isotope_stereoisomers
+from stereomolgraph import (
+    IsotopeExchange,
+    StereoMolGraph,
+    generate_isotope_stereoisomers,
+)
 from stereomolgraph.stereodescriptors import PlanarBond, Tetrahedral
 
 
@@ -342,3 +345,21 @@ def test_no_matching_atoms_yields_no_products_by_default():
     assert list(generate_isotope_stereoisomers(
         graph, IsotopeExchange("H", (2,))
     )) == []
+
+
+def test_easy_top_level_imports_have_matching_types():
+    from stereomolgraph.experimental import IsotopeExchange as ExperimentalExchange
+    from stereomolgraph.experimental import (
+        generate_isotope_stereoisomers as experimental_generate,
+    )
+
+    assert IsotopeExchange is ExperimentalExchange
+    assert generate_isotope_stereoisomers is experimental_generate
+
+
+def test_renumbered_input_preserves_counts():
+    original = _ethanol()
+    relabeled = original.relabel_atoms({atom: atom + 100 for atom in original.atoms})
+    exchange = IsotopeExchange("H", (2,))
+    assert len(list(original.generate_isotope_stereoisomers(exchange, substitutions=1))) == 4
+    assert len(list(relabeled.generate_isotope_stereoisomers(exchange, substitutions=1))) == 4

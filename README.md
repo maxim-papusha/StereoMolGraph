@@ -42,6 +42,29 @@ Install from PyPI:
 pip install stereomolgraph
 ```
 
+## Isotope-exchange stereoisomers (experimental)
+
+The `isotope_stereoisomer` branch supports symmetry-distinct isotope exchange
+and stereoisomer enumeration. Hydrogen and other exchangeable atoms must be
+explicitly present in the graph.
+
+```python
+from stereomolgraph import IsotopeExchange, StereoMolGraph
+
+# Start with an existing StereoMolGraph containing explicit H atoms.
+products = graph.generate_isotope_stereoisomers(
+    IsotopeExchange("H", (2, 3), positions=None),
+    substitutions=2,
+)
+```
+
+Only molecules with **exactly two substitutions** are returned in this example.
+Omit `substitutions` to exchange *all* eligible atoms. Exchange rules can also
+be supplied as a tuple to include different elements or positional constraints.
+Distinct enantiomers are retained, and duplicates are eliminated using exact
+stereochemistry-aware isomorphism. Other than selected tetrahedral centers,
+new stereogenic elements must already be specified by input descriptors.
+
 ## Feedback and support
 
 Bug reports, feature requests, and questions are welcome through

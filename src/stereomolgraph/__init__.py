@@ -12,6 +12,17 @@ from stereomolgraph.graphs.smg import StereoMolGraph
 
 def __getattr__(name: str):
     match name:
+        case "IsotopeExchange" | "generate_isotope_stereoisomers":
+            from stereomolgraph.experimental._isotope_stereoisomers import (
+                IsotopeExchange,
+                generate_isotope_stereoisomers,
+            )
+
+            return {
+                "IsotopeExchange": IsotopeExchange,
+                "generate_isotope_stereoisomers": generate_isotope_stereoisomers,
+            }[name]
+
         case "__version__":
             from importlib.metadata import version
 
