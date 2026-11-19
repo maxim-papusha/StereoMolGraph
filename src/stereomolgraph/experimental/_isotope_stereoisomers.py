@@ -387,6 +387,7 @@ def generate_isotope_stereoisomers(
         raise ValueError("exchanges must contain one or more IsotopeExchange rules")
     options = _exchange_options(graph, rules)
     eligible_count = sum(bool(targets) for targets in options.values())
+    explicitly_requested = substitutions is not None
     if substitutions is None:
         substitutions = eligible_count
     if (
@@ -397,7 +398,7 @@ def generate_isotope_stereoisomers(
         raise ValueError(
             "substitutions must be an integer between 0 and eligible atom count"
         )
-    if eligible_count == 0:
+    if eligible_count == 0 and not explicitly_requested:
         return
 
     seen: set[StereoMolGraph] = set()
