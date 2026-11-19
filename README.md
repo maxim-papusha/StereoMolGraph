@@ -53,7 +53,7 @@ To regenerate locally:
 
 ```bash
 python -m pip install -e '.[docs]'
-python -m sphinx -b html docs docs/_build/html
+python -m sphinx -b html docs build/docs/html
 python scripts/export_markdown_docs.py
 ```
 

@@ -12,14 +12,14 @@ and symmetry analysis.
 
 ## Public Python API
 Prefer importing from the package root:
-\`\`\`python
+```python
 from stereomolgraph import (
     MolGraph,
     StereoMolGraph,
     CondensedReactionGraph,
     StereoCondensedReactionGraph,
 )
-\`\`\`
+```
 
 ## Chemical invariants
 - Core molecular graphs describe connectivity and local stereochemistry.
@@ -40,8 +40,8 @@ from stereomolgraph import (
 - GitHub Actions rebuilds Markdown on pushes to the doc_md branch.
 
 ## Local documentation build
-\`\`\`bash
+```bash
 python -m pip install -e '.[docs]'
-python -m sphinx -b html docs docs/_build/html
+python -m sphinx -b html docs build/docs/html
 python scripts/export_markdown_docs.py
-\`\`\`
+```

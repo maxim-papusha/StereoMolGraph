@@ -16,7 +16,7 @@ REPO_LLM_INDEX = """# StereoMolGraph
 
 > Stereochemistry-aware molecular and reaction graphs for Python.
 
-Agent-readable Markdown generated from Sphinx on commits to the \`doc_md\` branch.
+Agent-readable Markdown generated from Sphinx on commits to the `doc_md` branch.
 
 ## Start here
 
@@ -42,8 +42,8 @@ Agent-readable Markdown generated from Sphinx on commits to the \`doc_md\` branc
 MIRROR_README = """# Generated Markdown documentation
 
 **Do not edit files in this directory manually.** The documentation sources
-are in [\`docs/\`](../docs/) and Python docstrings. GitHub Actions regenerates this
-mirror on every push to \`doc_md\`.
+are in [`docs/`](../docs/) and Python docstrings. GitHub Actions regenerates this
+mirror on every push to `doc_md`.
 
 - [Documentation overview](index.md)
 - [Agent guide](agent-guide.md)
@@ -52,11 +52,11 @@ mirror on every push to \`doc_md\`.
 
 Regenerate locally from the repository root:
 
-\`\`\`bash
+```bash
 python -m pip install -e '.[docs]'
 python -m sphinx -b html docs docs/_build/html
 python scripts/export_markdown_docs.py
-\`\`\`
+```
 """
 
 
@@ -79,7 +79,10 @@ def export(build_dir: Path, output_dir: Path, repo_index: Path) -> int:
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    pages = sorted(build_dir.rglob("*.md"))
+    pages = sorted(
+        p for p in build_dir.rglob("*.md")
+        if "_build" not in p.relative_to(build_dir).parts
+    )
     for page in pages:
         destination = output_dir / page.relative_to(build_dir)
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -100,7 +103,7 @@ def export(build_dir: Path, output_dir: Path, repo_index: Path) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build", type=Path, default=ROOT / "docs/_build/html")
+    parser.add_argument("--build", type=Path, default=ROOT / "build/docs/html")
     parser.add_argument("--output", type=Path, default=ROOT / "docs_md")
     args = parser.parse_args()
     count = export(args.build, args.output, ROOT / "llms.txt")
