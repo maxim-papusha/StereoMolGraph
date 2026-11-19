@@ -361,5 +361,6 @@ def test_renumbered_input_preserves_counts():
     original = _ethanol()
     relabeled = original.relabel_atoms({atom: atom + 100 for atom in original.atoms})
     exchange = IsotopeExchange("H", (2,))
-    assert len(list(original.generate_isotope_stereoisomers(exchange, substitutions=1))) == 4
-    assert len(list(relabeled.generate_isotope_stereoisomers(exchange, substitutions=1))) == 4
+    for molecule in (original, relabeled):
+        products = list(molecule.generate_isotope_stereoisomers(exchange, substitutions=1))
+        assert len(products) == 4
