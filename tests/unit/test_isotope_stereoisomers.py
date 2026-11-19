@@ -185,9 +185,10 @@ def test_two_elements_can_be_exchanged_together():
         ),
         min_substitutions=2, max_substitutions=2,
     ))
-    assert len(products) == 1
-    assert products[0].get_atom_isotope(0) == 13
-    assert products[0].isotopes.count(2) == 1
+    assert len(products) == 2
+    assert sorted((p.get_atom_isotope(0), p.isotopes.count(2)) for p in products) == [
+        (0, 2), (13, 1)
+    ]
 
 
 def test_unequal_allowed_positions_do_not_prune_two_step_path():
@@ -201,8 +202,10 @@ def test_unequal_allowed_positions_do_not_prune_two_step_path():
         ),
         min_substitutions=2, max_substitutions=2,
     ))
-    assert len(products) == 1
-    assert sorted(m for m in products[0].isotopes if m) == [2, 3]
+    assert len(products) == 2
+    assert sorted(
+        tuple(sorted(m for m in p.isotopes if m)) for p in products
+    ) == [(2, 2), (2, 3)]
 
 
 def test_same_product_from_overlapping_rules_is_emitted_once():
