@@ -3,8 +3,23 @@
 import pytest
 
 from stereomolgraph import StereoMolGraph
-from stereomolgraph.experimental import generate_isotope_stereoisomers
+from stereomolgraph.experimental import IsotopeExchange, generate_isotope_stereoisomers
 from stereomolgraph.stereodescriptors import PlanarBond, Tetrahedral
+
+
+def _single_exchange(graph, atom_type, isotope, *,
+                     source_isotope=0, atoms=None, **kwargs):
+    """Adapter for the existing single-exchange regression tests."""
+    return generate_isotope_stereoisomers(
+        graph,
+        IsotopeExchange(
+            atom_type=atom_type,
+            isotopes=(isotope,),
+            source_isotope=source_isotope,
+            positions=atoms,
+        ),
+        **kwargs,
+    )
 
 
 def _molecule(elements, bonds, isotopes=None):
@@ -40,7 +55,7 @@ def _ethanol():
 def test_methane_mono_through_tetrasubstitution():
     methane = _methane()
     for n in range(1, 5):
-        products = list(generate_isotope_stereoisomers(
+        products = list(_single_exchange(
             methane, "H", 2, min_substitutions=n, max_substitutions=n
         ))
         assert len(products) == 1
@@ -51,7 +66,7 @@ def test_methane_mono_through_tetrasubstitution():
 
 def test_enantiomers_from_monodeuterated_chlorofluoromethane():
     graph = _chlorofluoromethane()
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         graph, "H", 2, max_substitutions=1
     ))
     assert len(products) == 2
@@ -61,7 +76,7 @@ def test_enantiomers_from_monodeuterated_chlorofluoromethane():
 
 
 def test_dideuterated_chlorofluoromethane_is_not_chiral():
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         _chlorofluoromethane(), "H", 2,
         min_substitutions=2, max_substitutions=2
     ))
@@ -70,7 +85,7 @@ def test_dideuterated_chlorofluoromethane_is_not_chiral():
 
 
 def test_ethanol_has_four_monodeuterated_stereoisomers():
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         _ethanol(), "H", 2, max_substitutions=1
     ))
     assert len(products) == 4
@@ -87,7 +102,7 @@ def test_fixed_stereo_is_not_inverted_by_exchange():
     )
     fixed = Tetrahedral((0, 1, 2, 3, 4), 1)
     graph.set_atom_stereo(fixed)
-    products = list(generate_isotope_stereoisomers(graph, "H", 2,
+    products = list(_single_exchange(graph, "H", 2,
                                                     max_substitutions=1))
     assert len(products) == 1
     assert products[0].get_atom_stereo(0) == fixed
@@ -100,7 +115,7 @@ def test_preexisting_explicit_isotope_can_be_exchanged():
         [(0, i) for i in range(1, 5)],
         isotopes={1: 1, 2: 1, 3: 1, 4: 1},
     )
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         graph, "H", 2, source_isotope=1, max_substitutions=1
     ))
     assert len(products) == 1
@@ -108,7 +123,7 @@ def test_preexisting_explicit_isotope_can_be_exchanged():
 
 
 def test_allowed_atoms_limits_exchange_sites():
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         _ethanol(), "H", 2, max_substitutions=1, atoms=(6, 7)
     ))
     assert len(products) == 2
@@ -121,7 +136,7 @@ def test_isotope_induced_ez_stereoisomerism():
         [(0, 1), (0, 2), (0, 3), (1, 4), (1, 5)],
     )
     graph.set_bond_stereo(PlanarBond((2, 3, 0, 1, 4, 5), None))
-    products = list(generate_isotope_stereoisomers(
+    products = list(_single_exchange(
         graph, "H", 2, max_substitutions=1, atoms=(2, 3)
     ))
     assert len(products) == 2
@@ -130,18 +145,135 @@ def test_isotope_induced_ez_stereoisomerism():
 
 def test_requires_explicit_hydrogen_atoms():
     graph = _molecule(["C"], [])
-    assert list(generate_isotope_stereoisomers(graph, "H", 2,
+    assert list(_single_exchange(graph, "H", 2,
                                                min_substitutions=0)) == [graph]
 
 
 @pytest.mark.parametrize("target", [0, -1, 1.5])
 def test_invalid_target_isotope(target):
     with pytest.raises(ValueError):
-        list(generate_isotope_stereoisomers(_methane(), "H", target))
+        list(_single_exchange(_methane(), "H", target))
 
 
 def test_input_graph_can_be_frozen():
     graph = _chlorofluoromethane().freeze()
-    assert len(list(generate_isotope_stereoisomers(
+    assert len(list(_single_exchange(
         graph, "H", 2, max_substitutions=1
     ))) == 2
+
+
+def test_multiple_target_isotopes_are_distinct_and_unique():
+    products = list(generate_isotope_stereoisomers(
+        _methane(),
+        (IsotopeExchange("H", (2, 3)),),
+        min_substitutions=2, max_substitutions=2,
+    ))
+    # CH2D2, CH2DT, CH2T2, all achiral.
+    assert len(products) == 3
+    assert len({p.freeze() for p in products}) == 3
+    assert sorted(
+        tuple(sorted(m for m in p.isotopes if m)) for p in products
+    ) == [(2, 2), (2, 3), (3, 3)]
+
+
+def test_two_elements_can_be_exchanged_together():
+    products = list(generate_isotope_stereoisomers(
+        _methane(),
+        (
+            IsotopeExchange("H", (2,)),
+            IsotopeExchange("C", (13,), positions={0}),
+        ),
+        min_substitutions=2, max_substitutions=2,
+    ))
+    assert len(products) == 1
+    assert products[0].get_atom_isotope(0) == 13
+    assert products[0].isotopes.count(2) == 1
+
+
+def test_unequal_allowed_positions_do_not_prune_two_step_path():
+    # T is allowed only at site 1, D at sites 1 or 2.
+    # D at 1 blocks T; D at 2 leaves T at 1 possible.
+    products = list(generate_isotope_stereoisomers(
+        _methane(),
+        (
+            IsotopeExchange("H", (2,), positions={1, 2}),
+            IsotopeExchange("H", (3,), positions={1}),
+        ),
+        min_substitutions=2, max_substitutions=2,
+    ))
+    assert len(products) == 1
+    assert sorted(m for m in products[0].isotopes if m) == [2, 3]
+
+
+def test_same_product_from_overlapping_rules_is_emitted_once():
+    products = list(generate_isotope_stereoisomers(
+        _methane(),
+        (
+            IsotopeExchange("H", (2,), positions={1, 2}),
+            IsotopeExchange(1, (2,), positions={2, 3}),
+        ),
+        min_substitutions=1, max_substitutions=2,
+    ))
+    assert len(products) == 2
+    assert len({p.freeze() for p in products}) == 2
+
+
+def test_different_allowed_targets_on_equivalent_atoms():
+    products = list(generate_isotope_stereoisomers(
+        _methane(),
+        (
+            IsotopeExchange("H", (2,), positions={1}),
+            IsotopeExchange("H", (3,), positions={2}),
+        ),
+        min_substitutions=1, max_substitutions=2,
+    ))
+    assert len(products) == 3
+    assert sorted(
+        tuple(sorted(m for m in p.isotopes if m)) for p in products
+    ) == [(2,), (2, 3), (3,)]
+
+
+def test_allowed_positions_refer_to_atom_ids():
+    graph = _methane().relabel_atoms({1: 100, 2: 200, 3: 300, 4: 400})
+    products = list(generate_isotope_stereoisomers(
+        graph,
+        IsotopeExchange(atom_type="H", isotopes=(2,), positions={100, 200}),
+        min_substitutions=2, max_substitutions=2,
+    ))
+    assert len(products) == 1
+    assert products[0].get_atom_isotope(100) == 2
+    assert products[0].get_atom_isotope(200) == 2
+
+
+def test_validate_exchange_rule_and_positions():
+    for targets in ((), (0,), (-1,), (2, 0)):
+        with pytest.raises(ValueError):
+            IsotopeExchange("H", targets)
+    with pytest.raises(ValueError):
+        IsotopeExchange("H", (2,), source_isotope=2)
+    with pytest.raises(ValueError):
+        IsotopeExchange("Xx", (2,))
+    with pytest.raises(ValueError):
+        list(generate_isotope_stereoisomers(
+            _methane(), IsotopeExchange("H", (2,), positions={999})
+        ))
+
+
+def test_parent_and_product_are_not_duplicated():
+    results = list(generate_isotope_stereoisomers(
+        _methane(),
+        IsotopeExchange("H", (2,)),
+        min_substitutions=0, max_substitutions=1,
+    ))
+    assert len(results) == 2
+    assert sorted(p.isotopes.count(2) for p in results) == [0, 1]
+
+
+def test_graph_method_and_frozen_input():
+    graph = _methane().freeze()
+    products = list(graph.generate_isotope_stereoisomers(
+        IsotopeExchange("H", (2, 3)),
+        max_substitutions=2,
+    ))
+    assert len(products) == 5  # D, T, DD, DT, TT
+    assert graph.isotopes == (0, 0, 0, 0, 0)
