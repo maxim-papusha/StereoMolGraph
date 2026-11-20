@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
+from stereomolgraph.stereodescriptors import Allene
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterator, Sequence
     from typing import Literal, TypeVar
@@ -211,6 +213,7 @@ def circular_stereo_generator(
     grouped_bond_stereo: dict = defaultdict(list)
 
     as_atoms = []
+    as_radii = []
     as_perm_atoms = []
     as_nbr_atoms = []
 
@@ -236,7 +239,9 @@ def circular_stereo_generator(
 
             grouped_atom_stereo[stereo.PERMUTATION_GROUP].append((atom, nbr_atoms))
 
-            atoms_with_atom_stereo.add(atom)
+            if not isinstance(stereo, Allene):
+                atoms_with_atom_stereo.add(atom)
+            # Allene centers also receive ordinary one-bond aggregation.
 
     for bond, stereo in smg.bond_stereo.items():
         if stereo.parity is not None:
@@ -274,6 +279,7 @@ def circular_stereo_generator(
             dtype=np.int16,
         )
         as_atoms.append(atom_arr_ids)
+        as_radii.append(2 if perm_group == Allene.PERMUTATION_GROUP else 1)
 
         nbr_atoms = np.array(
             [
@@ -378,10 +384,18 @@ def circular_stereo_generator(
 
     for count in itertools.count(1, 1):
         # atom stereo
-        for perm_atoms, a_perm_nbrs, a_perm, a in zip(
-            as_perm_atoms, i_a_perm_nbrs, i_a_perm, i_a
+        for perm_atoms, a_perm_nbrs, a_perm, a, aggregation_radius in zip(
+            as_perm_atoms, i_a_perm_nbrs, i_a_perm, i_a, as_radii
         ):
-            _numpy_int_tuple_hash(atom_hash[perm_atoms], out=a_perm)
+            if aggregation_radius == 2 and count == 1:
+                # No allene parity at radius one.
+                a.fill(0)
+                continue
+            # In iteration r, atom_hash is radius r-1 and
+            # prev_atom_hash is radius r-2. Allene ligands are
+            # two bonds away, so use the delayed colors.
+            source = prev_atom_hash if aggregation_radius == 2 else atom_hash
+            _numpy_int_tuple_hash(source[perm_atoms], out=a_perm)
             numpy_int_multiset_hash(a_perm, out=a)
 
         # no_stereo atoms
@@ -504,13 +518,22 @@ def _color_refine(
     atom_hash = next(sm_generator)
     n_atom_classes = np.unique(atom_hash).shape[0]
 
+    # An allene can first contribute stereochemical information at radius two.
+    # A radius-one coloring plateau (or all distinct colors) is premature.
+    minimum_radius = 1
+    if generator is circular_stereo_generator and any(
+        isinstance(stereo, Allene) and stereo.parity is not None
+        for stereo in graph.atom_stereo.values()
+    ):
+        minimum_radius = 2
+
     counter = itertools.count(1, 1) if max_iter is None else range(max_iter + 1)
-    for _ in counter:
+    for radius in counter:
         atom_hash = next(sm_generator)
         new_n_classes = np.unique(atom_hash).shape[0]
-        if new_n_classes == n_atom_classes:
+        if radius >= minimum_radius and new_n_classes == n_atom_classes:
             break
-        elif new_n_classes == n_atoms:
+        elif radius >= minimum_radius and new_n_classes == n_atoms:
             break
         elif new_n_classes < n_atom_classes:
             raise RuntimeError("Number of atom classes decreased.")

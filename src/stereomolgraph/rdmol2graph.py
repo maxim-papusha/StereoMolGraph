@@ -11,6 +11,7 @@ import rdkit.Chem as Chem  # type: ignore
 
 from stereomolgraph import AtomId, MolGraph, StereoMolGraph
 from stereomolgraph.stereodescriptors import (
+    Allene,
     AtomStereo,
     AtropBond,
     BondStereo,
@@ -144,6 +145,7 @@ class RDMol2StereoMolGraph:
                     Octahedral: 1,
                     PlanarBond: 0,
                     AtropBond: 1,
+                    Allene: 1,
                 }
                 for _atom, atom_stereo in res_smg.atom_stereo.items():
                     if atom_stereo.parity is None:
@@ -212,6 +214,47 @@ class RDMol2StereoMolGraph:
                     )
                 else:
                     raise RuntimeError("Tetrahedral stereo must have 3 or 4 neighbors")
+
+            elif chiral_tag == Chem.ChiralType.CHI_ALLENE:
+                # Allene ligands are at graph distance two from the center.
+                terminal_ids = [n.GetIdx() for n in atom.GetNeighbors()]
+                if len(terminal_ids) != 2 or any(
+                    rdmol.GetBondBetweenAtoms(atom_idx, end).GetBondType()
+                    != Chem.BondType.DOUBLE
+                    for end in terminal_ids
+                ):
+                    raise ValueError("CHI_ALLENE requires a C=C=C unit")
+
+                ligands: list[int | None] = []
+                for end in terminal_ids:
+                    side = [
+                        id_atom_map[n.GetIdx()]
+                        for n in rdmol.GetAtomWithIdx(end).GetNeighbors()
+                        if n.GetIdx() != atom_idx
+                    ]
+                    if len(side) == 1:
+                        side.append(None)  # implicit H at the terminal atom
+                    if len(side) != 2:
+                        raise ValueError(
+                            "Each allene terminal atom needs two substituents"
+                        )
+                    ligands.extend(side)
+
+                permutation = (
+                    atom.GetUnsignedProp("_chiralPermutation")
+                    if atom.HasProp("_chiralPermutation")
+                    else 0
+                )
+                if permutation not in (0, 1, 2):
+                    raise ValueError("Unsupported RDKit allene permutation")
+                atom_stereo = Allene(
+                    (
+                        id_atom_map[atom_idx],
+                        *(id_atom_map[end] for end in terminal_ids),
+                        *ligands,
+                    ),
+                    {0: None, 1: 1, 2: -1}[permutation],
+                )
 
             elif chiral_tag == Chem.ChiralType.CHI_TETRAHEDRAL or (
                 hybridization == Chem.HybridizationType.SP3 and len(neighbors) == 4

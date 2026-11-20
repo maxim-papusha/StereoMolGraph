@@ -331,8 +331,8 @@ class StereoMolGraph(MolGraph):
         """
         Creates a StereoMolGraph from an RDKit Mol object.
         All hydrogens have to be explicit.
-        Stereo information is conserved for tetrahedral atoms and
-        double bonds.
+        Stereo information is conserved for tetrahedral atoms, allenes,
+        and double bonds.
 
         :param rdmol: RDKit Mol object
         :param stereo_complete: If True, we assume that the stereochemistry
