@@ -59,6 +59,29 @@ When using stereodescriptors, remember they encode *local* configuration. Global
     :inherited-members:
     :show-inheritance: 
 
+.. autoclass:: stereomolgraph.stereodescriptors.Allene
+    :no-index-entry:
+    :members:
+    :member-order: alphabetical
+    :inherited-members:
+    :show-inheritance:
+
+**Allene atom stereochemistry**
+
+An allene descriptor is stored at the central atom of a C=C=C unit.
+Its two terminal atoms are one bond away; the four substituents whose
+order defines axial stereochemistry are two bonds away. Consequently,
+the circular stereo algorithm first distinguishes its two orientations
+at **aggregation radius 2**, not radius 1.
+
+RDKit objects can represent this with the central atom's
+``CHI_ALLENE`` tag and ``_chiralPermutation`` (1 or 2 for the
+two orientations, or 0 for unspecified stereochemistry). This
+conversion conserves atom stereo in RDKit molecule objects, but
+standard RDKit SMILES export does not reliably retain allene chirality.
+The descriptor's parity is relative and is not an R/S CIP assignment.
+
+
 .. autoclass:: stereomolgraph.stereodescriptors.SquarePlanar
     :no-index-entry:
     :members:

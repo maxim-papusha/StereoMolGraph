@@ -13,6 +13,7 @@ from stereomolgraph.graphs.scrg import StereoCondensedReactionGraph
 from stereomolgraph.graphs.smg import StereoMolGraph
 from stereomolgraph.periodic_table import SYMBOLS
 from stereomolgraph.stereodescriptors import (
+    Allene,
     AtropBond,
     Octahedral,
     PlanarBond,
@@ -211,6 +212,47 @@ def stereo_mol_graph_to_rdmol(
             else:
                 rd_stereo = rd_tetrahedral[a_stereo.parity * -1]
             rd_atom.SetChiralTag(rd_stereo)
+
+        elif a_stereo is not None and isinstance(a_stereo, Allene):
+            # RDKit's allene permutation is relative to bond traversal order.
+            ends = [n.GetIdx() for n in rd_atom.GetNeighbors()]
+            if len(ends) != 2:
+                raise ValueError("An allene center must have two terminal atoms")
+
+            ligands: list[int | None] = []
+            for end in ends:
+                terminal_atom = mol.GetAtomWithIdx(end)
+                side = [
+                    idx_map_num_dict[n.GetIdx()]
+                    for n in terminal_atom.GetNeighbors()
+                    if n.GetIdx() != atom_idx
+                ]
+                if len(side) == 1:
+                    side.append(None)
+                    terminal_atom.SetNoImplicit(False)
+                if len(side) != 2:
+                    raise ValueError(
+                        "Each allene terminal atom needs two substituents"
+                    )
+                ligands.extend(side)
+                mol.GetBondBetweenAtoms(atom_idx, end).SetBondType(
+                    Chem.BondType.DOUBLE
+                )
+
+            basis = Allene(
+                (atom, *(idx_map_num_dict[end] for end in ends), *ligands), 1
+            )
+            if a_stereo.parity is None:
+                permutation = 0
+            elif a_stereo == basis:
+                permutation = 1
+            elif a_stereo == basis.invert():
+                permutation = 2
+            else:
+                raise ValueError("Allene stereo atoms do not match connectivity")
+
+            rd_atom.SetChiralTag(Chem.ChiralType.CHI_ALLENE)
+            rd_atom.SetUnsignedProp("_chiralPermutation", permutation)
 
         elif a_stereo is not None and isinstance(a_stereo, SquarePlanar):
             rd_atom.SetChiralTag(Chem.ChiralType.CHI_SQUAREPLANAR)

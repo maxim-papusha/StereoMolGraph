@@ -292,6 +292,42 @@ class Tetrahedral(
         return self.atoms[0]
 
 
+class Allene(
+    _StereoMixin[
+        tuple[int, int, int, OInt, OInt, OInt, OInt],
+        None | Literal[1, -1],
+    ],
+):
+    """Axial stereochemistry of an allene, stored on its central atom.
+
+    Atom order: (center, end1, end2, end1_a, end1_b, end2_a, end2_b).
+    Each end is bonded to the center; its two substituents are two bonds
+    away from the central atom. None may stand for implicit hydrogen.
+
+    Exchanging both substituent pairs or reversing the allene axis
+    preserves the configuration. Exchanging only one substituent pair
+    inverts it. Parities are relative, not CIP R/S descriptors.
+    """
+
+    inversion = (0, 1, 2, 4, 3, 5, 6)
+    PERMUTATION_GROUP = (
+        (0, 1, 2, 3, 4, 5, 6),
+        (0, 1, 2, 4, 3, 6, 5),
+        (0, 2, 1, 5, 6, 3, 4),
+        (0, 2, 1, 6, 5, 4, 3),
+    )
+
+    def get_isomers(self) -> set[Self]:
+        return {
+            self.__class__(self.atoms, 1),
+            self.__class__(self.atoms, -1),
+        }
+
+    @property
+    def central_atom(self) -> AtomId:
+        return self.atoms[0]
+
+
 class SquarePlanar(
     _StereoMixin[tuple[int, OInt, OInt, OInt, OInt], None | Literal[0]],
 ):
