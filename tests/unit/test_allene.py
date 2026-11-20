@@ -108,6 +108,11 @@ def test_implicit_terminal_hydrogen():
     result = StereoMolGraph.from_rdmol(output, resonance=False)
     assert result == graph
 
+    without_lone_pairs = StereoMolGraph.from_rdmol(
+        mol, resonance=False, lone_pair_stereo=False
+    )
+    assert without_lone_pairs == graph
+
 
 def test_allene_without_permutation_is_unspecified():
     mol, center = _allene_mol()

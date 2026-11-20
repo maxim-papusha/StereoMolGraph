@@ -301,7 +301,13 @@ class RDMol2StereoMolGraph:
             else:
                 continue
 
-            if not self.lone_pair_stereo and None in atom_stereo.atoms:
+            # An allene's None placeholder denotes an implicit terminal H,
+            # not a stereogenic lone pair.
+            if (
+                not self.lone_pair_stereo
+                and None in atom_stereo.atoms
+                and not isinstance(atom_stereo, Allene)
+            ):
                 continue
             graph.set_atom_stereo(atom_stereo)
 
