@@ -317,6 +317,19 @@ class RDMol2StereoMolGraph:
             begin_idx: int = bond.GetBeginAtomIdx()
             end_idx: int = bond.GetEndAtomIdx()
 
+            # Individual C=C bonds in a cumulene do not have local E/Z
+            # stereochemistry. Its axial allene chirality, when present,
+            # is represented on the central atom instead.
+            if bond.GetBondType() == Chem.BondType.DOUBLE and any(
+                any(
+                    neighbor_bond.GetIdx() != bond.GetIdx()
+                    and neighbor_bond.GetBondType() == Chem.BondType.DOUBLE
+                    for neighbor_bond in rdmol.GetAtomWithIdx(idx).GetBonds()
+                )
+                for idx in (begin_idx, end_idx)
+            ):
+                continue
+
             neighbors_begin: list[int] = [
                 atom.GetIdx()
                 for atom in rdmol.GetAtomWithIdx(begin_idx).GetNeighbors()

@@ -76,6 +76,8 @@ def test_allene_enantiomers_appear_only_at_radius_two():
     atom_position = list(first.atoms).index(center)
     assert at_radius_two_first[atom_position] != at_radius_two_second[atom_position]
     assert first != second
+    first.freeze()
+    second.freeze()
     assert hash(first) != hash(second)
 
 
