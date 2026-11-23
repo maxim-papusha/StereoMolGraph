@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 import sys
-from collections import Counter
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -39,12 +38,40 @@ P = TypeVar(
 )
 
 
+def _atom_isomer_permutations(neighbors: int) -> tuple[tuple[int, ...], ...]:
+    """Permute ligands while keeping the central atom fixed."""
+    return tuple((0, *perm) for perm in itertools.permutations(range(1, neighbors + 1)))
+
+
+def _bond_isomer_permutations(
+    left_size: int, right_size: int
+) -> tuple[tuple[int, ...], ...]:
+    """Permute ligands without changing which bond atom they are attached to."""
+    left_center, right_center = left_size, left_size + 1
+    permutations = []
+    for left in itertools.permutations(range(left_size)):
+        for right in itertools.permutations(
+            range(right_center + 1, right_center + 1 + right_size)
+        ):
+            permutations.append((*left, left_center, right_center, *right))
+            if left_size == right_size:
+                permutations.append((*right, right_center, left_center, *left))
+    return tuple(permutations)
+
+
 @runtime_checkable
 class Stereo(Protocol, Generic[A, P]):
     """
     Protocol to represent the orientation of a group of atoms in space.
     This is used to represent local stereochemistry and simultaneously the
     hybridization of atoms.
+
+    Comparisons use configuration inclusion: an undefined descriptor includes all
+    defined stereoisomers of the same concrete type and local connectivity.
+    The central atom and the attachment of ligands to bond atoms are preserved.
+    Achiral descriptors include all distinct configurations with parity zero.
+    Greater-or-equal also accepts equality under the descriptor's symmetry rules.
+    This is a partial order; distinct defined configurations are incomparable.
     """
 
     atoms: A
@@ -68,6 +95,10 @@ class Stereo(Protocol, Generic[A, P]):
     def __init__(self, atoms: A, parity: P = None): ...
 
     def __eq__(self, other: Any) -> bool: ...
+
+    def __gt__(self, other: Any) -> bool: ...
+
+    def __ge__(self, other: Any) -> bool: ...
 
     def __hash__(self) -> int: ...
 
@@ -97,6 +128,7 @@ class _StereoMixin(Generic[A, P]):
     __slots__ = ("atoms", "parity", "_is_frozen")
 
     PERMUTATION_GROUP: Iterable[A]
+    UNDEFINED_PERMUTATION_GROUP: tuple[tuple[int, ...], ...]
     inversion: None | A
     atoms: A
     parity: P
@@ -120,15 +152,12 @@ class _StereoMixin(Generic[A, P]):
         object.__setattr__(self, name, value)
 
     def _perm_atoms(self) -> Iterator[A]:
-        if self.parity is None:
-            return (
-                tuple([self.atoms[i] for i in perm])
-                for perm in itertools.permutations(range(len(self.atoms)))
-            )
-        else:
-            return (
-                tuple([self.atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
-            )
+        group = (
+            self.UNDEFINED_PERMUTATION_GROUP
+            if self.parity is None
+            else self.PERMUTATION_GROUP
+        )
+        return (cast(A, tuple(self.atoms[i] for i in perm)) for perm in group)
 
     def invert(self) -> Self:
         if self.parity is None:
@@ -147,37 +176,38 @@ class _StereoMixin(Generic[A, P]):
         return atoms  # type: ignore[return-value]
 
     def canonical_form(self) -> tuple:
-        if self.parity == 1 or self.parity == 0:
-            canon_atoms = min(self._perm_atoms())
+        if self.parity in (None, 0, 1):
+            permutations = self._perm_atoms()
             ret_parity = self.parity
         elif self.parity == -1:
             atoms = self._inverted_atoms()
-            canon_atoms = min(
-                tuple([atoms[i] for i in perm]) for perm in self.PERMUTATION_GROUP
+            permutations = (
+                tuple(atoms[i] for i in perm) for perm in self.PERMUTATION_GROUP
             )
             ret_parity = 1
-        elif self.parity is None:
-            canon_atoms = min(
-                tuple([self.atoms[i] for i in perm])
-                for perm in itertools.permutations(range(len(self.atoms)))
-            )
-            ret_parity = None
         else:
             raise RuntimeError("Parity should be 1, -1, 0 or None")
 
+        canon_atoms = min(
+            permutations,
+            key=lambda atoms: tuple((atom is not None, atom) for atom in atoms),
+        )
         return (ret_parity, *canon_atoms)
 
     def __eq__(self, other: Any) -> bool:
-        if not hasattr(other, "atoms") or not hasattr(other, "parity"):
+        if type(self) is not type(other):
             return NotImplemented
         s_atoms, o_atoms = self.atoms, other.atoms
-        set_s_atoms = set(s_atoms)
-        set_o_atoms = set(o_atoms)
 
         if self.parity is None or other.parity is None:
-            if set_s_atoms == set_o_atoms:
-                return True
-            return False
+            return (
+                self.parity is None
+                and other.parity is None
+                and (o_atoms == s_atoms or o_atoms in self._perm_atoms())
+            )
+
+        set_s_atoms = set(s_atoms)
+        set_o_atoms = set(o_atoms)
 
         if self.parity in (1, -1):
             if other.parity == 0:
@@ -201,9 +231,6 @@ class _StereoMixin(Generic[A, P]):
             if len(s_atoms) != len(o_atoms) or not set_s_atoms.issuperset(set_o_atoms):
                 return False
 
-            if other.parity is None:
-                return set_s_atoms == set_o_atoms
-
             if self.parity == other.parity:
                 return o_atoms == s_atoms or o_atoms in self._perm_atoms()
         raise RuntimeError(
@@ -212,9 +239,35 @@ class _StereoMixin(Generic[A, P]):
             "ordered correctly."
         )
 
+    def __gt__(self, other: Any) -> bool:
+        """Return whether self strictly includes other's configurations.
+
+        Undefined parity includes all defined stereoisomers, including distinct
+        parity-zero configurations, of the same type and local connectivity.
+        Central atoms and ligand attachments must match. Repeated atoms and
+        ``None`` atom entries are preserved by the allowed permutations.
+        """
+        if type(self) is not type(other):
+            return NotImplemented
+        return (
+            self.parity is None
+            and other.parity is not None
+            and (other.atoms == self.atoms or other.atoms in self._perm_atoms())
+        )
+
+    def __ge__(self, other: Any) -> bool:
+        """Return whether self includes or equals other.
+
+        Defined configurations compare equal using their allowed permutations
+        and parity; unequal defined configurations are incomparable.
+        """
+        if type(self) is not type(other):
+            return NotImplemented
+        return self == other or self > other
+
     def __hash__(self) -> int:
         if self.parity is None:
-            return hash(frozenset(Counter(self.atoms).items()))
+            return hash(frozenset(self._perm_atoms()))
         elif self.parity == 0:
             perm = frozenset(
                 {
@@ -265,6 +318,7 @@ class Tetrahedral(
     :ivar PERMUTATION_GROUP: Permutations allowed by the stereochemistry
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _atom_isomer_permutations(4)
     inversion = (0, 2, 1, 3, 4)
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4),
@@ -311,6 +365,7 @@ class SquarePlanar(
     :ivar parity: Stereochemistry
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _atom_isomer_permutations(4)
     inversion = None
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4),
@@ -358,6 +413,7 @@ class TrigonalBipyramidal(
     :ivar parity: Stereochemistry
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _atom_isomer_permutations(5)
     inversion = (0, 1, 2, 3, 5, 4)
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5),
@@ -395,6 +451,7 @@ class Octahedral(
          4  2  5                4   1  5
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _atom_isomer_permutations(6)
     inversion = (0, 2, 1, 3, 4, 5, 6)
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5, 6),
@@ -458,6 +515,7 @@ class PlanarBond(
     :ivar PERMUTATION_GROUP: Permutations allowed by the stereochemistry
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(2, 2)
     inversion = None
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5),
@@ -498,6 +556,7 @@ class AtropBond(
 
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(2, 2)
     inversion = (1, 0, 2, 3, 4, 5)
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5),
@@ -546,6 +605,7 @@ class RigidBond33(
 
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(3, 3)
     parity = 0
     inversion = (0, 2, 1, 3, 4, 5, 7, 6)
     _bond: Bond
@@ -588,6 +648,7 @@ class RigidBond23(
            1        5
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(2, 3)
     parity = 0
     inversion = (0, 1, 2, 3, 4, 6, 5)
     _bond: Bond
@@ -623,6 +684,7 @@ class RigidBond13(
                    4
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(1, 3)
     parity = 0
     inversion = (0, 1, 2, 3, 5, 4)
     _bond: Bond
@@ -651,6 +713,7 @@ class RigidBond12(
                    4
     """
 
+    UNDEFINED_PERMUTATION_GROUP = _bond_isomer_permutations(1, 2)
     parity = 0
     inversion = None
     _bond: Bond

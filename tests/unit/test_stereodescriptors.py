@@ -6,7 +6,14 @@ import pytest
 
 from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.stereodescriptors import (
+    AtropBond,
+    Octahedral,
     PlanarBond,
+    RigidBond12,
+    RigidBond13,
+    RigidBond23,
+    RigidBond33,
+    SquarePlanar,
     Tetrahedral,
     TrigonalBipyramidal,
 )
@@ -114,8 +121,9 @@ class TestTrigonalBipyramidal:
 
     def test_equality_with_none(self):
         stereo1 = TrigonalBipyramidal((0, 1, 2, 3, 4, 5), None)
-        stereo2 = TrigonalBipyramidal((1, 0, 2, 3, 4, 5), None)
-        assert stereo1 == stereo2
+        stereo2 = TrigonalBipyramidal((0, 2, 1, 3, 4, 5), None)
+        different_center = TrigonalBipyramidal((1, 0, 2, 3, 4, 5), None)
+        assert stereo1 == stereo2 != different_center
 
 
 class TestPlanarBond:
@@ -138,3 +146,148 @@ class TestPlanarBond:
         stereo3 = PlanarBond((1, 0, 2, 3, 5, 4), None)
         stereo4 = PlanarBond((5, 4, 3, 2, 1, 0), None)
         assert stereo3 == stereo4
+
+
+@pytest.mark.parametrize(
+    "descriptor,parities,ligand_count",
+    [
+        (Tetrahedral, (1, -1), 4),
+        (SquarePlanar, (0,), 4),
+        (TrigonalBipyramidal, (1, -1), 5),
+        (Octahedral, (1, -1), 6),
+    ],
+)
+def test_undefined_atom_stereo_preserves_center(descriptor, parities, ligand_count):
+    atoms = tuple(range(ligand_count + 1))
+    unknown = descriptor(atoms, None)
+    expected = {(0, *neighbors) for neighbors in permutations(atoms[1:])}
+    assert set(unknown._perm_atoms()) == expected
+    reordered = descriptor((0, *reversed(atoms[1:])), None)
+    assert unknown == reordered
+    assert hash(unknown) == hash(reordered)
+    assert unknown.canonical_form() == reordered.canonical_form()
+    assert unknown >= reordered and not unknown > reordered
+
+    for reordered_atoms in expected:
+        for parity in parities:
+            assigned = descriptor(reordered_atoms, parity)
+            assert unknown > assigned and unknown >= assigned
+            assert assigned < unknown and assigned <= unknown
+            assert not assigned >= unknown
+            assert unknown != assigned
+    changed_center = (1, 0, *atoms[2:])
+    for parity in (None, *parities):
+        different = descriptor(changed_center, parity)
+        assert unknown != different
+        assert not unknown >= different
+        assert not different >= unknown
+
+
+@pytest.mark.parametrize(
+    "descriptor,parities,left_count,right_count",
+    [
+        (PlanarBond, (0,), 2, 2),
+        (AtropBond, (1, -1), 2, 2),
+        (RigidBond33, (1, -1), 3, 3),
+        (RigidBond23, (1, -1), 2, 3),
+        (RigidBond13, (1, -1), 1, 3),
+        (RigidBond12, (0,), 1, 2),
+    ],
+)
+def test_undefined_bond_stereo_preserves_connectivity(
+    descriptor, parities, left_count, right_count
+):
+    left = tuple(range(left_count))
+    a, b = left_count, left_count + 1
+    right = tuple(range(b + 1, b + 1 + right_count))
+    atoms = (*left, a, b, *right)
+    unknown = descriptor(atoms, None)
+    expected = {
+        (*first, a, b, *second)
+        for first in permutations(left)
+        for second in permutations(right)
+    }
+    if left_count == right_count:
+        expected.update(
+            (*second, b, a, *first)
+            for first in permutations(left)
+            for second in permutations(right)
+        )
+    assert set(unknown._perm_atoms()) == expected
+    for reordered_atoms in expected:
+        equivalent = descriptor(reordered_atoms, None)
+        assert unknown == equivalent
+        assert hash(unknown) == hash(equivalent)
+        assert unknown.canonical_form() == equivalent.canonical_form()
+        assert unknown >= equivalent and not unknown > equivalent
+        for parity in parities:
+            assigned = descriptor(reordered_atoms, parity)
+            assert unknown > assigned and assigned < unknown
+            assert unknown >= assigned and assigned <= unknown
+            assert unknown != assigned and not assigned >= unknown
+
+    # Exchanging endpoints alone, moving a ligand to the other endpoint, or
+    # exchanging a center with a ligand changes connectivity.
+    for i, j in ((a, b), (0, len(atoms) - 1), (0, a)):
+        changed = list(atoms)
+        changed[i], changed[j] = changed[j], changed[i]
+        for parity in (None, *parities):
+            different = descriptor(tuple(changed), parity)
+            assert unknown != different
+            assert not unknown >= different
+            assert not different >= unknown
+
+
+@pytest.mark.parametrize(
+    "descriptor,atoms,expected_count",
+    [(PlanarBond, (0, 1, 2, 3, 4, 5), 2), (SquarePlanar, (0, 1, 2, 3, 4), 3)],
+)
+def test_undefined_includes_distinct_planar_isomers(descriptor, atoms, expected_count):
+    unknown = descriptor(atoms, None)
+    isomers = unknown.get_isomers()
+    assert len(isomers) == expected_count
+    for isomer in isomers:
+        assert isomer.parity == 0
+        assert unknown > isomer
+        for other in isomers:
+            assert (isomer >= other) == (isomer == other)
+            assert not isomer > other
+
+
+@pytest.mark.parametrize(
+    "descriptor,atoms,equivalent_atoms,different_atoms,parity",
+    [
+        (Tetrahedral, (0, 1, 1, 2, None), (0, None, 1, 2, 1), (0, 1, 2, 2, None), 1),
+        (
+            PlanarBond,
+            (None, 1, 2, 3, None, 4),
+            (1, None, 2, 3, 4, None),
+            (None, None, 2, 3, 1, 4),
+            0,
+        ),
+        (
+            RigidBond33,
+            (None, None, 1, 3, 4, 5, 5, 6),
+            (1, None, None, 3, 4, 6, 5, 5),
+            (None, 1, 1, 3, 4, 5, 5, 6),
+            1,
+        ),
+    ],
+)
+def test_undefined_preserves_optional_atom_multiplicities(
+    descriptor, atoms, equivalent_atoms, different_atoms, parity
+):
+    unknown = descriptor(atoms, None)
+    equivalent = descriptor(equivalent_atoms, None)
+    assert unknown == equivalent
+    assert hash(unknown) == hash(equivalent)
+    assert unknown.canonical_form() == equivalent.canonical_form()
+    assert unknown > descriptor(equivalent_atoms, parity)
+    assert unknown != descriptor(different_atoms, None)
+    assert not unknown >= descriptor(different_atoms, parity)
+    assigned = descriptor(atoms, parity)
+    permuted = descriptor(
+        tuple(atoms[i] for i in descriptor.PERMUTATION_GROUP[-1]), parity
+    )
+    assert assigned == permuted
+    assert assigned.canonical_form() == permuted.canonical_form()
