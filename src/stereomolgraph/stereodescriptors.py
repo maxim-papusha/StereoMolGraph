@@ -45,6 +45,11 @@ class Stereo(Protocol, Generic[A, P]):
     Protocol to represent the orientation of a group of atoms in space.
     This is used to represent local stereochemistry and simultaneously the
     hybridization of atoms.
+
+    Comparisons use configuration inclusion: an undefined descriptor is greater
+    than any defined descriptor of the same concrete type and atom multiset.
+    Greater-or-equal also accepts equality under the descriptor's symmetry rules.
+    This is a partial order; distinct defined configurations are incomparable.
     """
 
     atoms: A
@@ -68,6 +73,10 @@ class Stereo(Protocol, Generic[A, P]):
     def __init__(self, atoms: A, parity: P = None): ...
 
     def __eq__(self, other: Any) -> bool: ...
+
+    def __gt__(self, other: Any) -> bool: ...
+
+    def __ge__(self, other: Any) -> bool: ...
 
     def __hash__(self) -> int: ...
 
@@ -210,6 +219,31 @@ class _StereoMixin(Generic[A, P]):
             "Either the parity is not set correctly or the atoms are not "
             "ordered correctly."
         )
+
+    def __gt__(self, other: Any) -> bool:
+        """Return whether self strictly includes other's configurations.
+
+        Undefined parity includes any defined parity, including zero, for the
+        same descriptor type and atom multiset. Atom multiplicities must match;
+        ``None`` atom entries are counted like any other atom identifier.
+        """
+        if type(self) is not type(other):
+            return NotImplemented
+        return (
+            self.parity is None
+            and other.parity is not None
+            and Counter(self.atoms) == Counter(other.atoms)
+        )
+
+    def __ge__(self, other: Any) -> bool:
+        """Return whether self includes or equals other.
+
+        Defined configurations compare equal using their allowed permutations
+        and parity; unequal defined configurations are incomparable.
+        """
+        if type(self) is not type(other):
+            return NotImplemented
+        return self == other or self > other
 
     def __hash__(self) -> int:
         if self.parity is None:
