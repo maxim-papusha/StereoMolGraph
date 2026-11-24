@@ -502,11 +502,15 @@ class AtropBond(
     """
 
     inversion = (1, 0, 2, 3, 4, 5)
+    # The C2 axis perpendicular to the bond (through its midpoint) maps
+    # 0 -> 5, 1 -> 4, 2 -> 3 (and back), so its group is PlanarBond's.
+    # (4, 5, 3, 2, 1, 0) would be that C2 followed by the inversion: the
+    # mirror image.
     PERMUTATION_GROUP = (
         (0, 1, 2, 3, 4, 5),
         (1, 0, 2, 3, 5, 4),
-        (4, 5, 3, 2, 1, 0),
-        (5, 4, 3, 2, 0, 1),
+        (4, 5, 3, 2, 0, 1),
+        (5, 4, 3, 2, 1, 0),
     )
 
     def get_isomers(self) -> set[AtropBond]:

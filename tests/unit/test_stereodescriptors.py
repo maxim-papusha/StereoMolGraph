@@ -6,6 +6,7 @@ import pytest
 
 from stereomolgraph.coords import Geometry, are_planar
 from stereomolgraph.stereodescriptors import (
+    AtropBond,
     PlanarBond,
     Tetrahedral,
     TrigonalBipyramidal,
@@ -151,3 +152,56 @@ class TestPlanarBond:
         stereo3 = PlanarBond((1, 0, 2, 3, 5, 4), None)
         stereo4 = PlanarBond((5, 4, 3, 2, 1, 0), None)
         assert stereo3 == stereo4
+
+
+class TestAtropBond:
+    @staticmethod
+    def helicity(atoms, coords):
+        """Sign of the triple product (x0 - x1, x4 - x5, x3 - x2): a pseudoscalar,
+        unchanged by rotations and flipped by a reflection."""
+        x = {a: np.asarray(coords[a], dtype=float) for a in atoms}
+        a0, a1, a2, a3, a4, a5 = atoms
+        return np.sign(np.dot(x[a0] - x[a1], np.cross(x[a4] - x[a5], x[a3] - x[a2])))
+
+    # A twisted axis 2-3 along z: 0, 1 on 2 in the xz plane, 4, 5 on 3 in the
+    # yz plane (an allene, or a biaryl held at 90 degrees).
+    coords = {
+        0: (1.0, 0.0, -1.5),
+        1: (-1.0, 0.0, -1.5),
+        2: (0.0, 0.0, -0.7),
+        3: (0.0, 0.0, 0.7),
+        4: (0.0, 1.0, 1.5),
+        5: (0.0, -1.0, 1.5),
+    }
+
+    def test_permutation_group_keeps_the_helicity(self):
+        atoms = (0, 1, 2, 3, 4, 5)
+        ref = self.helicity(atoms, self.coords)
+        for perm in AtropBond.PERMUTATION_GROUP:
+            permuted = tuple(atoms[i] for i in perm)
+            assert self.helicity(permuted, self.coords) == ref, perm
+        inverted = tuple(atoms[i] for i in AtropBond.inversion)
+        assert self.helicity(inverted, self.coords) == -ref
+
+    def test_equality(self):
+        stereo = AtropBond((0, 1, 2, 3, 4, 5), 1)
+        c2_image = AtropBond((5, 4, 3, 2, 1, 0), 1)
+        mirror_image = AtropBond((4, 5, 3, 2, 1, 0), 1)
+        assert stereo == c2_image
+        assert hash(stereo) == hash(c2_image)
+        assert stereo != mirror_image
+        assert stereo == mirror_image.invert()
+
+    def test_twisted_c2_symmetric_graph_differs_from_its_mirror_image(self):
+        from stereomolgraph import StereoMolGraph
+
+        def twisted_butene(parity):
+            g = StereoMolGraph()
+            for i, s in enumerate("CCCCHH"):
+                g.add_atom(i, s)
+            for b in [(0, 1), (1, 2), (2, 3), (1, 4), (2, 5)]:
+                g.add_bond(*b)
+            g.set_bond_stereo(AtropBond((0, 4, 1, 2, 3, 5), parity))
+            return g
+
+        assert twisted_butene(1) != twisted_butene(-1)
