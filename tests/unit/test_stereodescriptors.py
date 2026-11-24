@@ -205,3 +205,12 @@ class TestAtropBond:
             return g
 
         assert twisted_butene(1) != twisted_butene(-1)
+
+    def test_get_isomers_gives_both_helicities(self):
+        stereo = AtropBond((0, 1, 2, 3, 4, 5), None)
+        isomers = stereo.get_isomers()
+        assert isomers == {
+            AtropBond((0, 1, 2, 3, 4, 5), 1),
+            AtropBond((0, 1, 2, 3, 4, 5), -1),
+        }
+        assert len(isomers) == 2

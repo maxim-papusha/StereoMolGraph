@@ -514,11 +514,9 @@ class AtropBond(
     )
 
     def get_isomers(self) -> set[AtropBond]:
-        other_atoms = tuple(self.atoms[i] for i in (0, 1, 2, 3, 5, 4))
-        assert len(other_atoms) == 6
         return {
             AtropBond(self.atoms, 1),
-            AtropBond(other_atoms, -1),
+            AtropBond(self.atoms, -1),
         }
 
     @property

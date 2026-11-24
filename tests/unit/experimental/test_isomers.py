@@ -6,7 +6,7 @@ from stereomolgraph.experimental import (
     generate_stereoisomers,
 )
 from stereomolgraph.graphs.crg import Change
-from stereomolgraph.stereodescriptors import Tetrahedral
+from stereomolgraph.stereodescriptors import AtropBond, Tetrahedral
 
 
 def _undefined_tetrahedral_graph() -> StereoMolGraph:
@@ -93,3 +93,20 @@ def test_generate_fleeting_stereoisomers_enantiomers_true_one_representative():
 
     assert len(stereoisomers) == 1
     assert len(unique_isomers) == 1
+
+
+def test_generate_stereoisomers_gives_both_atropisomers():
+    # CH3-CH-CH-CH3 held twisted about the 1-2 bond (the transition state of
+    # but-2-ene's Z/E rotation): two mirror-image configurations.
+    graph = StereoMolGraph()
+    for atom, symbol in enumerate("CCCCHH"):
+        graph.add_atom(atom, symbol)
+    for bond in [(0, 1), (1, 2), (2, 3), (1, 4), (2, 5)]:
+        graph.add_bond(*bond)
+    graph.set_bond_stereo(cast(Any, AtropBond((0, 4, 1, 2, 3, 5), None)))
+
+    stereoisomers = list(generate_stereoisomers(graph, enantiomers=False))
+    parities = {g.get_bond_stereo((1, 2)).parity for g in stereoisomers}  # type: ignore[union-attr]
+
+    assert len(stereoisomers) == 2
+    assert parities == {1, -1}
