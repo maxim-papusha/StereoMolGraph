@@ -526,7 +526,7 @@ def _stereo_change_feasibility(
 
     s2 = {
         (stereo_change, stereo)
-        for stereo_change, stereo_list in params.g2_stereo_changes[u].items()
+        for stereo_change, stereo_list in params.g2_stereo_changes[v].items()
         for stereo in stereo_list
         if stereo is not None  # type: ignore
         and all([a in state.inverted_mapping or a is None for a in stereo.atoms])
